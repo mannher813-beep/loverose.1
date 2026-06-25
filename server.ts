@@ -50,6 +50,47 @@ async function startServer() {
     res.json({ status: "ok", time: new Date().toISOString() });
   });
 
+  // Detailed Supabase connection check
+  app.get("/api/debug-supabase", async (req, res) => {
+    const url = process.env.VITE_SUPABASE_URL || "";
+    const anonKey = process.env.VITE_SUPABASE_ANON_KEY || "";
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+    const status = {
+      urlConfigured: !!url,
+      anonKeyConfigured: !!anonKey,
+      serviceKeyConfigured: !!serviceKey,
+      urlPrefix: url ? url.substring(0, 20) + "..." : "none",
+      testConnection: "pending" as string,
+      errorMessage: null as string | null,
+    };
+
+    if (!supabaseAdmin) {
+      status.testConnection = "failed";
+      status.errorMessage = "supabaseAdmin is not initialized (missing URL or Service Key in process.env)";
+      return res.json(status);
+    }
+
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("profiles")
+        .select("uid")
+        .limit(1);
+
+      if (error) {
+        status.testConnection = "failed";
+        status.errorMessage = `${error.code}: ${error.message}`;
+      } else {
+        status.testConnection = "success";
+      }
+    } catch (err: any) {
+      status.testConnection = "failed";
+      status.errorMessage = err.message || String(err);
+    }
+
+    res.json(status);
+  });
+
   // Create a Money Fusion payment checkout url
   app.post("/api/payments/create", async (req, res) => {
     try {

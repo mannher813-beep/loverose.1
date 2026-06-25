@@ -1,8 +1,30 @@
-import { useState } from "react";
-import { Copy, Check, Database, Key, ShieldAlert } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Copy, Check, Database, Key, ShieldAlert, Wifi, WifiOff, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 export default function SupabaseSetupBanner() {
   const [copied, setCopied] = useState(false);
+  const [dbStatus, setDbStatus] = useState<{
+    urlConfigured: boolean;
+    anonKeyConfigured: boolean;
+    serviceKeyConfigured: boolean;
+    urlPrefix: string;
+    testConnection: string;
+    errorMessage: string | null;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/debug-supabase")
+      .then((res) => res.json())
+      .then((data) => {
+        setDbStatus(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error fetching database status:", err);
+        setLoading(false);
+      });
+  }, []);
 
   const sqlSchema = `-- ==========================================
 -- SCHEMA DE BASE DE DONNEES POUR LOVEROSE
@@ -27,6 +49,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 -- Active RLS sur profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Les profils sont visibles par tous" ON public.profiles;
+DROP POLICY IF EXISTS "Chaque utilisateur peut modifier son propre profil" ON public.profiles;
 CREATE POLICY "Les profils sont visibles par tous" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Chaque utilisateur peut modifier son propre profil" ON public.profiles FOR ALL USING (auth.uid() = uid);
 
@@ -39,6 +63,7 @@ CREATE TABLE IF NOT EXISTS public.user_credits (
 );
 
 ALTER TABLE public.user_credits ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Lecture de son propre solde de crédits" ON public.user_credits;
 CREATE POLICY "Lecture de son propre solde de crédits" ON public.user_credits FOR SELECT USING (auth.uid() = user_id);
 
 -- 3. Table credit_transactions (Historique des transactions de crédits)
@@ -53,6 +78,7 @@ CREATE TABLE IF NOT EXISTS public.credit_transactions (
 );
 
 ALTER TABLE public.credit_transactions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Lecture de son propre historique de transactions" ON public.credit_transactions;
 CREATE POLICY "Lecture de son propre historique de transactions" ON public.credit_transactions FOR SELECT USING (auth.uid() = user_id);
 
 -- 4. Table likes
@@ -64,6 +90,7 @@ CREATE TABLE IF NOT EXISTS public.likes (
 );
 
 ALTER TABLE public.likes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Chaque utilisateur gère ses propres likes" ON public.likes;
 CREATE POLICY "Chaque utilisateur gère ses propres likes" ON public.likes FOR ALL USING (auth.uid() = from_uid);
 
 -- 5. Table matches
@@ -74,6 +101,7 @@ CREATE TABLE IF NOT EXISTS public.matches (
 );
 
 ALTER TABLE public.matches ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Les utilisateurs lisent leurs propres matches" ON public.matches;
 CREATE POLICY "Les utilisateurs lisent leurs propres matches" ON public.matches FOR SELECT USING (auth.uid() = ANY(users));
 
 -- 6. Table messages
@@ -87,6 +115,8 @@ CREATE TABLE IF NOT EXISTS public.messages (
 );
 
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Lecture des messages de ses matches" ON public.messages;
+DROP POLICY IF EXISTS "Insertion de messages dans ses matches" ON public.messages;
 CREATE POLICY "Lecture des messages de ses matches" ON public.messages FOR SELECT USING (
     auth.uid() IN (SELECT unnest(users) FROM public.matches WHERE id = match_id)
 );
@@ -106,6 +136,8 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 );
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Chaque utilisateur lit ses propres notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Chaque utilisateur peut modifier le statut lu de ses notifications" ON public.notifications;
 CREATE POLICY "Chaque utilisateur lit ses propres notifications" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Chaque utilisateur peut modifier le statut lu de ses notifications" ON public.notifications FOR UPDATE USING (auth.uid() = user_id);
 
@@ -119,6 +151,8 @@ CREATE TABLE IF NOT EXISTS public.posts (
 );
 
 ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Les posts sont visibles par tous" ON public.posts;
+DROP POLICY IF EXISTS "Chaque utilisateur gère ses propres posts" ON public.posts;
 CREATE POLICY "Les posts sont visibles par tous" ON public.posts FOR SELECT USING (true);
 CREATE POLICY "Chaque utilisateur gère ses propres posts" ON public.posts FOR ALL USING (auth.uid() = author_id);
 
@@ -136,6 +170,7 @@ CREATE TABLE IF NOT EXISTS public.payments (
 );
 
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Les utilisateurs lisent leurs propres transactions de paiement" ON public.payments;
 CREATE POLICY "Les utilisateurs lisent leurs propres transactions de paiement" ON public.payments FOR SELECT USING (auth.uid() = user_id);
 
 -- 10. Table subscriptions (Abonnements Premium)
@@ -149,6 +184,7 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
 );
 
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Chaque utilisateur lit son propre abonnement" ON public.subscriptions;
 CREATE POLICY "Chaque utilisateur lit son propre abonnement" ON public.subscriptions FOR SELECT USING (auth.uid() = user_id);
 
 -- 11. Table verification_requests
@@ -161,6 +197,7 @@ CREATE TABLE IF NOT EXISTS public.verification_requests (
 );
 
 ALTER TABLE public.verification_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Chaque utilisateur gère ses demandes de vérification" ON public.verification_requests;
 CREATE POLICY "Chaque utilisateur gère ses demandes de vérification" ON public.verification_requests FOR ALL USING (auth.uid() = user_id);
 
 -- 12. Table reports (Signalements)
@@ -173,6 +210,8 @@ CREATE TABLE IF NOT EXISTS public.reports (
 );
 
 ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Chaque utilisateur lit ses propres signalements" ON public.reports;
+DROP POLICY IF EXISTS "Chaque utilisateur peut insérer ses propres signalements" ON public.reports;
 CREATE POLICY "Chaque utilisateur lit ses propres signalements" ON public.reports FOR SELECT USING (auth.uid() = reporter_id);
 CREATE POLICY "Chaque utilisateur peut insérer ses propres signalements" ON public.reports FOR INSERT WITH CHECK (auth.uid() = reporter_id);
 
@@ -209,6 +248,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS on_like_created ON public.likes;
 CREATE TRIGGER on_like_created
 AFTER INSERT ON public.likes
 FOR EACH ROW EXECUTE FUNCTION public.handle_reciprocal_like();
@@ -275,6 +315,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS on_message_sending ON public.messages;
 CREATE TRIGGER on_message_sending
 BEFORE INSERT ON public.messages
 FOR EACH ROW EXECUTE FUNCTION public.validate_and_charge_message();
@@ -311,6 +352,84 @@ FOR EACH ROW EXECUTE FUNCTION public.validate_and_charge_message();
             <li>VITE_SUPABASE_ANON_KEY = "votre-cle-anon-publique"</li>
             <li>SUPABASE_SERVICE_ROLE_KEY = "votre-cle-service-role-secrete" (requis pour les crédits de paiement)</li>
           </ul>
+        </div>
+
+        {/* Section de Diagnostic de Connexion */}
+        <div className="bg-slate-950/50 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-sm text-slate-200 flex items-center">
+              <Wifi className="mr-2 text-indigo-400" size={16} /> Diagnostic de Connexion Supabase en Temps Réel
+            </h3>
+            {loading ? (
+              <span className="text-xs text-slate-500 animate-pulse">Vérification en cours...</span>
+            ) : dbStatus?.testConnection === "success" ? (
+              <span className="px-2 py-0.5 bg-green-500/10 text-green-400 rounded-full text-xs font-medium flex items-center">
+                <CheckCircle2 size={12} className="mr-1" /> Connecté à Supabase !
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 bg-red-500/10 text-red-400 rounded-full text-xs font-medium flex items-center">
+                <WifiOff size={12} className="mr-1" /> Non Connecté
+              </span>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="text-xs text-slate-400">Analyse des variables d'environnement et de la connexion...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="space-y-2 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+                <p className="text-slate-400 font-medium">Statut des Secrets (Côté Serveur) :</p>
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span>VITE_SUPABASE_URL :</span>
+                    <span className={dbStatus?.urlConfigured ? "text-green-400 font-semibold" : "text-red-400 font-semibold"}>
+                      {dbStatus?.urlConfigured ? "Détecté ✅" : "Absent ❌"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>VITE_SUPABASE_ANON_KEY :</span>
+                    <span className={dbStatus?.anonKeyConfigured ? "text-green-400 font-semibold" : "text-red-400 font-semibold"}>
+                      {dbStatus?.anonKeyConfigured ? "Détecté ✅" : "Absent ❌"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>SUPABASE_SERVICE_ROLE_KEY :</span>
+                    <span className={dbStatus?.serviceKeyConfigured ? "text-green-400 font-semibold" : "text-red-400 font-semibold"}>
+                      {dbStatus?.serviceKeyConfigured ? "Détecté ✅" : "Absent ❌"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 bg-slate-900/50 p-3 rounded-xl border border-slate-800 flex flex-col justify-between">
+                <div>
+                  <p className="text-slate-400 font-medium">Test de Requête (Sélect) :</p>
+                  <p className={`mt-1 font-semibold ${dbStatus?.testConnection === "success" ? "text-green-400" : "text-red-400"}`}>
+                    {dbStatus?.testConnection === "success" 
+                      ? "La base de données répond correctement ! 🎉" 
+                      : "Échec de connexion ou d'exécution."}
+                  </p>
+                </div>
+                {dbStatus?.errorMessage && (
+                  <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 text-red-300 rounded-lg text-[10px] font-mono leading-relaxed max-h-20 overflow-y-auto">
+                    {dbStatus.errorMessage}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!loading && dbStatus?.testConnection !== "success" && (
+            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-3 text-[11px] text-slate-300 leading-normal flex items-start space-x-2">
+              <AlertTriangle className="text-indigo-400 shrink-0 mt-0.5" size={14} />
+              <div>
+                <p className="font-semibold text-indigo-300">Conseil de résolution :</p>
+                <p className="mt-0.5">
+                  Si vous venez d'ajouter les secrets dans l'onglet <strong>Secrets</strong> de l'interface Google AI Studio, n'oubliez pas de cliquer sur le bouton <strong>"Apply changes"</strong> en bas à droite pour redémarrer le serveur et appliquer vos nouvelles variables !
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-3">
