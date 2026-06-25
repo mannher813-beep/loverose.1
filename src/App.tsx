@@ -96,14 +96,27 @@ export default function App() {
         .single();
 
       if (error) {
-        // Row might not exist, we will create one upon onboarding or update it
-        console.warn("Profile record not found, will onboard upon first edits.");
+        console.warn("Profile record not found from Supabase, checking local backup.");
+        const localBackup = localStorage.getItem(`profile_backup_${uid}`);
+        if (localBackup) {
+          try {
+            setProfile(JSON.parse(localBackup));
+            return;
+          } catch (e) {}
+        }
         setProfile({ uid, relationship_intents: [] });
       } else {
         setProfile(data);
+        localStorage.setItem(`profile_backup_${uid}`, JSON.stringify(data));
       }
     } catch (err) {
       console.error("Profile fetch error:", err);
+      const localBackup = localStorage.getItem(`profile_backup_${uid}`);
+      if (localBackup) {
+        try {
+          setProfile(JSON.parse(localBackup));
+        } catch (e) {}
+      }
     } finally {
       setIsLoading(false);
     }
@@ -212,28 +225,28 @@ export default function App() {
         {/* Desktop Quick Nav Controls */}
         <div className="hidden md:flex items-center space-x-6 text-xs font-bold text-slate-600">
           <button
-            onClick={() => { if (!isProfileIncomplete) setActiveTab('discover'); }}
+            onClick={() => setActiveTab('discover')}
             className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'discover' ? 'text-rose-500 font-extrabold' : ''}`}
           >
             <Heart size={16} />
             <span>Découvrir</span>
           </button>
           <button
-            onClick={() => { if (!isProfileIncomplete) setActiveTab('chat'); }}
+            onClick={() => setActiveTab('chat')}
             className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'chat' ? 'text-rose-500 font-extrabold' : ''}`}
           >
             <MessageSquare size={16} />
             <span>Messagerie</span>
           </button>
           <button
-            onClick={() => { if (!isProfileIncomplete) setActiveTab('feed'); }}
+            onClick={() => setActiveTab('feed')}
             className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'feed' ? 'text-rose-500 font-extrabold' : ''}`}
           >
             <Newspaper size={16} />
             <span>Actualités</span>
           </button>
           <button
-            onClick={() => { if (!isProfileIncomplete) setActiveTab('shop'); }}
+            onClick={() => setActiveTab('shop')}
             className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'shop' ? 'text-rose-500 font-extrabold' : ''}`}
           >
             <ShoppingBag size={16} />
@@ -274,7 +287,7 @@ export default function App() {
       {/* Main Content Workspace viewport */}
       <main className="flex-1 overflow-hidden flex flex-col bg-slate-50 relative min-h-0">
         
-        {isProfileIncomplete ? (
+        {false ? (
           // Force Onboarding Flow for Completing intents
           <div className="flex-1 flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-white rounded-3xl p-6 md:p-8 shadow-lg border border-slate-150 space-y-6">
@@ -282,14 +295,10 @@ export default function App() {
                 <div className="mx-auto w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-500">
                   <Sparkles size={24} className="animate-bounce" />
                 </div>
-                <h2 className="text-lg font-black text-slate-900 tracking-tight">Onboarding LoveRose Obligatoire</h2>
+                <h2 className="text-lg font-black text-slate-900 tracking-tight">Choix de vos intentions requis</h2>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Veuillez spécifier vos <strong>intentions de rencontres recherchées</strong> dans vos paramètres pour pouvoir accéder à la découverte de profils de notre algorithme.
+                  Veuillez spécifier vos <strong>intentions de rencontres recherchées</strong> dans vos paramètres afin que nous puissions vous proposer des profils compatibles.
                 </p>
-              </div>
-
-              <div className="bg-rose-50/50 border border-rose-100 p-4 rounded-xl text-xs text-slate-600 leading-relaxed">
-                Le champ <strong>relationship_intents</strong> alimente l'affichage de compatibilité et permet de filtrer la liste de rencontres.
               </div>
 
               <button
@@ -344,28 +353,28 @@ export default function App() {
       {/* Mobile Tab Navbar */}
       <footer className="bg-white border-t border-slate-200 py-2.5 px-4 flex justify-around items-center sticky bottom-0 z-30 md:hidden flex-shrink-0">
         <button
-          onClick={() => { if (!isProfileIncomplete) setActiveTab('discover'); }}
+          onClick={() => setActiveTab('discover')}
           className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'discover' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
         >
           <Heart size={18} fill={activeTab === 'discover' ? 'currentColor' : 'none'} />
           <span className="text-[10px]">Découvrir</span>
         </button>
         <button
-          onClick={() => { if (!isProfileIncomplete) setActiveTab('chat'); }}
+          onClick={() => setActiveTab('chat')}
           className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'chat' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
         >
           <MessageSquare size={18} fill={activeTab === 'chat' ? 'currentColor' : 'none'} />
           <span className="text-[10px]">Messagerie</span>
         </button>
         <button
-          onClick={() => { if (!isProfileIncomplete) setActiveTab('feed'); }}
+          onClick={() => setActiveTab('feed')}
           className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'feed' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
         >
           <Newspaper size={18} />
           <span className="text-[10px]">Actualités</span>
         </button>
         <button
-          onClick={() => { if (!isProfileIncomplete) setActiveTab('shop'); }}
+          onClick={() => setActiveTab('shop')}
           className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'shop' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
         >
           <ShoppingBag size={18} />

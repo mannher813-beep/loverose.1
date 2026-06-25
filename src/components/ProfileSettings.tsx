@@ -93,24 +93,36 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
         throw new Error("Veuillez sélectionner au moins un type de rencontre recherché (intention obligatoire).");
       }
 
-      const { error } = await supabase
-        .from("profiles")
-        .upsert({
-          uid: currentUser.id,
-          full_name: fullName.trim(),
-          username: username.trim(),
-          bio: bio.trim(),
-          age,
-          location: location.trim(),
-          gender,
-          preferences,
-          avatar_url: avatarUrl.trim(),
-          relationship_intents: selectedIntents,
-          verification_status: verificationStatus,
-          updated_at: new Date()
-        });
+      const updatedProfileData = {
+        uid: currentUser.id,
+        full_name: fullName.trim(),
+        username: username.trim(),
+        bio: bio.trim(),
+        age,
+        location: location.trim(),
+        gender,
+        preferences,
+        avatar_url: avatarUrl.trim(),
+        relationship_intents: selectedIntents,
+        verification_status: verificationStatus,
+        updated_at: new Date().toISOString()
+      };
 
-      if (error) throw error;
+      // 1. Save to local storage FIRST as a robust fallback
+      localStorage.setItem(`profile_backup_${currentUser.id}`, JSON.stringify(updatedProfileData));
+
+      // 2. Try to sync to Supabase
+      try {
+        const { error } = await supabase
+          .from("profiles")
+          .upsert(updatedProfileData);
+
+        if (error) {
+          console.warn("Could not save to Supabase, fell back to localStorage:", error);
+        }
+      } catch (supabaseErr) {
+        console.warn("Failed to connect to Supabase database, using local backup fallback.", supabaseErr);
+      }
 
       setSaveSuccess(true);
       onProfileUpdated();

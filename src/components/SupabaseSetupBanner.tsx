@@ -399,6 +399,14 @@ FOR EACH ROW EXECUTE FUNCTION public.validate_and_charge_message();
                     </span>
                   </div>
                 </div>
+                {dbStatus?.availableKeys && dbStatus.availableKeys.length > 0 && (
+                  <div className="mt-2 text-[10px] text-slate-400 border-t border-slate-800 pt-2">
+                    <span className="font-semibold text-slate-300">Clés détectées :</span>{" "}
+                    <span className="font-mono text-indigo-300 bg-black/40 px-1 py-0.5 rounded break-all">
+                      {dbStatus.availableKeys.map(k => `"${k}"`).join(", ")}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2 bg-slate-900/50 p-3 rounded-xl border border-slate-800 flex flex-col justify-between">

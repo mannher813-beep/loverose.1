@@ -63,6 +63,7 @@ async function startServer() {
       urlPrefix: url ? url.substring(0, 20) + "..." : "none",
       testConnection: "pending" as string,
       errorMessage: null as string | null,
+      availableKeys: Object.keys(process.env).filter(k => k.includes("SUPABASE") || k.includes("VITE")),
     };
 
     if (!supabaseAdmin) {
