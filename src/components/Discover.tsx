@@ -52,16 +52,23 @@ export default function Discover({ currentUser, currentUserProfile, onMatchDetec
         .select("*")
         .neq("uid", currentUser.id); // Exclude self
 
-      // Filter by relationship intent if selected
-      if (selectedIntentFilter !== "tous") {
-        query = query.contains("relationship_intents", [selectedIntentFilter]);
-      }
-
       const { data: profilesData, error } = await query;
       if (error) throw error;
 
+      // Robust client-side filter fallback (bypasses any casing or postgres array-contains query variations)
+      let filteredProfiles = profilesData || [];
+      if (selectedIntentFilter !== "tous") {
+        filteredProfiles = filteredProfiles.filter(p => 
+          p.relationship_intents && 
+          Array.isArray(p.relationship_intents) &&
+          p.relationship_intents.some((intent: string) => 
+            intent.toLowerCase().trim() === selectedIntentFilter.toLowerCase().trim()
+          )
+        );
+      }
+
       // Filter out profiles already liked or with missing complete profiles
-      const unswiped = (profilesData || []).filter(p => !likedSet.has(p.uid));
+      const unswiped = filteredProfiles.filter(p => !likedSet.has(p.uid));
       
       // Shuffle slightly or sort by compatibility score for a richer discovery feel
       const scored = unswiped.map(p => {

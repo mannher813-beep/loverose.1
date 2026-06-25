@@ -16,9 +16,87 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
   const [isPosting, setIsPosting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  // Interactive local states synced with LocalStorage
+  const [likesState, setLikesState] = useState<Record<string, { count: number; userLiked: boolean }>>({});
+  const [commentsState, setCommentsState] = useState<Record<string, Array<{ id: string; author_name: string; avatar_url: string; text: string; created_at: string }>>>({});
+  const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
+  const [newCommentText, setNewCommentText] = useState("");
+  const [shareToastMessage, setShareToastMessage] = useState<string | null>(null);
+
   useEffect(() => {
     loadPosts();
-  }, []);
+    
+    // Load likes from localStorage
+    const storedLikes = localStorage.getItem(`feed_likes_${currentUser?.id || 'anon'}`);
+    if (storedLikes) {
+      try { setLikesState(JSON.parse(storedLikes)); } catch (e) {}
+    }
+
+    // Load comments from localStorage
+    const storedComments = localStorage.getItem(`feed_comments_${currentUser?.id || 'anon'}`);
+    if (storedComments) {
+      try { setCommentsState(JSON.parse(storedComments)); } catch (e) {}
+    }
+  }, [currentUser]);
+
+  const handleLikeToggle = (postId: string) => {
+    const currentState = likesState[postId] || { count: Math.floor(Math.random() * 8) + 2, userLiked: false };
+    const newUserLiked = !currentState.userLiked;
+    const newCount = newUserLiked ? currentState.count + 1 : Math.max(0, currentState.count - 1);
+    
+    const updated = {
+      ...likesState,
+      [postId]: { count: newCount, userLiked: newUserLiked }
+    };
+    setLikesState(updated);
+    localStorage.setItem(`feed_likes_${currentUser?.id || 'anon'}`, JSON.stringify(updated));
+  };
+
+  const handleAddComment = (postId: string) => {
+    if (!newCommentText.trim()) return;
+
+    const newComment = {
+      id: `comment-${Date.now()}`,
+      author_name: currentUserProfile?.full_name || "Membre LoveRose",
+      avatar_url: currentUserProfile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${currentUserProfile?.full_name || currentUser?.id}`,
+      text: newCommentText.trim(),
+      created_at: new Date().toISOString()
+    };
+
+    const currentPostComments = commentsState[postId] || [];
+    const updated = {
+      ...commentsState,
+      [postId]: [...currentPostComments, newComment]
+    };
+
+    setCommentsState(updated);
+    localStorage.setItem(`feed_comments_${currentUser?.id || 'anon'}`, JSON.stringify(updated));
+    setNewCommentText("");
+  };
+
+  const handleSharePost = (postId: string) => {
+    const postLink = `${window.location.origin}/?tab=feed&post=${postId}`;
+    if (navigator.share) {
+      navigator.share({
+        title: 'Publication sur LoveRose',
+        text: 'Regarde cette publication sympa sur LoveRose !',
+        url: postLink,
+      }).catch(() => {
+        navigator.clipboard.writeText(postLink);
+        triggerShareToast();
+      });
+    } else {
+      navigator.clipboard.writeText(postLink);
+      triggerShareToast();
+    }
+  };
+
+  const triggerShareToast = () => {
+    setShareToastMessage("Lien de la publication copié ! ✨");
+    setTimeout(() => {
+      setShareToastMessage(null);
+    }, 3000);
+  };
 
   const loadPosts = async () => {
     setIsLoading(true);
@@ -223,20 +301,88 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
                 </div>
 
                 {/* Post Footer Actions */}
+                {shareToastMessage && (
+                  <div className="bg-rose-500 text-white text-xs font-bold py-2 px-4 rounded-xl text-center animate-bounce">
+                    {shareToastMessage}
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-slate-400 text-xs font-semibold">
-                  <button className="flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer">
-                    <Heart size={16} />
-                    <span>J'aime</span>
+                  <button 
+                    onClick={() => handleLikeToggle(p.id)}
+                    className={`flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer ${likesState[p.id]?.userLiked ? 'text-rose-500 font-bold' : ''}`}
+                  >
+                    <Heart size={16} fill={likesState[p.id]?.userLiked ? "currentColor" : "none"} className={likesState[p.id]?.userLiked ? "animate-pulse" : ""} />
+                    <span>{likesState[p.id]?.count ?? (Math.floor(Math.random() * 8) + 2)} J'aime</span>
                   </button>
-                  <button className="flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer" onClick={() => alert("Fonctionnalité commentaire bientôt disponible dans votre pays !")}>
+                  <button 
+                    onClick={() => setActiveCommentsPostId(activeCommentsPostId === p.id ? null : p.id)}
+                    className={`flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer ${activeCommentsPostId === p.id ? 'text-rose-500 font-bold' : ''}`}
+                  >
                     <MessageCircle size={16} />
-                    <span>Commenter</span>
+                    <span>{(commentsState[p.id] || []).length} Commenter</span>
                   </button>
-                  <button className="flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer" onClick={() => { navigator.clipboard.writeText(window.location.origin); alert("Lien de l'actualité copié !"); }}>
+                  <button 
+                    onClick={() => handleSharePost(p.id)}
+                    className="flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer"
+                  >
                     <Share2 size={16} />
                     <span>Partager</span>
                   </button>
                 </div>
+
+                {/* Sub Comments Accordion */}
+                {activeCommentsPostId === p.id && (
+                  <div className="bg-slate-50 rounded-2xl p-4 space-y-4 border border-slate-100 animate-fadeIn text-xs">
+                    <h5 className="font-extrabold text-slate-800 flex items-center gap-1">
+                      <MessageCircle size={14} className="text-rose-500" />
+                      <span>Commentaires ({(commentsState[p.id] || []).length})</span>
+                    </h5>
+
+                    {/* Comments List */}
+                    <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                      {(commentsState[p.id] || []).length > 0 ? (
+                        (commentsState[p.id] || []).map((c: any) => (
+                          <div key={c.id} className="flex gap-2.5 items-start bg-white p-2.5 rounded-xl border border-slate-100 shadow-3xs">
+                            <img src={c.avatar_url} alt="User avatar" className="w-6 h-6 rounded-full object-cover" />
+                            <div className="flex-1 space-y-1">
+                              <div className="flex justify-between items-center">
+                                <span className="font-extrabold text-slate-800 text-[10px]">{c.author_name}</span>
+                                <span className="text-[8px] text-slate-400">{new Date(c.created_at).toLocaleDateString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                              </div>
+                              <p className="text-slate-600 font-medium text-[11px] leading-normal">{c.text}</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-[10px] text-slate-400 font-medium text-center py-2">Aucun commentaire pour le moment. Écrivez le premier ! ✨</p>
+                      )}
+                    </div>
+
+                    {/* Input comment field */}
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={newCommentText}
+                        onChange={(e) => setNewCommentText(e.target.value)}
+                        placeholder="Écrire un commentaire doux..."
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleAddComment(p.id);
+                          }
+                        }}
+                        className="flex-1 bg-white border border-slate-200 focus:border-rose-500 focus:outline-none rounded-xl px-3 py-2 text-[11px] font-medium"
+                      />
+                      <button
+                        onClick={() => handleAddComment(p.id)}
+                        disabled={!newCommentText.trim()}
+                        className="bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white p-2 rounded-xl transition cursor-pointer disabled:opacity-40"
+                      >
+                        <Send size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })

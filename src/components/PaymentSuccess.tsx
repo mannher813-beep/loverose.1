@@ -34,35 +34,53 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
     const maxAttempts = 10; // Poll for up to 20 seconds (2s interval)
 
     const checkPaymentStatus = async () => {
+      let verified = false;
       try {
         const res = await fetch(`/api/payments/verify?reference=${activeRef}`);
-        if (res.status === 404) {
-          // Keep polling if not found immediately, might be registering
-          return;
-        }
-        
-        if (!res.ok) throw new Error("Verification request failed");
-        
-        const data = await res.json();
-        
-        if (data.payment) {
-          setPlanName(data.payment.plan_name);
-          setAmount(data.payment.montant);
-        }
-
-        if (data.status === "success") {
-          setStatus("success");
-          clearInterval(pollInterval);
-          // Clear reference from local storage on successful confirmation
-          localStorage.removeItem("last_payment_reference");
-          
-          // Refresh user profile so they see their new credits or active status immediately
-          if (userId && loadProfile) {
-            await loadProfile(userId);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.payment) {
+            setPlanName(data.payment.plan_name);
+            setAmount(data.payment.montant);
+          }
+          if (data.status === "success") {
+            setStatus("success");
+            clearInterval(pollInterval);
+            localStorage.removeItem("last_payment_reference");
+            if (userId && loadProfile) {
+              await loadProfile(userId);
+            }
+            verified = true;
           }
         }
       } catch (err) {
-        console.error("Error polling payment status:", err);
+        console.warn("Express payment verification failed, trying client-side fallback:", err);
+      }
+
+      if (!verified) {
+        try {
+          const { data: dbPayment, error } = await supabase
+            .from("payments")
+            .select("*")
+            .eq("reference", activeRef)
+            .single();
+
+          if (dbPayment) {
+            setPlanName(dbPayment.plan_name);
+            setAmount(dbPayment.montant);
+            if (dbPayment.statut === "success") {
+              setStatus("success");
+              clearInterval(pollInterval);
+              localStorage.removeItem("last_payment_reference");
+              if (userId && loadProfile) {
+                await loadProfile(userId);
+              }
+              verified = true;
+            }
+          }
+        } catch (dbErr) {
+          console.error("Direct Supabase verification fallback error:", dbErr);
+        }
       }
     };
 
