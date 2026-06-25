@@ -34,6 +34,17 @@ async function startServer() {
 
   // --- API Routes ---
   
+  // Dynamically serve environment variables to the frontend to avoid build-time baking issues
+  app.get("/env.js", (req, res) => {
+    res.type("application/javascript");
+    res.send(`
+      window.__ENV__ = {
+        VITE_SUPABASE_URL: ${JSON.stringify(process.env.VITE_SUPABASE_URL || "")},
+        VITE_SUPABASE_ANON_KEY: ${JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || "")}
+      };
+    `);
+  });
+
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", time: new Date().toISOString() });
