@@ -14,6 +14,8 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
   const [expiryDate, setExpiryDate] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [recentPayments, setRecentPayments] = useState<any[]>([]);
+  const [isVerifyingRef, setIsVerifyingRef] = useState<string | null>(null);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -31,6 +33,8 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
       
       if (creditsData) {
         setCredits(creditsData.balance);
+      } else {
+        setCredits(0);
       }
 
       // 2. Fetch Subscription Status
@@ -45,6 +49,21 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
         if (subData.end_date) {
           setExpiryDate(new Date(subData.end_date).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }));
         }
+      } else {
+        setIsSubscribed(false);
+        setExpiryDate(null);
+      }
+
+      // 3. Fetch Recent Payments
+      const { data: paymentsData } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (paymentsData) {
+        setRecentPayments(paymentsData);
       }
     } catch (err) {
       console.error("Error loading account status:", err);
@@ -195,6 +214,32 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
       alert(err.message || "Erreur de connexion avec le serveur.");
     } finally {
       setIsLoading(null);
+    }
+  };
+
+  const handleVerifyPayment = async (ref: string) => {
+    setIsVerifyingRef(ref);
+    try {
+      const res = await fetch(`/api/payments/verify?reference=${ref}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === "success") {
+          alert("Félicitations ! Votre paiement a été confirmé et votre compte a été crédité !");
+          await loadAccountStatus();
+          if (onPaymentSuccess) {
+            onPaymentSuccess();
+          }
+        } else {
+          alert("Le paiement est toujours indiqué en attente chez Money Fusion. Si vous avez déjà effectué le paiement, veuillez patienter une minute puis cliquer à nouveau sur 'Vérifier'.");
+        }
+      } else {
+        alert("Une erreur est survenue lors de la vérification. Veuillez réessayer.");
+      }
+    } catch (err) {
+      console.error("Error verifying payment:", err);
+      alert("Erreur de connexion avec le serveur.");
+    } finally {
+      setIsVerifyingRef(null);
     }
   };
 
@@ -380,6 +425,76 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
             ))}
           </div>
         </div>
+
+        {/* Recent Transactions & Manual Verification Section */}
+        {recentPayments.length > 0 && (
+          <div className="bg-white border border-slate-150 rounded-3xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
+              <ShoppingBag size={18} className="text-rose-500" />
+              <div>
+                <h4 className="font-extrabold text-slate-800 text-sm">
+                  Suivi & vérification de vos paiements
+                </h4>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  Si un paiement mobile n'a pas crédité votre compte automatiquement, vérifiez-le ici.
+                </p>
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left min-w-[500px]">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-400 font-bold pb-2">
+                    <th className="py-2">Produit</th>
+                    <th className="py-2">Montant</th>
+                    <th className="py-2">Date d'achat</th>
+                    <th className="py-2">Statut</th>
+                    <th className="py-2 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {recentPayments.map((pay) => (
+                    <tr key={pay.id} className="text-slate-600">
+                      <td className="py-3 font-semibold text-slate-900">{pay.plan_name}</td>
+                      <td className="py-3">{pay.montant} FCFA</td>
+                      <td className="py-3">
+                        {pay.created_at ? new Date(pay.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : "Indisponible"}
+                      </td>
+                      <td className="py-3">
+                        {pay.statut === "success" ? (
+                          <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full font-bold text-[10px]">
+                            Complété
+                          </span>
+                        ) : pay.statut === "failed" ? (
+                          <span className="bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full font-bold text-[10px]">
+                            Échoué
+                          </span>
+                        ) : (
+                          <span className="bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-full font-bold text-[10px] animate-pulse">
+                            En attente
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 text-right">
+                        {pay.statut === "pending" ? (
+                          <button
+                            onClick={() => handleVerifyPayment(pay.reference)}
+                            disabled={isVerifyingRef === pay.reference}
+                            className="bg-rose-500 hover:bg-rose-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg transition disabled:opacity-50 cursor-pointer shadow-sm"
+                          >
+                            {isVerifyingRef === pay.reference ? "Vérification..." : "Vérifier le statut"}
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-semibold">Aucune action requise</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Security / money fusion guarantees */}
         <div className="bg-slate-100 border border-slate-150 rounded-2xl p-4 flex items-center space-x-3 text-slate-500 text-xs font-semibold">

@@ -223,6 +223,144 @@ async function startServer() {
         return res.status(404).json({ error: "Payment not found" });
       }
 
+      // If payment is pending, proactively check Money Fusion direct notification API
+      if (payment.statut === "pending") {
+        console.log(`[LoveRose Verify] Proactively checking Money Fusion for pending reference: ${reference}`);
+        let isPaidDirectly = false;
+
+        try {
+          // Check both variants of the notification URL
+          const checkUrls = [
+            `https://www.pay.moneyfusion.net/paiementNotif/${reference}`,
+            `https://pay.moneyfusion.net/paiementNotif/${reference}`
+          ];
+
+          for (const url of checkUrls) {
+            try {
+              const apiCheck = await fetch(url, { method: "GET" });
+              if (apiCheck.ok) {
+                const text = await apiCheck.text();
+                console.log(`[LoveRose Verify] Direct check response from ${url}:`, text);
+
+                try {
+                  const checkData = JSON.parse(text);
+                  if (
+                    checkData.statut === "paid" ||
+                    checkData.status === "paid" ||
+                    checkData.state === "paid" ||
+                    checkData.statut === "success" ||
+                    checkData.statut === true
+                  ) {
+                    isPaidDirectly = true;
+                    break;
+                  }
+                } catch (jsonErr) {
+                  // Fallback string matching if not standard JSON
+                  if (
+                    text.includes('"paid"') ||
+                    text.includes('"success"') ||
+                    text.toLowerCase().includes("paid")
+                  ) {
+                    isPaidDirectly = true;
+                    break;
+                  }
+                }
+              }
+            } catch (singleUrlErr) {
+              console.warn(`[LoveRose Verify] Failed to check URL ${url}:`, singleUrlErr);
+            }
+          }
+        } catch (checkErr) {
+          console.error("[LoveRose Verify] Direct verification fetch exception:", checkErr);
+        }
+
+        if (isPaidDirectly) {
+          console.log(`[LoveRose Verify] Reference ${reference} confirmed PAID directly! Crediting user...`);
+
+          // 1. Update status to success in database
+          const { error: updateErr } = await supabaseAdmin
+            .from("payments")
+            .update({ statut: "success", transaction_id: `MF-DIRECT-VERIFY-${Date.now()}` })
+            .eq("reference", reference);
+
+          if (!updateErr) {
+            payment.statut = "success"; // Update local representation for immediate return
+
+            // 2. Process credits or subscription
+            const userId = payment.user_id;
+            const planId = payment.plan_id;
+            const planName = payment.plan_name;
+
+            if (planId.startsWith("pack_")) {
+              let creditAmount = 10;
+              if (planId === "pack_argent") creditAmount = 50;
+              else if (planId === "pack_or") creditAmount = 100;
+
+              // Get or create user_credits row
+              const { data: userCredits } = await supabaseAdmin
+                .from("user_credits")
+                .select("*")
+                .eq("user_id", userId)
+                .single();
+
+              if (userCredits) {
+                await supabaseAdmin
+                  .from("user_credits")
+                  .update({ balance: (userCredits.balance || 0) + creditAmount, updated_at: new Date() })
+                  .eq("user_id", userId);
+              } else {
+                await supabaseAdmin
+                  .from("user_credits")
+                  .insert([{ user_id: userId, balance: creditAmount }]);
+              }
+
+              // Log transaction
+              await supabaseAdmin
+                .from("credit_transactions")
+                .insert([
+                  {
+                    user_id: userId,
+                    amount: creditAmount,
+                    type: "purchase",
+                    description: `Achat Pack ${planName}`,
+                    reference: reference
+                  }
+                ]);
+            } else if (planId === "premium_sub") {
+              const now = new Date();
+              const expiresAt = new Date();
+              expiresAt.setDate(now.getDate() + 30);
+
+              await supabaseAdmin
+                .from("subscriptions")
+                .upsert({
+                  user_id: userId,
+                  type: "premium",
+                  status: "active",
+                  start_date: now,
+                  end_date: expiresAt,
+                  updated_at: now
+                });
+            }
+
+            // 3. Insert notification
+            await supabaseAdmin
+              .from("notifications")
+              .insert([
+                {
+                  user_id: userId,
+                  sender_id: userId,
+                  type: "payment_success",
+                  content: `Félicitations ! Votre achat pour "${planName}" a été validé avec succès (vérification directe).`,
+                  lu: false
+                }
+              ]);
+          } else {
+            console.error("[LoveRose Verify] Direct status database update failed:", updateErr);
+          }
+        }
+      }
+
       return res.json({ status: payment.statut, payment });
     } catch (err: any) {
       console.error("Verify payment error:", err);

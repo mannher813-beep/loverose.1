@@ -119,7 +119,7 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
   useEffect(() => {
     // 1. Retrieve payment reference from URL or localStorage fallback
     const urlParams = new URLSearchParams(window.location.search);
-    const urlRef = urlParams.get("reference") || urlParams.get("ref");
+    const urlRef = urlParams.get("reference") || urlParams.get("ref") || urlParams.get("tokenPay") || urlParams.get("token") || urlParams.get("transaction_id");
     const storedRef = localStorage.getItem("last_payment_reference");
     const activeRef = urlRef || storedRef;
 
