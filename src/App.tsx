@@ -13,6 +13,7 @@ import Chat from "./components/Chat";
 import Feed from "./components/Feed";
 import Shop from "./components/Shop";
 import ProfileSettings from "./components/ProfileSettings";
+import SettingsView from "./components/Settings";
 
 export default function App() {
   // Simple Path Routing
@@ -21,7 +22,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'feed' | 'shop' | 'profile'>('discover');
+  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'feed' | 'shop' | 'profile' | 'settings'>('discover');
   
   // Match alerts overlay
   const [matchedPartner, setMatchedPartner] = useState<Profile | null>(null);
@@ -256,8 +257,15 @@ export default function App() {
             onClick={() => setActiveTab('profile')}
             className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'profile' ? 'text-rose-500 font-extrabold' : ''}`}
           >
-            <Settings size={16} />
+            <User size={16} />
             <span>Mon Profil</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'settings' ? 'text-rose-500 font-extrabold' : ''}`}
+          >
+            <Settings size={16} />
+            <span>Paramètres</span>
           </button>
         </div>
 
@@ -344,6 +352,16 @@ export default function App() {
                 currentUser={currentUser}
                 profile={profile}
                 onProfileUpdated={() => loadProfile(currentUser.id)}
+                onGoToSettings={() => setActiveTab('settings')}
+              />
+            )}
+            {activeTab === 'settings' && (
+              <SettingsView
+                currentUser={currentUser}
+                profile={profile}
+                onBackToProfile={() => setActiveTab('profile')}
+                onLogout={handleLogout}
+                onProfileUpdated={() => loadProfile(currentUser.id)}
               />
             )}
           </>
@@ -384,7 +402,7 @@ export default function App() {
           onClick={() => setActiveTab('profile')}
           className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'profile' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
         >
-          <Settings size={18} />
+          <User size={18} />
           <span className="text-[10px]">Profil</span>
         </button>
       </footer>

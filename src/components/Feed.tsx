@@ -1,7 +1,8 @@
-import { useState, useEffect, FormEvent } from "react";
+import React, { useState, useEffect, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { Post, Profile } from "../types";
 import { Image, Send, MessageCircle, Heart, Share2, Sparkles, AlertCircle, Loader2 } from "lucide-react";
+import ProfileDetailModal from "./ProfileDetailModal";
 
 interface FeedProps {
   currentUser: any;
@@ -15,6 +16,29 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isPosting, setIsPosting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [selectedViewProfile, setSelectedViewProfile] = useState<Profile | null>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert("L'image est trop volumineuse. Veuillez choisir un fichier de moins de 3 Mo.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        setMediaUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const triggerImageUpload = () => {
+    document.getElementById("feed-image-upload")?.click();
+  };
 
   // Interactive local states synced with LocalStorage & Database
   const [likesState, setLikesState] = useState<Record<string, { count: number; userLiked: boolean }>>({});
@@ -387,29 +411,28 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
               placeholder="Partagez quelque chose avec la communauté LoveRose... ✨"
               className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:bg-white focus:outline-none rounded-2xl p-3.5 text-xs font-medium transition resize-none leading-relaxed"
             />
-            
-            {/* Optional media input field for user upload */}
-            <div className="flex flex-col gap-2">
-              <input
-                type="url"
-                value={mediaUrl}
-                onChange={(e) => setMediaUrl(e.target.value)}
-                placeholder="Lien d'image optionnel (ex: https://images.unsplash.com/...)"
-                className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:outline-none rounded-xl p-2 px-3 text-[10px] font-medium transition"
-              />
-              {mediaUrl && (
-                <div className="relative rounded-2xl overflow-hidden h-36 bg-slate-100 border border-slate-200">
-                  <img src={mediaUrl} alt="Aperçu média" className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setMediaUrl("")}
-                    className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 text-[10px] px-2"
-                  >
-                    Effacer
-                  </button>
-                </div>
-              )}
-            </div>
+                  {/* Hidden file uploader for feed post media */}
+            <input
+              type="file"
+              id="feed-image-upload"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+
+            {/* Preview of the uploaded image if any */}
+            {mediaUrl && (
+              <div className="relative rounded-2xl overflow-hidden h-36 bg-slate-100 border border-slate-200 mt-2">
+                <img src={mediaUrl} alt="Aperçu média" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setMediaUrl("")}
+                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 text-xs px-2.5 font-bold transition cursor-pointer"
+                >
+                  Effacer
+                </button>
+              </div>
+            )}
 
             {errorMessage && (
               <div className="bg-red-50 text-red-600 text-xs p-2 px-3 rounded-lg flex items-center gap-1">
@@ -421,14 +444,11 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
             <div className="flex justify-between items-center pt-2 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => {
-                  const url = prompt("Veuillez entrer l'URL d'une image d'illustration :");
-                  if (url) setMediaUrl(url);
-                }}
+                onClick={triggerImageUpload}
                 className="text-slate-500 hover:text-rose-500 flex items-center gap-1.5 text-xs font-bold transition cursor-pointer"
               >
                 <Image size={16} />
-                <span>Ajouter Image</span>
+                <span>Ajouter une Photo</span>
               </button>
               <button
                 id="create-post-btn"
@@ -463,7 +483,11 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
             return (
               <div key={p.id} className="bg-white border border-slate-150 rounded-3xl p-5 shadow-xs space-y-4">
                 {/* Post Header */}
-                <div className="flex items-center space-x-3">
+                <div 
+                  onClick={() => author && setSelectedViewProfile(author)}
+                  className="flex items-center space-x-3 cursor-pointer hover:opacity-85 transition"
+                  title="Visiter le profil public"
+                >
                   <img
                     src={author?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${author?.full_name || p.author_id}`}
                     alt={author?.full_name}
@@ -594,6 +618,15 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
           </div>
         )}
       </div>
+
+      {/* Render profile details modal for post author */}
+      {selectedViewProfile && (
+        <ProfileDetailModal
+          profile={selectedViewProfile}
+          currentUserProfile={currentUserProfile}
+          onClose={() => setSelectedViewProfile(null)}
+        />
+      )}
     </div>
   );
 }

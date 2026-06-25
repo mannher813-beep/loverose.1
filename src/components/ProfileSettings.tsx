@@ -1,15 +1,16 @@
-import { useState, useEffect, FormEvent } from "react";
+import React, { useState, useEffect, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
-import { Profile, VerificationRequest } from "../types";
-import { User, MapPin, AlignLeft, CheckCircle, ShieldCheck, Loader2, Sparkles, Upload, Save, Eye, Camera, AlertCircle, Trash } from "lucide-react";
+import { Profile } from "../types";
+import { User, MapPin, AlignLeft, CheckCircle, ShieldCheck, Loader2, Sparkles, Save, Camera, Trash, Settings } from "lucide-react";
 
 interface ProfileSettingsProps {
   currentUser: any;
   profile: Profile | null;
   onProfileUpdated: () => void;
+  onGoToSettings?: () => void;
 }
 
-export default function ProfileSettings({ currentUser, profile, onProfileUpdated }: ProfileSettingsProps) {
+export default function ProfileSettings({ currentUser, profile, onProfileUpdated, onGoToSettings }: ProfileSettingsProps) {
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
@@ -20,12 +21,6 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
   const [avatarUrl, setAvatarUrl] = useState("");
   const [selectedIntents, setSelectedIntents] = useState<string[]>([]);
   
-  // Verification details
-  const [idFileUrl, setIdFileUrl] = useState("");
-  const [selfieFileUrl, setSelfieFileUrl] = useState("");
-  const [verificationStatus, setVerificationStatus] = useState<'none' | 'pending' | 'verified'>('none');
-  const [verificationLoading, setVerificationLoading] = useState(false);
-
   const [isLoading, setIsLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -48,31 +43,29 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
       setPreferences(profile.preferences || "femme");
       setAvatarUrl(profile.avatar_url || "");
       setSelectedIntents(profile.relationship_intents || []);
-      setVerificationStatus(profile.verification_status || "none");
     }
-    loadVerificationRequest();
   }, [profile]);
 
-  const loadVerificationRequest = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("verification_requests")
-        .select("*")
-        .eq("user_id", currentUser.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
+  const handleLocalFileChange = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-      if (data && data[0]) {
-        const req = data[0];
-        if (req.status === "pending") {
-          setVerificationStatus("pending");
-        } else if (req.status === "approved") {
-          setVerificationStatus("verified");
-        }
-      }
-    } catch (err) {
-      console.error("Failed to load verification status:", err);
+    if (file.size > 3 * 1024 * 1024) {
+      alert("L'image est trop volumineuse. Veuillez choisir un fichier de moins de 3 Mo.");
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        callback(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const triggerAvatarUpload = () => {
+    document.getElementById("avatar-file-input")?.click();
   };
 
   const handleIntentToggle = (intent: string) => {
@@ -104,25 +97,18 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
         preferences,
         avatar_url: avatarUrl.trim(),
         relationship_intents: selectedIntents,
-        verification_status: verificationStatus,
         updated_at: new Date().toISOString()
       };
 
-      // 1. Save to local storage FIRST as a robust fallback
+      // Store in localStorage first
       localStorage.setItem(`profile_backup_${currentUser.id}`, JSON.stringify(updatedProfileData));
 
-      // 2. Try to sync to Supabase
-      try {
-        const { error } = await supabase
-          .from("profiles")
-          .upsert(updatedProfileData);
+      // Sync to Supabase
+      const { error } = await supabase
+        .from("profiles")
+        .upsert(updatedProfileData);
 
-        if (error) {
-          console.warn("Could not save to Supabase, fell back to localStorage:", error);
-        }
-      } catch (supabaseErr) {
-        console.warn("Failed to connect to Supabase database, using local backup fallback.", supabaseErr);
-      }
+      if (error) throw error;
 
       setSaveSuccess(true);
       onProfileUpdated();
@@ -134,64 +120,38 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
     }
   };
 
-  // Process ID Verification submission
-  const handleVerifyRequest = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!idFileUrl || !selfieFileUrl) {
-      alert("Veuillez fournir les deux liens d'images (Pièce d'identité + Selfie).");
-      return;
-    }
-
-    setVerificationLoading(true);
-    try {
-      const { error } = await supabase
-        .from("verification_requests")
-        .insert([
-          {
-            user_id: currentUser.id,
-            documents: [idFileUrl, selfieFileUrl],
-            status: "pending"
-          }
-        ]);
-
-      if (error) throw error;
-
-      // Update profile local state
-      await supabase
-        .from("profiles")
-        .update({ verification_status: "pending" })
-        .eq("uid", currentUser.id);
-
-      setVerificationStatus("pending");
-      alert("Votre demande de vérification de profil a bien été soumise à nos administrateurs.");
-      onProfileUpdated();
-    } catch (err: any) {
-      console.error("Verification submit error:", err);
-      alert(err.message || "Impossible d'envoyer la demande de vérification.");
-    } finally {
-      setVerificationLoading(false);
-    }
-  };
-
-  const uploadAvatar = async () => {
-    const url = prompt("Saisissez l'URL d'une image d'avatar (Ex: https://images.unsplash.com/...) :");
-    if (url) {
-      setAvatarUrl(url);
-    }
-  };
-
   return (
     <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 space-y-8 font-sans max-w-4xl mx-auto w-full">
       
-      {/* Title */}
-      <div className="border-b border-slate-200 pb-4">
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Paramètres du profil</h2>
-        <p className="text-slate-500 text-xs">Gérez votre identité, vos intentions de rencontre, et la sécurité de votre compte.</p>
+      {/* Hidden file input for avatar */}
+      <input
+        type="file"
+        id="avatar-file-input"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => handleLocalFileChange(e, setAvatarUrl)}
+      />
+      
+      {/* Title Header */}
+      <div className="border-b border-slate-200 pb-4 flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Mon Profil</h2>
+          <p className="text-slate-500 text-xs">Exprimez votre personnalité, vos intentions et attirez de nouveaux célibataires.</p>
+        </div>
+        {onGoToSettings && (
+          <button
+            onClick={onGoToSettings}
+            className="flex items-center gap-1.5 text-xs bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold px-4 py-2.5 rounded-xl transition cursor-pointer"
+          >
+            <Settings size={14} />
+            <span>Paramètres Sécurité</span>
+          </button>
+        )}
       </div>
 
       <div className="grid md:grid-cols-3 gap-8 items-start">
         
-        {/* Left column: Avatar and Account verification */}
+        {/* Left column: Photo Upload and Onboarding status */}
         <div className="md:col-span-1 space-y-6">
           
           {/* Avatar Settings Card */}
@@ -205,8 +165,9 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
               />
               <button
                 type="button"
-                onClick={uploadAvatar}
-                className="absolute bottom-1 right-1 bg-rose-500 hover:bg-rose-600 text-white rounded-full p-2.5 shadow-md cursor-pointer transition active:scale-95"
+                onClick={triggerAvatarUpload}
+                className="absolute bottom-1 right-1 bg-rose-500 hover:bg-rose-600 text-white rounded-full p-2.5 shadow-md cursor-pointer transition active:scale-95 animate-pulse"
+                title="Prendre / Choisir une photo"
               >
                 <Camera size={16} />
               </button>
@@ -214,7 +175,7 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
 
             <div>
               <h3 className="font-bold text-slate-800 text-sm leading-tight">{fullName || "Membre LoveRose"}</h3>
-              <p className="text-[10px] text-slate-400 mt-1">ID client: {currentUser.id.substring(0, 12)}...</p>
+              <p className="text-[10px] text-slate-400 mt-1">Édition de votre photo officielle</p>
             </div>
 
             {avatarUrl ? (
@@ -228,68 +189,22 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
             ) : null}
           </div>
 
-          {/* Verification Badge Status Box */}
-          <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-xs space-y-4">
-            <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
+          {/* Verification Call-To-Action Card */}
+          <div className="bg-rose-50/20 border border-rose-500/10 rounded-3xl p-5 shadow-xs space-y-3.5">
+            <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
               <ShieldCheck className="text-rose-500" size={16} />
-              <span>Vérification d'identité</span>
+              <span>Certifier mon compte</span>
             </h4>
-
-            {verificationStatus === "verified" ? (
-              <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-center space-y-2 text-xs font-semibold text-emerald-800">
-                <CheckCircle className="mx-auto text-emerald-500" size={28} fill="white" />
-                <p>Profil Vérifié avec Succès !</p>
-                <p className="font-medium text-emerald-600 text-[11px]">Un badge vert est maintenant affiché sur votre carte de profil.</p>
-              </div>
-            ) : verificationStatus === "pending" ? (
-              <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl text-center space-y-2 text-xs font-semibold text-amber-800">
-                <Loader2 className="mx-auto text-amber-500 animate-spin" size={24} />
-                <p>Vérification en cours...</p>
-                <p className="font-medium text-amber-600 text-[11px]">Notre équipe examine actuellement vos documents d'identité.</p>
-              </div>
-            ) : (
-              <form onSubmit={handleVerifyRequest} className="space-y-4">
-                <p className="text-slate-500 text-[10px] leading-relaxed">
-                  Obtenez le badge <strong>Vérifié</strong> pour rassurer vos correspondants. Veuillez uploader une pièce d'identité et un selfie de contrôle.
-                </p>
-
-                <div className="space-y-2 text-left">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Lien image Pièce d'identité</label>
-                    <input
-                      type="url"
-                      required
-                      value={idFileUrl}
-                      onChange={(e) => setIdFileUrl(e.target.value)}
-                      placeholder="https://votre-image.com/piece-id.jpg"
-                      className="w-full mt-1 p-2.5 bg-slate-50 border border-slate-200 focus:border-rose-500 focus:outline-none rounded-xl text-[11px] font-medium transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Lien image Selfie</label>
-                    <input
-                      type="url"
-                      required
-                      value={selfieFileUrl}
-                      onChange={(e) => setSelfieFileUrl(e.target.value)}
-                      placeholder="https://votre-image.com/selfie.jpg"
-                      className="w-full mt-1 p-2.5 bg-slate-50 border border-slate-200 focus:border-rose-500 focus:outline-none rounded-xl text-[11px] font-medium transition"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={verificationLoading || !idFileUrl || !selfieFileUrl}
-                  className="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-50"
-                >
-                  {verificationLoading ? (
-                    <Loader2 className="animate-spin mx-auto" size={14} />
-                  ) : (
-                    <span>Soumettre ma demande</span>
-                  )}
-                </button>
-              </form>
+            <p className="text-slate-500 text-[10px] leading-relaxed">
+              Pour obtenir le badge de confiance vert et prouver votre authenticité aux autres célibataires, rendez-vous dans vos paramètres pour soumettre vos pièces justificatives.
+            </p>
+            {onGoToSettings && (
+              <button
+                onClick={onGoToSettings}
+                className="w-full py-2 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition cursor-pointer text-center block shadow-md shadow-rose-500/5"
+              >
+                Vérifier mon identité
+              </button>
             )}
           </div>
         </div>
@@ -298,9 +213,9 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
         <div className="md:col-span-2 bg-white border border-slate-150 rounded-3xl p-6 md:p-8 shadow-sm">
           
           {saveSuccess && (
-            <div className="bg-green-50 border border-green-100 text-green-700 text-xs p-3.5 rounded-2xl flex items-center gap-2 mb-6 font-semibold">
+            <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs p-3.5 rounded-2xl flex items-center gap-2 mb-6 font-semibold animate-fade-in">
               <CheckCircle size={16} />
-              <p>Vos modifications de profil ont été enregistrées avec succès !</p>
+              <p>Votre profil public a été mis à jour avec succès ! ✨</p>
             </div>
           )}
 

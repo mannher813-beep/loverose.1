@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { Match, Message, Profile, UserCredits } from "../types";
 import { Send, ArrowLeft, MessageSquare, ShieldAlert, Sparkles, AlertCircle, ShoppingBag, Loader2, Coins, HelpCircle } from "lucide-react";
+import ProfileDetailModal from "./ProfileDetailModal";
 
 interface ChatProps {
   currentUser: any;
@@ -19,6 +20,7 @@ export default function Chat({ currentUser, currentUserProfile, onOpenShop }: Ch
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [selectedViewProfile, setSelectedViewProfile] = useState<Profile | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -208,6 +210,15 @@ export default function Chat({ currentUser, currentUserProfile, onOpenShop }: Ch
         throw error;
       }
 
+      // Optimistically append the sent message instantly for zero lag
+      if (data && data[0]) {
+        const sentMsg = data[0] as Message;
+        setMessages(prev => {
+          if (prev.some(m => m.id === sentMsg.id)) return prev;
+          return [...prev, sentMsg];
+        });
+      }
+
       setInputText("");
       
       // Instantly load credits to update balance
@@ -286,9 +297,13 @@ export default function Chat({ currentUser, currentUserProfile, onOpenShop }: Ch
           <>
             {/* Active chat header */}
             <div className="bg-white border-b border-slate-150 px-4 py-3 flex items-center justify-between sticky top-0 z-10 flex-shrink-0">
-              <div className="flex items-center space-x-3">
+              <div 
+                onClick={() => setSelectedViewProfile(selectedMatch.other_profile)}
+                className="flex items-center space-x-3 cursor-pointer hover:opacity-85 transition"
+                title="Visiter le profil public"
+              >
                 <button
-                  onClick={() => setSelectedMatch(null)}
+                  onClick={(e) => { e.stopPropagation(); setSelectedMatch(null); }}
                   className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 md:hidden transition cursor-pointer"
                 >
                   <ArrowLeft size={20} />
@@ -300,7 +315,12 @@ export default function Chat({ currentUser, currentUserProfile, onOpenShop }: Ch
                   className="w-10 h-10 rounded-full object-cover bg-slate-100 border border-slate-100"
                 />
                 <div>
-                  <h3 className="font-bold text-slate-800 text-sm leading-tight">{selectedMatch.other_profile?.full_name}</h3>
+                  <h3 className="font-bold text-slate-800 text-sm leading-tight flex items-center gap-1">
+                    <span>{selectedMatch.other_profile?.full_name}</span>
+                    {selectedMatch.other_profile?.verification_status === "verified" && (
+                      <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block border border-white" title="Profil vérifié"></span>
+                    )}
+                  </h3>
                   <div className="flex items-center gap-1">
                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
                     <span className="text-[10px] text-slate-400 font-medium">En ligne</span>
@@ -464,6 +484,15 @@ export default function Chat({ currentUser, currentUserProfile, onOpenShop }: Ch
               </div>
             </div>
           </div>
+        )}
+
+        {/* Render profile detail view modal */}
+        {selectedViewProfile && (
+          <ProfileDetailModal
+            profile={selectedViewProfile}
+            currentUserProfile={currentUserProfile}
+            onClose={() => setSelectedViewProfile(null)}
+          />
         )}
       </div>
     </div>
