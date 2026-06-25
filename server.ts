@@ -108,8 +108,8 @@ async function startServer() {
       const merchantId = process.env.MONEY_FUSION_MERCHANT_ID;
       const moneyFusionApiUrl = process.env.MONEY_FUSION_API_URL || "https://pay.moneyfusion.net/LoveRose/5e63aa25ec22c9fa/pay/";
       
-      // Sandbox is true if NO API key/merchant ID is present AND USE_LIVE_PAYMENT is not "true"
-      const isSandbox = !apiKey && !merchantId && process.env.USE_LIVE_PAYMENT !== "true";
+      // Sandbox is permanently disabled as requested by the user
+      const isSandbox = false;
 
       console.log(`[LoveRose Payment] Creating payment: ${userId}, plan: ${planName}, amount: ${amount} FCFA, reference: ${reference} (Sandbox: ${isSandbox})`);
 

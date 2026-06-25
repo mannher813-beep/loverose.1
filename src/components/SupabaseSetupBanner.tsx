@@ -216,6 +216,52 @@ CREATE POLICY "Chaque utilisateur lit ses propres signalements" ON public.report
 CREATE POLICY "Chaque utilisateur peut insérer ses propres signalements" ON public.reports FOR INSERT WITH CHECK (auth.uid() = reporter_id);
 
 
+-- 13. Table post_likes (Likes du fil d'actualité)
+CREATE TABLE IF NOT EXISTS public.post_likes (
+    post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (post_id, user_id)
+);
+
+ALTER TABLE public.post_likes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Les likes de posts sont visibles par tous" ON public.post_likes;
+DROP POLICY IF EXISTS "Chaque utilisateur gère ses likes de posts" ON public.post_likes;
+CREATE POLICY "Les likes de posts sont visibles par tous" ON public.post_likes FOR SELECT USING (true);
+CREATE POLICY "Chaque utilisateur gère ses likes de posts" ON public.post_likes FOR ALL USING (auth.uid() = user_id);
+
+
+-- 14. Table post_comments (Commentaires du fil d'actualité)
+CREATE TABLE IF NOT EXISTS public.post_comments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.post_comments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Les commentaires de posts sont visibles par tous" ON public.post_comments;
+DROP POLICY IF EXISTS "Chaque utilisateur gère ses commentaires" ON public.post_comments;
+CREATE POLICY "Les commentaires de posts sont visibles par tous" ON public.post_comments FOR SELECT USING (true);
+CREATE POLICY "Chaque utilisateur gère ses commentaires" ON public.post_comments FOR ALL USING (auth.uid() = user_id);
+
+
+-- 15. Table post_shares (Partages du fil d'actualité)
+CREATE TABLE IF NOT EXISTS public.post_shares (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.post_shares ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Les partages de posts sont visibles par tous" ON public.post_shares;
+DROP POLICY IF EXISTS "Chaque utilisateur gère ses partages" ON public.post_shares;
+CREATE POLICY "Les partages de posts sont visibles par tous" ON public.post_shares FOR SELECT USING (true);
+CREATE POLICY "Chaque utilisateur gère ses partages" ON public.post_shares FOR ALL USING (auth.uid() = user_id);
+
+
 -- ==========================================
 -- TRIGGERS SQL AUTOMATIQUES (MATCH MUTUEL)
 -- ==========================================

@@ -88,7 +88,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
         console.warn("Backend API not reachable or returned 404, using client-side fallback:", apiErr);
       }
 
-      // 2. Fallback: Create payments table record directly from client and redirect to local sandbox
+      // 2. Fallback: Create payments table record directly from client and redirect to Money Fusion hosted payment page
       if (!checkoutUrl) {
         localStorage.setItem("last_payment_reference", fallbackReference);
 
@@ -109,7 +109,31 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
           console.error("Direct client-side payment insertion failed:", insertErr);
         }
 
-        checkoutUrl = `/payment-sandbox?reference=${fallbackReference}&amount=${amount}&planId=${planId}&planName=${encodeURIComponent(planName)}&userId=${currentUser.id}`;
+        const returnUrl = `${window.location.origin}/payment-success?reference=${fallbackReference}`;
+        const cancelUrl = `${window.location.origin}/`;
+        const moneyFusionUrl = "https://pay.moneyfusion.net/LoveRose/5e63aa25ec22c9fa/pay/";
+        
+        const params = new URLSearchParams({
+          amount: String(amount),
+          prix: String(amount),
+          total: String(amount),
+          reference: fallbackReference,
+          ref: fallbackReference,
+          order_id: fallbackReference,
+          libelle: planName,
+          description: `Achat ${planName} sur LoveRose`,
+          name: planName,
+          email: currentUser.email || "",
+          mail: currentUser.email || "",
+          userId: currentUser.id,
+          user_id: currentUser.id,
+          return_url: returnUrl,
+          url_retour: returnUrl,
+          cancel_url: cancelUrl,
+          url_annulation: cancelUrl
+        });
+
+        checkoutUrl = `${moneyFusionUrl}?${params.toString()}`;
       }
 
       window.location.href = checkoutUrl;

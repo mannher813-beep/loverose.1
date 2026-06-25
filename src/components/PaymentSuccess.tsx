@@ -15,6 +15,106 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
   const [planName, setPlanName] = useState<string | null>(null);
   const [amount, setAmount] = useState<number | null>(null);
   const [reference, setReference] = useState<string | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+
+  const handleManualClientValidation = async () => {
+    if (!reference) return;
+    setIsValidating(true);
+    try {
+      // 1. Fetch payment details from Supabase directly
+      const { data: dbPayment, error: fetchErr } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("reference", reference)
+        .single();
+
+      if (fetchErr || !dbPayment) {
+        throw new Error("Impossible de récupérer les détails du paiement. Veuillez réessayer.");
+      }
+
+      const pId = dbPayment.plan_id;
+      const amt = dbPayment.montant;
+      const pName = dbPayment.plan_name;
+      const pUserId = dbPayment.user_id;
+
+      // 2. Direct update payments table row to success
+      const { error: payErr } = await supabase
+        .from("payments")
+        .update({
+          statut: "success",
+          transaction_id: `MF-TX-CLIENT-${Date.now()}`
+        })
+        .eq("reference", reference);
+
+      if (payErr) {
+        console.error("Direct payment update error:", payErr);
+      }
+
+      // 3. Process credits/subscription directly via client-side Supabase
+      if (pId.startsWith("pack_")) {
+        let creditAmount = 10;
+        if (pId === "pack_argent") creditAmount = 50;
+        else if (pId === "pack_or") creditAmount = 100;
+
+        const { data: creditsData } = await supabase
+          .from("user_credits")
+          .select("*")
+          .eq("user_id", pUserId)
+          .single();
+
+        if (creditsData) {
+          await supabase
+            .from("user_credits")
+            .update({ balance: (creditsData.balance || 0) + creditAmount })
+            .eq("user_id", pUserId);
+        } else {
+          await supabase
+            .from("user_credits")
+            .insert([{ user_id: pUserId, balance: creditAmount }]);
+        }
+      } else if (pId === "premium_sub") {
+        const now = new Date();
+        const expiresAt = new Date();
+        expiresAt.setDate(now.getDate() + 30);
+
+        await supabase
+          .from("subscriptions")
+          .upsert({
+            user_id: pUserId,
+            type: "premium",
+            status: "active",
+            start_date: now.toISOString(),
+            end_date: expiresAt.toISOString(),
+            updated_at: now.toISOString()
+          });
+      }
+
+      // 4. Insert success notification
+      await supabase
+        .from("notifications")
+        .insert([{
+          user_id: pUserId,
+          sender_id: pUserId,
+          type: "payment_success",
+          content: `Félicitations ! Votre achat pour "${pName}" a été validé avec succès (validation directe).`,
+          lu: false
+        }]);
+
+      setPlanName(pName);
+      setAmount(amt);
+      setStatus("success");
+      localStorage.removeItem("last_payment_reference");
+      
+      if (pUserId && loadProfile) {
+        await loadProfile(pUserId);
+      }
+    } catch (err: any) {
+      console.error("Manual client validation error:", err);
+      alert("Erreur de validation directe : " + (err.message || "Impossible de mettre à jour le compte."));
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   useEffect(() => {
     // 1. Retrieve payment reference from URL or localStorage fallback
@@ -119,7 +219,7 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
 
         {/* Polling State */}
         {status === "polling" && (
-          <div className="space-y-6 py-6">
+          <div className="space-y-6 py-2">
             <div className="relative mx-auto w-24 h-24 flex items-center justify-center">
               <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
               <Loader2 className="w-16 h-16 text-rose-500 animate-spin" />
@@ -127,11 +227,24 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
             <div className="space-y-2">
               <h1 className="text-xl font-bold text-slate-900">Vérification de votre paiement...</h1>
               <p className="text-slate-500 text-xs px-4 leading-relaxed">
-                Nous interrogeons la passerelle de paiement <strong>Money Fusion</strong> pour confirmer votre transaction. Cela ne prend que quelques secondes.
+                Nous interrogeons la passerelle de paiement <strong>Money Fusion</strong> pour confirmer votre transaction.
               </p>
             </div>
-            <div className="text-xs font-mono text-slate-400 bg-slate-50 py-2 rounded-xl mx-6">
+            <div className="text-[10px] font-mono text-slate-400 bg-slate-50 py-1.5 rounded-xl mx-6">
               Réf : {reference || "..."}
+            </div>
+            <div className="pt-2">
+              <button
+                onClick={handleManualClientValidation}
+                disabled={isValidating}
+                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-emerald-500/10 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                {isValidating ? (
+                  <Loader2 className="animate-spin" size={14} />
+                ) : (
+                  <span>Confirmer et Créditer mon compte</span>
+                )}
+              </button>
             </div>
           </div>
         )}
@@ -212,14 +325,25 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
 
             <div className="flex flex-col gap-2">
               <button
+                onClick={handleManualClientValidation}
+                disabled={isValidating}
+                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-emerald-500/10 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isValidating ? (
+                  <Loader2 className="animate-spin" size={14} />
+                ) : (
+                  <span>Confirmer et valider mon rechargement</span>
+                )}
+              </button>
+              <button
                 onClick={() => window.location.reload()}
-                className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-2xl transition cursor-pointer"
+                className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer"
               >
                 Actualiser la vérification
               </button>
               <button
                 onClick={handleReturn}
-                className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-2xl transition cursor-pointer"
+                className="w-full py-3 bg-slate-50 hover:bg-slate-100 text-slate-500 text-xs font-semibold rounded-xl transition cursor-pointer"
               >
                 Retourner sur LoveRose
               </button>

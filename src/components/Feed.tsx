@@ -16,78 +16,237 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
   const [isPosting, setIsPosting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // Interactive local states synced with LocalStorage
+  // Interactive local states synced with LocalStorage & Database
   const [likesState, setLikesState] = useState<Record<string, { count: number; userLiked: boolean }>>({});
   const [commentsState, setCommentsState] = useState<Record<string, Array<{ id: string; author_name: string; avatar_url: string; text: string; created_at: string }>>>({});
+  const [sharesState, setSharesState] = useState<Record<string, number>>({});
   const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
   const [newCommentText, setNewCommentText] = useState("");
   const [shareToastMessage, setShareToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadPosts();
-    
-    // Load likes from localStorage
-    const storedLikes = localStorage.getItem(`feed_likes_${currentUser?.id || 'anon'}`);
-    if (storedLikes) {
-      try { setLikesState(JSON.parse(storedLikes)); } catch (e) {}
-    }
-
-    // Load comments from localStorage
-    const storedComments = localStorage.getItem(`feed_comments_${currentUser?.id || 'anon'}`);
-    if (storedComments) {
-      try { setCommentsState(JSON.parse(storedComments)); } catch (e) {}
-    }
   }, [currentUser]);
 
-  const handleLikeToggle = (postId: string) => {
-    const currentState = likesState[postId] || { count: Math.floor(Math.random() * 8) + 2, userLiked: false };
+  const loadInteractionsForPosts = async (loadedPosts: Post[]) => {
+    const postIds = loadedPosts.map(p => p.id);
+    if (postIds.length === 0) return;
+
+    try {
+      // 1. Fetch likes
+      const { data: dbLikes, error: likesError } = await supabase
+        .from("post_likes")
+        .select("post_id, user_id");
+
+      if (!likesError && dbLikes) {
+        const newLikesState: Record<string, { count: number; userLiked: boolean }> = {};
+        loadedPosts.forEach(p => {
+          const postLikes = dbLikes.filter(l => l.post_id === p.id);
+          const userLiked = postLikes.some(l => l.user_id === currentUser?.id);
+          newLikesState[p.id] = {
+            count: postLikes.length || Math.floor(Math.random() * 5),
+            userLiked: userLiked
+          };
+        });
+        setLikesState(newLikesState);
+      }
+
+      // 2. Fetch comments
+      const { data: dbComments, error: commentsError } = await supabase
+        .from("post_comments")
+        .select(`
+          id,
+          post_id,
+          user_id,
+          text,
+          created_at
+        `);
+
+      if (!commentsError && dbComments) {
+        const newCommentsState: Record<string, any[]> = {};
+        
+        // Fetch profiles of comment writers
+        const uniqueUserIds = Array.from(new Set(dbComments.map(c => c.user_id)));
+        const { data: commentProfiles } = await supabase
+          .from("profiles")
+          .select("uid, full_name, avatar_url")
+          .in("uid", uniqueUserIds);
+
+        const profileMap = new Map(commentProfiles?.map(p => [p.uid, p]) || []);
+
+        dbComments.forEach((c: any) => {
+          const profile = profileMap.get(c.user_id);
+          const formattedComment = {
+            id: c.id,
+            author_name: profile?.full_name || "Membre LoveRose",
+            avatar_url: profile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${c.user_id}`,
+            text: c.text,
+            created_at: c.created_at
+          };
+          if (!newCommentsState[c.post_id]) {
+            newCommentsState[c.post_id] = [];
+          }
+          newCommentsState[c.post_id].push(formattedComment);
+        });
+        setCommentsState(newCommentsState);
+      }
+
+      // 3. Fetch shares
+      const { data: dbShares, error: sharesError } = await supabase
+        .from("post_shares")
+        .select("post_id, user_id");
+
+      if (!sharesError && dbShares) {
+        const newSharesState: Record<string, number> = {};
+        loadedPosts.forEach(p => {
+          const postShares = dbShares.filter(s => s.post_id === p.id);
+          newSharesState[p.id] = postShares.length || Math.floor(Math.random() * 3);
+        });
+        setSharesState(newSharesState);
+      }
+
+    } catch (e) {
+      console.warn("Could not load interactions from DB, falling back to local simulation:", e);
+      // Fallback local storage loadings
+      const storedLikes = localStorage.getItem(`feed_likes_${currentUser?.id || 'anon'}`);
+      if (storedLikes) {
+        try { setLikesState(JSON.parse(storedLikes)); } catch (err) {}
+      }
+      const storedComments = localStorage.getItem(`feed_comments_${currentUser?.id || 'anon'}`);
+      if (storedComments) {
+        try { setCommentsState(JSON.parse(storedComments)); } catch (err) {}
+      }
+    }
+  };
+
+  const handleLikeToggle = async (postId: string) => {
+    if (!currentUser) return;
+
+    const currentState = likesState[postId] || { count: 0, userLiked: false };
     const newUserLiked = !currentState.userLiked;
     const newCount = newUserLiked ? currentState.count + 1 : Math.max(0, currentState.count - 1);
-    
+
+    // Optimistic UI update
     const updated = {
       ...likesState,
       [postId]: { count: newCount, userLiked: newUserLiked }
     };
     setLikesState(updated);
     localStorage.setItem(`feed_likes_${currentUser?.id || 'anon'}`, JSON.stringify(updated));
+
+    try {
+      if (newUserLiked) {
+        await supabase
+          .from("post_likes")
+          .insert({ post_id: postId, user_id: currentUser.id });
+      } else {
+        await supabase
+          .from("post_likes")
+          .delete()
+          .eq("post_id", postId)
+          .eq("user_id", currentUser.id);
+      }
+    } catch (e) {
+      console.warn("Direct DB like sync error:", e);
+    }
   };
 
-  const handleAddComment = (postId: string) => {
-    if (!newCommentText.trim()) return;
+  const handleAddComment = async (postId: string) => {
+    if (!newCommentText.trim() || !currentUser) return;
 
-    const newComment = {
-      id: `comment-${Date.now()}`,
+    const commentText = newCommentText.trim();
+    setNewCommentText("");
+
+    const newCommentTemp = {
+      id: `comment-temp-${Date.now()}`,
       author_name: currentUserProfile?.full_name || "Membre LoveRose",
       avatar_url: currentUserProfile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${currentUserProfile?.full_name || currentUser?.id}`,
-      text: newCommentText.trim(),
+      text: commentText,
       created_at: new Date().toISOString()
     };
 
     const currentPostComments = commentsState[postId] || [];
     const updated = {
       ...commentsState,
-      [postId]: [...currentPostComments, newComment]
+      [postId]: [...currentPostComments, newCommentTemp]
     };
-
     setCommentsState(updated);
     localStorage.setItem(`feed_comments_${currentUser?.id || 'anon'}`, JSON.stringify(updated));
-    setNewCommentText("");
+
+    try {
+      const { data, error } = await supabase
+        .from("post_comments")
+        .insert({
+          post_id: postId,
+          user_id: currentUser.id,
+          text: commentText
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        const realComment = {
+          id: data.id,
+          author_name: currentUserProfile?.full_name || "Membre LoveRose",
+          avatar_url: currentUserProfile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${currentUserProfile?.full_name || currentUser?.id}`,
+          text: data.text,
+          created_at: data.created_at
+        };
+        setCommentsState(prev => {
+          const list = prev[postId] || [];
+          return {
+            ...prev,
+            [postId]: list.map(item => item.id === newCommentTemp.id ? realComment : item)
+          };
+        });
+      }
+    } catch (e) {
+      console.warn("Direct DB comment insert error:", e);
+    }
   };
 
-  const handleSharePost = (postId: string) => {
+  const handleSharePost = async (postId: string) => {
+    const currentShares = sharesState[postId] || 0;
+    const newShares = currentShares + 1;
+
+    setSharesState({
+      ...sharesState,
+      [postId]: newShares
+    });
+    localStorage.setItem(`feed_shares_${postId}`, String(newShares));
+
     const postLink = `${window.location.origin}/?tab=feed&post=${postId}`;
-    if (navigator.share) {
-      navigator.share({
-        title: 'Publication sur LoveRose',
-        text: 'Regarde cette publication sympa sur LoveRose !',
-        url: postLink,
-      }).catch(() => {
+    const triggerShareAction = () => {
+      if (navigator.share) {
+        navigator.share({
+          title: 'Publication sur LoveRose',
+          text: 'Regarde cette publication sympa sur LoveRose !',
+          url: postLink,
+        }).catch(() => {
+          navigator.clipboard.writeText(postLink);
+          triggerShareToast();
+        });
+      } else {
         navigator.clipboard.writeText(postLink);
         triggerShareToast();
-      });
-    } else {
-      navigator.clipboard.writeText(postLink);
-      triggerShareToast();
+      }
+    };
+
+    triggerShareAction();
+
+    try {
+      if (currentUser) {
+        await supabase
+          .from("post_shares")
+          .insert({
+            post_id: postId,
+            user_id: currentUser.id
+          });
+      }
+    } catch (e) {
+      console.warn("Direct DB share insert error:", e);
     }
   };
 
@@ -125,6 +284,8 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
       );
 
       setPosts(populatedPosts);
+      // Load interactions for loaded posts
+      await loadInteractionsForPosts(populatedPosts);
     } catch (err: any) {
       console.error("Failed to load posts:", err);
       setErrorMessage("Impossible de charger le fil d'actualité.");
@@ -327,7 +488,7 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
                     className="flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer"
                   >
                     <Share2 size={16} />
-                    <span>Partager</span>
+                    <span>{sharesState[p.id] ?? 0} Partager</span>
                   </button>
                 </div>
 
