@@ -11,6 +11,7 @@ export interface Profile {
   relationship_intents?: string[]; // Amitié, Relation amoureuse, Rencontre d'un soir, Relation libertine, Business / networking
   role?: string;
   verification_status?: 'none' | 'pending' | 'verified';
+  photos?: string[];
   created_at?: string;
 }
 

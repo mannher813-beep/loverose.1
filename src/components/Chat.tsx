@@ -3,14 +3,17 @@ import { supabase } from "../lib/supabase";
 import { Match, Message, Profile, UserCredits } from "../types";
 import { Send, ArrowLeft, MessageSquare, ShieldAlert, Sparkles, AlertCircle, ShoppingBag, Loader2, Coins, HelpCircle } from "lucide-react";
 import ProfileDetailModal from "./ProfileDetailModal";
+import { playMessageSentSound, playMessageReceivedSound } from "../lib/sounds";
+import { triggerPushNotification } from "../lib/notifications";
 
 interface ChatProps {
   currentUser: any;
   currentUserProfile: Profile | null;
+  isPremium?: boolean;
   onOpenShop: () => void;
 }
 
-export default function Chat({ currentUser, currentUserProfile, onOpenShop }: ChatProps) {
+export default function Chat({ currentUser, currentUserProfile, isPremium = false, onOpenShop }: ChatProps) {
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -60,6 +63,13 @@ export default function Chat({ currentUser, currentUserProfile, onOpenShop }: Ch
             if (prev.some(m => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
+
+          if (newMsg.sender_id !== currentUser.id) {
+            playMessageReceivedSound();
+            const senderName = selectedMatch.partner_profile?.full_name || "Nouveau message";
+            const senderAvatar = selectedMatch.partner_profile?.avatar_url;
+            triggerPushNotification(`Nouveau message de ${senderName} 🌹`, newMsg.contenu, senderAvatar);
+          }
         }
       )
       .subscribe();
@@ -217,6 +227,7 @@ export default function Chat({ currentUser, currentUserProfile, onOpenShop }: Ch
           if (prev.some(m => m.id === sentMsg.id)) return prev;
           return [...prev, sentMsg];
         });
+        playMessageSentSound();
       }
 
       setInputText("");
@@ -491,6 +502,7 @@ export default function Chat({ currentUser, currentUserProfile, onOpenShop }: Ch
           <ProfileDetailModal
             profile={selectedViewProfile}
             currentUserProfile={currentUserProfile}
+            isPremium={isPremium}
             onClose={() => setSelectedViewProfile(null)}
           />
         )}

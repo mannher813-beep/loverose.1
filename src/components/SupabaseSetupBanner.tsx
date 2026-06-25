@@ -44,8 +44,12 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     relationship_intents TEXT[] DEFAULT '{}',
     role TEXT DEFAULT 'user',
     verification_status TEXT DEFAULT 'none' CHECK (verification_status IN ('none', 'pending', 'verified')),
+    photos TEXT[] DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Si la table existe déjà, s'assurer que la colonne photos est présente :
+-- ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS photos TEXT[] DEFAULT '{}';
 
 -- Active RLS sur profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import { Profile } from "./types";
-import { Heart, MessageSquare, Newspaper, ShoppingBag, Settings, Coins, Sparkles, CheckCircle2, User, LogOut, Loader2, ArrowRight } from "lucide-react";
+import { Heart, MessageSquare, Newspaper, ShoppingBag, Settings, Coins, Sparkles, CheckCircle2, User, LogOut, Loader2, ArrowRight, X } from "lucide-react";
 
 // Component imports
 import SupabaseSetupBanner from "./components/SupabaseSetupBanner";
@@ -21,11 +21,41 @@ export default function App() {
   const [currentSearch, setCurrentSearch] = useState(window.location.search);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isPremium, setIsPremium] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'feed' | 'shop' | 'profile' | 'settings'>('discover');
   
   // Match alerts overlay
   const [matchedPartner, setMatchedPartner] = useState<Profile | null>(null);
+
+  // Push notifications overlay state
+  const [toastNotification, setToastNotification] = useState<{ title: string; body: string; icon?: string } | null>(null);
+
+  useEffect(() => {
+    const handlePushToast = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent?.detail) {
+        setToastNotification(customEvent.detail);
+        // Automatically close after 5 seconds
+        const timer = setTimeout(() => {
+          setToastNotification(null);
+        }, 5000);
+        return () => clearTimeout(timer);
+      }
+    };
+    window.addEventListener("loverose-push-toast", handlePushToast);
+    return () => {
+      window.removeEventListener("loverose-push-toast", handlePushToast);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      import("./lib/notifications").then(({ requestNotificationPermission }) => {
+        requestNotificationPermission();
+      });
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     // Sync location path and search
@@ -90,6 +120,20 @@ export default function App() {
 
   const loadProfile = async (uid: string) => {
     try {
+      // 1. Fetch subscription status
+      const { data: subData } = await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_id", uid)
+        .single();
+
+      if (subData && subData.type === "premium" && subData.status === "active") {
+        setIsPremium(true);
+      } else {
+        setIsPremium(false);
+      }
+
+      // 2. Fetch profile data
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
@@ -325,6 +369,7 @@ export default function App() {
               <Discover
                 currentUser={currentUser}
                 currentUserProfile={profile}
+                isPremium={isPremium}
                 onMatchDetected={(partner) => setMatchedPartner(partner)}
               />
             )}
@@ -332,6 +377,7 @@ export default function App() {
               <Chat
                 currentUser={currentUser}
                 currentUserProfile={profile}
+                isPremium={isPremium}
                 onOpenShop={() => setActiveTab('shop')}
               />
             )}
@@ -339,6 +385,7 @@ export default function App() {
               <Feed
                 currentUser={currentUser}
                 currentUserProfile={profile}
+                isPremium={isPremium}
               />
             )}
             {activeTab === 'shop' && (
@@ -351,6 +398,7 @@ export default function App() {
               <ProfileSettings
                 currentUser={currentUser}
                 profile={profile}
+                isPremium={isPremium}
                 onProfileUpdated={() => loadProfile(currentUser.id)}
                 onGoToSettings={() => setActiveTab('settings')}
               />
@@ -406,6 +454,30 @@ export default function App() {
           <span className="text-[10px]">Profil</span>
         </button>
       </footer>
+
+      {/* Floating Push Toast Banner Overlay */}
+      {toastNotification && (
+        <div className="fixed top-4 left-4 right-4 z-[9999] bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-2xl border border-white/15 flex items-center space-x-3 md:max-w-md md:mx-auto animate-bounce">
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-rose-500/10 flex-shrink-0 border border-white/10">
+            <img
+              src={toastNotification.icon || "https://api.dicebear.com/7.x/initials/svg?seed=LoveRose"}
+              alt="Notification sender"
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-xs font-black text-rose-400 tracking-wide truncate">{toastNotification.title}</h4>
+            <p className="text-[10px] text-slate-200 mt-0.5 font-medium leading-normal line-clamp-2">{toastNotification.body}</p>
+          </div>
+          <button
+            onClick={() => setToastNotification(null)}
+            className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition cursor-pointer"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Sparkling Romantic Mutual Match Popup Modal Overlay */}
       {matchedPartner && (

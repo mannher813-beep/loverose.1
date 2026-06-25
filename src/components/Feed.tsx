@@ -7,9 +7,10 @@ import ProfileDetailModal from "./ProfileDetailModal";
 interface FeedProps {
   currentUser: any;
   currentUserProfile: Profile | null;
+  isPremium?: boolean;
 }
 
-export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
+export default function Feed({ currentUser, currentUserProfile, isPremium = false }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [inputText, setInputText] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
@@ -37,6 +38,11 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
   };
 
   const triggerImageUpload = () => {
+    if (!isPremium) {
+      setErrorMessage("L'upload de photos dans le fil d'actualité est réservé exclusivement aux membres abonnés Premium 🔒 ✨.");
+      return;
+    }
+    setErrorMessage("");
     document.getElementById("feed-image-upload")?.click();
   };
 
@@ -445,10 +451,15 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
               <button
                 type="button"
                 onClick={triggerImageUpload}
-                className="text-slate-500 hover:text-rose-500 flex items-center gap-1.5 text-xs font-bold transition cursor-pointer"
+                className={`flex items-center gap-1.5 text-xs font-bold transition cursor-pointer px-2.5 py-1.5 rounded-xl ${
+                  isPremium
+                    ? "text-slate-500 hover:text-rose-500 hover:bg-slate-50"
+                    : "text-amber-500 bg-amber-50/50 border border-amber-200/50 hover:bg-amber-50"
+                }`}
               >
-                <Image size={16} />
+                <Image size={15} />
                 <span>Ajouter une Photo</span>
+                {!isPremium && <span className="text-[9px] font-black uppercase bg-amber-500 text-white px-1.5 py-0.5 rounded-md leading-none ml-1">🔒 PRO</span>}
               </button>
               <button
                 id="create-post-btn"
@@ -624,6 +635,7 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
         <ProfileDetailModal
           profile={selectedViewProfile}
           currentUserProfile={currentUserProfile}
+          isPremium={isPremium}
           onClose={() => setSelectedViewProfile(null)}
         />
       )}

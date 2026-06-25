@@ -1,16 +1,18 @@
 import { useState, useEffect, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
-import { Heart, X, Sparkles, MapPin, CheckCircle, ShieldAlert, Filter, Send, MessageCircle } from "lucide-react";
+import { Heart, X, Sparkles, MapPin, CheckCircle, ShieldAlert, Filter, Send, MessageCircle, Eye } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import ProfileDetailModal from "./ProfileDetailModal";
 
 interface DiscoverProps {
   currentUser: any;
   currentUserProfile: Profile | null;
+  isPremium?: boolean;
   onMatchDetected: (partner: Profile) => void;
 }
 
-export default function Discover({ currentUser, currentUserProfile, onMatchDetected }: DiscoverProps) {
+export default function Discover({ currentUser, currentUserProfile, isPremium = false, onMatchDetected }: DiscoverProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedIntentFilter, setSelectedIntentFilter] = useState<string>("tous");
@@ -19,6 +21,7 @@ export default function Discover({ currentUser, currentUserProfile, onMatchDetec
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [selectedViewProfile, setSelectedViewProfile] = useState<Profile | null>(null);
 
   const intentsList = [
     "Amitié",
@@ -314,8 +317,15 @@ export default function Discover({ currentUser, currentUserProfile, onMatchDetec
                     </div>
                   </div>
 
-                  {/* Report action link */}
-                  <div className="pt-2 flex justify-end">
+                  {/* Report and View actions */}
+                  <div className="pt-2 flex justify-between items-center border-t border-slate-100 mt-2">
+                    <button
+                      onClick={() => setSelectedViewProfile(activeProfile)}
+                      className="text-rose-500 hover:text-rose-600 text-xs flex items-center gap-1 transition cursor-pointer font-bold bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100"
+                    >
+                      <Eye size={14} />
+                      <span>Détails & Photos</span>
+                    </button>
                     <button
                       onClick={() => setIsReportOpen(true)}
                       className="text-slate-400 hover:text-red-500 text-xs flex items-center gap-1 transition cursor-pointer font-medium"
@@ -411,6 +421,21 @@ export default function Discover({ currentUser, currentUserProfile, onMatchDetec
             )}
           </div>
         </div>
+      )}
+
+      {/* Render profile detail view modal */}
+      {selectedViewProfile && (
+        <ProfileDetailModal
+          profile={selectedViewProfile}
+          currentUserProfile={currentUserProfile}
+          isPremium={isPremium}
+          onClose={() => setSelectedViewProfile(null)}
+          onStartChat={() => {
+            // Start discussion by swiping like to create the match row, and close modal
+            handleSwipe(true);
+            setSelectedViewProfile(null);
+          }}
+        />
       )}
     </div>
   );

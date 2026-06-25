@@ -1,16 +1,17 @@
 import React, { useState, useEffect, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
-import { User, MapPin, AlignLeft, CheckCircle, ShieldCheck, Loader2, Sparkles, Save, Camera, Trash, Settings } from "lucide-react";
+import { User, MapPin, AlignLeft, CheckCircle, ShieldCheck, Loader2, Sparkles, Save, Camera, Trash, Settings, Plus, X, AlertTriangle } from "lucide-react";
 
 interface ProfileSettingsProps {
   currentUser: any;
   profile: Profile | null;
+  isPremium?: boolean;
   onProfileUpdated: () => void;
   onGoToSettings?: () => void;
 }
 
-export default function ProfileSettings({ currentUser, profile, onProfileUpdated, onGoToSettings }: ProfileSettingsProps) {
+export default function ProfileSettings({ currentUser, profile, isPremium = false, onProfileUpdated, onGoToSettings }: ProfileSettingsProps) {
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
@@ -20,6 +21,7 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
   const [preferences, setPreferences] = useState<'homme' | 'femme' | 'tous'>('femme');
   const [avatarUrl, setAvatarUrl] = useState("");
   const [selectedIntents, setSelectedIntents] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<string[]>([]);
   
   const [isLoading, setIsLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -43,10 +45,14 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
       setPreferences(profile.preferences || "femme");
       setAvatarUrl(profile.avatar_url || "");
       setSelectedIntents(profile.relationship_intents || []);
+      
+      // Load photos from profile or local backup
+      const loadedPhotos = profile.photos || JSON.parse(localStorage.getItem(`profile_photos_${currentUser.id}`) || "[]");
+      setPhotos(loadedPhotos);
     }
-  }, [profile]);
+  }, [profile, currentUser.id]);
 
-  const handleLocalFileChange = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -58,14 +64,62 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
     const reader = new FileReader();
     reader.onloadend = () => {
       if (typeof reader.result === "string") {
-        callback(reader.result);
+        const val = reader.result;
+        setPhotos(prev => {
+          const next = [...prev];
+          next[index] = val;
+          // Set primary avatar as the first photo
+          if (index === 0 || !avatarUrl) {
+            setAvatarUrl(val);
+          }
+          return next;
+        });
       }
     };
     reader.readAsDataURL(file);
   };
 
-  const triggerAvatarUpload = () => {
-    document.getElementById("avatar-file-input")?.click();
+  const handleAddPhotoPremium = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (photos.length >= 20) {
+      alert("Vous avez atteint la limite de 20 photos.");
+      return;
+    }
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert("L'image est trop volumineuse. Veuillez choisir un fichier de moins de 3 Mo.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        const val = reader.result;
+        setPhotos(prev => {
+          const next = [...prev, val];
+          if (next.length === 1 || !avatarUrl) {
+            setAvatarUrl(val);
+          }
+          return next;
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    setPhotos(prev => {
+      const next = prev.filter((_, i) => i !== index);
+      // Update avatar if we removed the first one
+      if (next.length > 0) {
+        setAvatarUrl(next[0]);
+      } else {
+        setAvatarUrl("");
+      }
+      return next;
+    });
   };
 
   const handleIntentToggle = (intent: string) => {
@@ -86,6 +140,13 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
         throw new Error("Veuillez sélectionner au moins un type de rencontre recherché (intention obligatoire).");
       }
 
+      // Filter empty photos
+      const validPhotos = photos.filter(Boolean);
+
+      if (validPhotos.length < 3) {
+        throw new Error("Chaque profil doit uploader au minimum trois (3) photos obligatoirement.");
+      }
+
       const updatedProfileData = {
         uid: currentUser.id,
         full_name: fullName.trim(),
@@ -95,20 +156,35 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
         location: location.trim(),
         gender,
         preferences,
-        avatar_url: avatarUrl.trim(),
+        avatar_url: avatarUrl || validPhotos[0] || "",
         relationship_intents: selectedIntents,
+        photos: validPhotos,
         updated_at: new Date().toISOString()
       };
 
-      // Store in localStorage first
+      // Store in localStorage backup first
       localStorage.setItem(`profile_backup_${currentUser.id}`, JSON.stringify(updatedProfileData));
+      localStorage.setItem(`profile_photos_${currentUser.id}`, JSON.stringify(validPhotos));
 
       // Sync to Supabase
       const { error } = await supabase
         .from("profiles")
         .upsert(updatedProfileData);
 
-      if (error) throw error;
+      if (error) {
+        // Fallback if profiles table doesn't have photos column yet
+        if (error.message?.includes("photos") || error.code === "PGRST204" || error.code === "42703") {
+          console.warn("Column 'photos' does not exist in profiles. Retrying save without 'photos' column.");
+          const { photos, ...fallbackData } = updatedProfileData;
+          const { error: fallbackError } = await supabase
+            .from("profiles")
+            .upsert(fallbackData);
+          
+          if (fallbackError) throw fallbackError;
+        } else {
+          throw error;
+        }
+      }
 
       setSaveSuccess(true);
       onProfileUpdated();
@@ -123,14 +199,28 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
   return (
     <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 space-y-8 font-sans max-w-4xl mx-auto w-full">
       
-      {/* Hidden file input for avatar */}
-      <input
-        type="file"
-        id="avatar-file-input"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => handleLocalFileChange(e, setAvatarUrl)}
-      />
+      {/* Hidden inputs for the 3 slots for free users */}
+      {!isPremium && [0, 1, 2].map(index => (
+        <input
+          key={index}
+          type="file"
+          id={`photo-slot-${index}`}
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => handlePhotoUpload(e, index)}
+        />
+      ))}
+
+      {/* Hidden input for premium adding */}
+      {isPremium && (
+        <input
+          type="file"
+          id="photo-premium-add"
+          accept="image/*"
+          className="hidden"
+          onChange={handleAddPhotoPremium}
+        />
+      )}
       
       {/* Title Header */}
       <div className="border-b border-slate-200 pb-4 flex justify-between items-center">
@@ -154,39 +244,118 @@ export default function ProfileSettings({ currentUser, profile, onProfileUpdated
         {/* Left column: Photo Upload and Onboarding status */}
         <div className="md:col-span-1 space-y-6">
           
-          {/* Avatar Settings Card */}
-          <div className="bg-white border border-slate-150 rounded-3xl p-5 text-center shadow-xs space-y-4">
-            <div className="relative w-32 h-32 mx-auto">
-              <img
-                src={avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${fullName || currentUser.id}`}
-                alt="Avatar"
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover rounded-full bg-slate-100 border-2 border-rose-500/10 shadow-inner"
-              />
-              <button
-                type="button"
-                onClick={triggerAvatarUpload}
-                className="absolute bottom-1 right-1 bg-rose-500 hover:bg-rose-600 text-white rounded-full p-2.5 shadow-md cursor-pointer transition active:scale-95 animate-pulse"
-                title="Prendre / Choisir une photo"
-              >
-                <Camera size={16} />
-              </button>
-            </div>
-
+          {/* Photo Slots Management Card */}
+          <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-xs space-y-4">
             <div>
-              <h3 className="font-bold text-slate-800 text-sm leading-tight">{fullName || "Membre LoveRose"}</h3>
-              <p className="text-[10px] text-slate-400 mt-1">Édition de votre photo officielle</p>
+              <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1">
+                <Camera size={14} className="text-rose-500" />
+                <span>Mes Photos de Profil</span>
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-1">Au moins 3 photos sont obligatoires pour tous les profils.</p>
             </div>
 
-            {avatarUrl ? (
-              <button
-                onClick={() => setAvatarUrl("")}
-                className="text-[10px] text-slate-400 hover:text-red-500 font-bold transition flex items-center justify-center gap-1 mx-auto cursor-pointer"
-              >
-                <Trash size={12} />
-                <span>Réinitialiser la photo</span>
-              </button>
-            ) : null}
+            {/* Validation warning */}
+            {photos.filter(Boolean).length < 3 && (
+              <div className="bg-amber-50 border border-amber-100 text-amber-700 rounded-xl p-3 flex items-start gap-1.5 text-[10px] font-bold">
+                <AlertTriangle size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <p>Obligation : Veuillez uploader au minimum 3 photos pour pouvoir enregistrer votre profil ({photos.filter(Boolean).length}/3 ajoutées).</p>
+              </div>
+            )}
+
+            {/* Multi-Photo Grid / Slots */}
+            {!isPremium ? (
+              <div className="space-y-3.5">
+                {[0, 1, 2].map(index => {
+                  const photo = photos[index];
+                  return (
+                    <div key={index} className="bg-slate-50 border border-slate-150 rounded-2xl p-2.5 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-200 border border-slate-200 flex-shrink-0 relative">
+                          {photo ? (
+                            <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs font-black">
+                              {index === 0 ? "1 (Max)" : index + 1}
+                            </div>
+                          )}
+                          {index === 0 && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-rose-500 text-white text-[7px] py-0.5 text-center font-bold tracking-widest uppercase">
+                              Principale
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-700">Photo {index + 1}</p>
+                          <p className="text-[9px] text-slate-400">{index === 0 ? "Affichée en premier" : "Obligatoire"}</p>
+                        </div>
+                      </div>
+                      <div>
+                        {photo ? (
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePhoto(index)}
+                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition cursor-pointer"
+                            title="Supprimer la photo"
+                          >
+                            <Trash size={12} />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => document.getElementById(`photo-slot-${index}`)?.click()}
+                            className="px-2.5 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold rounded-lg transition cursor-pointer flex items-center space-x-1"
+                          >
+                            <Camera size={11} />
+                            <span>Ajouter</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <p className="text-[10px] text-slate-400 italic text-center mt-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                  ⚡ Abonnez-vous à <strong>LoveRose Premium</strong> pour uploader jusqu'à 20 photos !
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-2">
+                  {photos.map((photo, index) => (
+                    <div key={index} className="aspect-square bg-slate-100 border border-slate-150 rounded-xl overflow-hidden relative group">
+                      <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-full object-cover animate-fade-in" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(index)}
+                        className="absolute top-1 right-1 bg-black/60 hover:bg-red-500 text-white rounded-full p-1 transition cursor-pointer shadow-sm"
+                        title="Supprimer"
+                      >
+                        <X size={10} />
+                      </button>
+                      {index === 0 && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-rose-500 text-white text-[7px] py-0.5 text-center font-bold uppercase tracking-wider">
+                          Principale
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {photos.length < 20 && (
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById("photo-premium-add")?.click()}
+                      className="aspect-square bg-slate-50 border border-dashed border-slate-300 hover:border-rose-400 hover:bg-rose-50/10 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:text-rose-500 transition cursor-pointer space-y-1"
+                    >
+                      <Plus size={16} />
+                      <span className="text-[9px] font-bold">Ajouter</span>
+                    </button>
+                  )}
+                </div>
+                <div className="text-center pt-1">
+                  <span className="text-[9px] font-extrabold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100 uppercase tracking-wider">
+                    ✨ Membre Premium : {photos.length}/20 photos
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Verification Call-To-Action Card */}
