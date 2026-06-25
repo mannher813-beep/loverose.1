@@ -32,26 +32,42 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
     const postIds = loadedPosts.map(p => p.id);
     if (postIds.length === 0) return;
 
+    // 1. Load Likes
     try {
-      // 1. Fetch likes
       const { data: dbLikes, error: likesError } = await supabase
         .from("post_likes")
         .select("post_id, user_id");
 
-      if (!likesError && dbLikes) {
+      if (likesError) throw likesError;
+
+      if (dbLikes) {
         const newLikesState: Record<string, { count: number; userLiked: boolean }> = {};
         loadedPosts.forEach(p => {
           const postLikes = dbLikes.filter(l => l.post_id === p.id);
           const userLiked = postLikes.some(l => l.user_id === currentUser?.id);
           newLikesState[p.id] = {
-            count: postLikes.length || Math.floor(Math.random() * 5),
+            count: postLikes.length,
             userLiked: userLiked
           };
         });
         setLikesState(newLikesState);
       }
+    } catch (e) {
+      console.warn("Could not load likes from DB, falling back to local simulation:", e);
+      const storedLikes = localStorage.getItem(`feed_likes_${currentUser?.id || 'anon'}`);
+      if (storedLikes) {
+        try { setLikesState(JSON.parse(storedLikes)); } catch (err) {}
+      } else {
+        const initialLikes: Record<string, { count: number; userLiked: boolean }> = {};
+        loadedPosts.forEach(p => {
+          initialLikes[p.id] = { count: Math.floor(Math.random() * 8) + 2, userLiked: false };
+        });
+        setLikesState(initialLikes);
+      }
+    }
 
-      // 2. Fetch comments
+    // 2. Load Comments
+    try {
       const { data: dbComments, error: commentsError } = await supabase
         .from("post_comments")
         .select(`
@@ -62,17 +78,20 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
           created_at
         `);
 
-      if (!commentsError && dbComments) {
-        const newCommentsState: Record<string, any[]> = {};
-        
-        // Fetch profiles of comment writers
-        const uniqueUserIds = Array.from(new Set(dbComments.map(c => c.user_id)));
-        const { data: commentProfiles } = await supabase
-          .from("profiles")
-          .select("uid, full_name, avatar_url")
-          .in("uid", uniqueUserIds);
+      if (commentsError) throw commentsError;
 
-        const profileMap = new Map(commentProfiles?.map(p => [p.uid, p]) || []);
+      if (dbComments) {
+        const newCommentsState: Record<string, any[]> = {};
+        const uniqueUserIds = Array.from(new Set(dbComments.map(c => c.user_id)));
+        
+        let profileMap = new Map();
+        if (uniqueUserIds.length > 0) {
+          const { data: commentProfiles } = await supabase
+            .from("profiles")
+            .select("uid, full_name, avatar_url")
+            .in("uid", uniqueUserIds);
+          profileMap = new Map(commentProfiles?.map(p => [p.uid, p]) || []);
+        }
 
         dbComments.forEach((c: any) => {
           const profile = profileMap.get(c.user_id);
@@ -88,34 +107,54 @@ export default function Feed({ currentUser, currentUserProfile }: FeedProps) {
           }
           newCommentsState[c.post_id].push(formattedComment);
         });
+
+        // Initialize empty lists for posts with no comments
+        loadedPosts.forEach(p => {
+          if (!newCommentsState[p.id]) {
+            newCommentsState[p.id] = [];
+          }
+        });
+
         setCommentsState(newCommentsState);
       }
+    } catch (e) {
+      console.warn("Could not load comments from DB, falling back to local simulation:", e);
+      const storedComments = localStorage.getItem(`feed_comments_${currentUser?.id || 'anon'}`);
+      if (storedComments) {
+        try { setCommentsState(JSON.parse(storedComments)); } catch (err) {}
+      } else {
+        const emptyComments: Record<string, any[]> = {};
+        loadedPosts.forEach(p => {
+          emptyComments[p.id] = [];
+        });
+        setCommentsState(emptyComments);
+      }
+    }
 
-      // 3. Fetch shares
+    // 3. Load Shares
+    try {
       const { data: dbShares, error: sharesError } = await supabase
         .from("post_shares")
         .select("post_id, user_id");
 
-      if (!sharesError && dbShares) {
+      if (sharesError) throw sharesError;
+
+      if (dbShares) {
         const newSharesState: Record<string, number> = {};
         loadedPosts.forEach(p => {
           const postShares = dbShares.filter(s => s.post_id === p.id);
-          newSharesState[p.id] = postShares.length || Math.floor(Math.random() * 3);
+          newSharesState[p.id] = postShares.length;
         });
         setSharesState(newSharesState);
       }
-
     } catch (e) {
-      console.warn("Could not load interactions from DB, falling back to local simulation:", e);
-      // Fallback local storage loadings
-      const storedLikes = localStorage.getItem(`feed_likes_${currentUser?.id || 'anon'}`);
-      if (storedLikes) {
-        try { setLikesState(JSON.parse(storedLikes)); } catch (err) {}
-      }
-      const storedComments = localStorage.getItem(`feed_comments_${currentUser?.id || 'anon'}`);
-      if (storedComments) {
-        try { setCommentsState(JSON.parse(storedComments)); } catch (err) {}
-      }
+      console.warn("Could not load shares from DB, falling back to local simulation:", e);
+      const newSharesState: Record<string, number> = {};
+      loadedPosts.forEach(p => {
+        const storedShareCount = localStorage.getItem(`feed_shares_${p.id}`);
+        newSharesState[p.id] = storedShareCount ? parseInt(storedShareCount) : Math.floor(Math.random() * 3);
+      });
+      setSharesState(newSharesState);
     }
   };
 

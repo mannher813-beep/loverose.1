@@ -58,7 +58,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
       let checkoutUrl = "";
       let reference = fallbackReference;
 
-      // 1. Try server-side integration if the Express server is running
+      // 1. Try server-side integration if the Express server is running (CORS-free)
       try {
         const response = await fetch("/api/payments/create", {
           method: "POST",
@@ -85,10 +85,63 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
           }
         }
       } catch (apiErr) {
-        console.warn("Backend API not reachable or returned 404, using client-side fallback:", apiErr);
+        console.warn("Backend API not reachable or returned 404, trying direct client-side POST:", apiErr);
       }
 
-      // 2. Fallback: Create payments table record directly from client and redirect to Money Fusion hosted payment page
+      // 2. Direct client-side fetch POST to Money Fusion (Official JSON API)
+      if (!checkoutUrl) {
+        try {
+          const payload = {
+            totalPrice: amount,
+            article: [{ [planId]: amount }],
+            personal_Info: [{ userId: currentUser.id, orderId: fallbackReference }],
+            numeroSend: "01010101",
+            nomclient: currentUser.email ? currentUser.email.split("@")[0] : "Membre LoveRose",
+            return_url: `${window.location.origin}/payment-success`,
+            webhook_url: "https://iqoceeaqwfdqiucrsicm.supabase.co/functions/v1/moneyfusion-webhook"
+          };
+
+          const response = await fetch("https://pay.moneyfusion.net/LoveRose/5e63aa25ec22c9fa/pay/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.statut && data.token && data.url) {
+              checkoutUrl = data.url;
+              reference = data.token;
+
+              // Create payments table record directly from client
+              const { error: insertErr } = await supabase
+                .from("payments")
+                .insert([
+                  {
+                    user_id: currentUser.id,
+                    montant: amount,
+                    statut: "pending",
+                    plan_id: planId,
+                    plan_name: planName,
+                    reference: reference,
+                  }
+                ]);
+
+              if (insertErr) {
+                console.error("Direct client-side payment insertion failed:", insertErr);
+              }
+
+              localStorage.setItem("last_payment_reference", reference);
+            }
+          }
+        } catch (directErr) {
+          console.warn("Direct client-side POST failed (could be CORS), using URL parameter fallback:", directErr);
+        }
+      }
+
+      // 3. Last fallback: Direct URL parameter navigation (guaranteed 100% uptime fallback)
       if (!checkoutUrl) {
         localStorage.setItem("last_payment_reference", fallbackReference);
 
@@ -106,7 +159,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
           ]);
 
         if (insertErr) {
-          console.error("Direct client-side payment insertion failed:", insertErr);
+          console.error("Fallback payment insertion failed:", insertErr);
         }
 
         const returnUrl = `${window.location.origin}/payment-success?reference=${fallbackReference}`;

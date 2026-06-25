@@ -102,16 +102,77 @@ async function startServer() {
       }
 
       // Generate merchant reference
-      const reference = `LR-${Date.now()}-${userId.substring(0, 8)}`;
+      const fallbackReference = `LR-${Date.now()}-${userId.substring(0, 8)}`;
+      const moneyFusionApiUrl = "https://pay.moneyfusion.net/LoveRose/5e63aa25ec22c9fa/pay/";
       
-      const apiKey = process.env.MONEY_FUSION_API_KEY;
-      const merchantId = process.env.MONEY_FUSION_MERCHANT_ID;
-      const moneyFusionApiUrl = process.env.MONEY_FUSION_API_URL || "https://pay.moneyfusion.net/LoveRose/5e63aa25ec22c9fa/pay/";
-      
-      // Sandbox is permanently disabled as requested by the user
-      const isSandbox = false;
+      const appUrl = process.env.APP_URL || `https://${req.get('host')}` || `http://localhost:3000`;
+      const returnUrl = `${appUrl}/payment-success`;
+      const webhookUrl = "https://iqoceeaqwfdqiucrsicm.supabase.co/functions/v1/moneyfusion-webhook";
 
-      console.log(`[LoveRose Payment] Creating payment: ${userId}, plan: ${planName}, amount: ${amount} FCFA, reference: ${reference} (Sandbox: ${isSandbox})`);
+      const payload = {
+        totalPrice: amount,
+        article: [{ [planId]: amount }],
+        personal_Info: [{ userId: userId, orderId: fallbackReference }],
+        numeroSend: "01010101",
+        nomclient: email ? email.split("@")[0] : "Membre LoveRose",
+        return_url: returnUrl,
+        webhook_url: webhookUrl
+      };
+
+      console.log(`[LoveRose Payment Backend] Initiating Money Fusion request:`, payload);
+
+      let checkoutUrl = "";
+      let reference = fallbackReference;
+
+      try {
+        const apiResponse = await fetch(moneyFusionApiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (apiResponse.ok) {
+          const data = await apiResponse.json();
+          console.log(`[LoveRose Payment Backend] Response:`, data);
+          if (data.statut && data.token && data.url) {
+            checkoutUrl = data.url;
+            reference = data.token; // we use the token as the reference!
+          }
+        } else {
+          console.error(`[LoveRose Payment Backend] API response error:`, apiResponse.status);
+        }
+      } catch (apiErr) {
+        console.error(`[LoveRose Payment Backend] API fetch exception:`, apiErr);
+      }
+
+      // If API fails or doesn't return url/token, build direct checkout url fallback
+      if (!checkoutUrl) {
+        const returnUrlFallback = `${appUrl}/payment-success?reference=${fallbackReference}`;
+        const cancelUrlFallback = `${appUrl}/`;
+        const params = new URLSearchParams({
+          amount: String(amount),
+          prix: String(amount),
+          total: String(amount),
+          reference: fallbackReference,
+          ref: fallbackReference,
+          order_id: fallbackReference,
+          libelle: planName,
+          description: `Achat ${planName} sur LoveRose`,
+          name: planName,
+          email: email || "",
+          mail: email || "",
+          userId: userId,
+          user_id: userId,
+          return_url: returnUrlFallback,
+          url_retour: returnUrlFallback,
+          cancel_url: cancelUrlFallback,
+          url_annulation: cancelUrlFallback
+        });
+        checkoutUrl = `${moneyFusionApiUrl}?${params.toString()}`;
+        reference = fallbackReference;
+      }
 
       // Store payment record in Supabase (status pending)
       if (supabaseAdmin) {
@@ -132,93 +193,7 @@ async function startServer() {
         }
       }
 
-      let checkoutUrl = "";
-      if (isSandbox) {
-        // Build local interactive simulator URL
-        const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
-        checkoutUrl = `${appUrl}/payment-sandbox?reference=${reference}&amount=${amount}&planId=${planId}&planName=${encodeURIComponent(planName)}&userId=${userId}`;
-      } else {
-        // Real Money Fusion payment: Prefer using hosted form URL if no api key/merchant ID is set
-        if (!apiKey || !merchantId) {
-          const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
-          const returnUrl = `${appUrl}/payment-success?reference=${reference}`;
-          const cancelUrl = `${appUrl}/payment-cancel?reference=${reference}`;
-
-          // Append both French and English names to make sure Money Fusion forms can read them dynamically
-          const params = new URLSearchParams({
-            amount: String(amount),
-            prix: String(amount),
-            total: String(amount),
-            reference: reference,
-            ref: reference,
-            order_id: reference,
-            libelle: planName,
-            description: `Achat ${planName} sur LoveRose`,
-            name: planName,
-            email: email || "",
-            mail: email || "",
-            userId: userId,
-            user_id: userId,
-            return_url: returnUrl,
-            url_retour: returnUrl,
-            cancel_url: cancelUrl,
-            url_annulation: cancelUrl
-          });
-
-          const baseCheckoutUrl = moneyFusionApiUrl.endsWith("/") ? moneyFusionApiUrl : `${moneyFusionApiUrl}/`;
-          checkoutUrl = `${baseCheckoutUrl}?${params.toString()}`;
-          console.log(`[LoveRose Payment] Using Direct Hosted Payment page: ${checkoutUrl}`);
-        } else {
-          // Real Money Fusion API integration
-          try {
-            const response = await fetch("https://api.moneyfusion.net/v1/payments", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}`
-              },
-              body: JSON.stringify({
-                merchant_id: merchantId,
-                amount: amount,
-                currency: "XOF",
-                reference: reference,
-                description: `Achat ${planName} sur LoveRose`,
-                email: email || "",
-                return_url: `${process.env.APP_URL}/payment-success?reference=${reference}`,
-                cancel_url: `${process.env.APP_URL}/payment-cancel?reference=${reference}`,
-                webhook_url: `${process.env.APP_URL}/api/payments/webhook`
-              })
-            });
-
-            const data = await response.json();
-            if (response.ok && data.url) {
-              checkoutUrl = data.url;
-            } else {
-              console.error("Money Fusion API Error, falling back to hosted payment url:", data);
-              // Fallback to hosted URL if API fails but keys are entered
-              const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
-              const returnUrl = `${appUrl}/payment-success?reference=${reference}`;
-              const cancelUrl = `${appUrl}/payment-cancel?reference=${reference}`;
-              const params = new URLSearchParams({
-                amount: String(amount),
-                prix: String(amount),
-                reference: reference,
-                libelle: planName,
-                return_url: returnUrl,
-                cancel_url: cancelUrl
-              });
-              const baseCheckoutUrl = moneyFusionApiUrl.endsWith("/") ? moneyFusionApiUrl : `${moneyFusionApiUrl}/`;
-              checkoutUrl = `${baseCheckoutUrl}?${params.toString()}`;
-            }
-          } catch (apiErr) {
-            console.error("Failed to connect with Money Fusion API:", apiErr);
-            const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
-            checkoutUrl = `${appUrl}/payment-sandbox?reference=${reference}&amount=${amount}&planId=${planId}&planName=${encodeURIComponent(planName)}&userId=${userId}&error=network`;
-          }
-        }
-      }
-
-      return res.json({ checkoutUrl, reference, isSandbox });
+      return res.json({ checkoutUrl, reference, isSandbox: false });
     } catch (err: any) {
       console.error("Create payment error:", err);
       return res.status(500).json({ error: err.message || "Internal server error" });
