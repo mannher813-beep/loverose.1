@@ -1,0 +1,6 @@
+{
+  "name": "LoveRose",
+  "description": "Application de rencontres LoveRose 100% Supabase pour les marchés africains et internationaux.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
