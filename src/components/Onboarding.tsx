@@ -26,8 +26,10 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
   const [bio, setBio] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<(File | null)[]>([null, null, null]);
+  const [galleryPreviews, setGalleryPreviews] = useState<(string | null)[]>([null, null, null]);
 
-  const totalSteps = 6;
+  const totalSteps = 7;
 
   const hobbiesList = [
     "Voyages", "Cuisine & Gastronomie", "Musique & Concerts", "Cinéma & Séries",
@@ -54,6 +56,30 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGalleryFileChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("La photo est trop lourde. Veuillez choisir une image de moins de 5 Mo.");
+        return;
+      }
+      setGalleryFiles(prev => {
+        const next = [...prev];
+        next[index] = file;
+        return next;
+      });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setGalleryPreviews(prev => {
+          const next = [...prev];
+          next[index] = reader.result as string;
+          return next;
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -107,6 +133,17 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       alert("Votre biographie doit faire au moins 10 caractères pour attirer l'attention.");
       return;
     }
+    if (step === 6 && !avatarFile && !avatarPreview) {
+      alert("Veuillez choisir ou uploader une photo de profil.");
+      return;
+    }
+    if (step === 7) {
+      const validPreviews = galleryPreviews.filter(Boolean);
+      if (validPreviews.length < 3) {
+        alert("Vous devez uploader au minimum trois (3) photos réelles pour votre galerie.");
+        return;
+      }
+    }
 
     if (step < totalSteps) {
       setStep(prev => prev + 1);
@@ -152,11 +189,43 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
         }
       }
 
-      // 2. Format centers of interest nicely to be saved in bio since hobbies column is not yet in profiles table
+      // 2. Upload gallery photos to Supabase Storage
+      const galleryUrls: string[] = [];
+      for (let i = 0; i < galleryFiles.length; i++) {
+        const file = galleryFiles[i];
+        if (file) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `photo_${i + 1}_${Date.now()}.${fileExt}`;
+          const filePath = `gallery/${currentUser.id}/${fileName}`;
+
+          const { error: uploadErr } = await supabase.storage
+            .from("loverose")
+            .upload(filePath, file, {
+              cacheControl: "3600",
+              upsert: true
+            });
+
+          if (uploadErr) {
+            console.warn(`Gallery upload error for slot ${i + 1}, fallback to base64:`, uploadErr);
+            if (galleryPreviews[i]) {
+              galleryUrls.push(galleryPreviews[i] as string);
+            }
+          } else {
+            const { data: { publicUrl } } = supabase.storage
+              .from("loverose")
+              .getPublicUrl(filePath);
+            galleryUrls.push(publicUrl);
+          }
+        } else if (galleryPreviews[i]) {
+          galleryUrls.push(galleryPreviews[i] as string);
+        }
+      }
+
+      // 3. Format centers of interest nicely to be saved in bio since hobbies column is not yet in profiles table
       const formattedHobbies = `Centres d'intérêt : ${selectedHobbies.join(", ")}`;
       const finalBio = bio.trim() ? `${bio.trim()}\n\n${formattedHobbies}` : formattedHobbies;
 
-      // 3. Try to update phone in Auth metadata
+      // 4. Try to update phone in Auth metadata
       try {
         await supabase.auth.updateUser({
           phone: phone,
@@ -166,7 +235,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
         console.warn("Could not save phone to Auth service, saving to profile metadata:", phoneErr);
       }
 
-      // 4. Update the profiles table row
+      // 5. Update the profiles table row
       const { error: profileErr } = await supabase
         .from("profiles")
         .upsert({
@@ -180,7 +249,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
           relationship_intents: selectedIntents,
           bio: finalBio,
           avatar_url: finalAvatarUrl,
-          photos: [finalAvatarUrl],
+          photos: galleryUrls,
           verification_status: "none",
           updated_at: new Date().toISOString()
         });
@@ -505,6 +574,60 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                       </div>
                     )}
                   </label>
+                </div>
+              </motion.div>
+            )}
+
+            {step === 7 && (
+              <motion.div
+                key="step7"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="space-y-4"
+              >
+                <div className="space-y-1.5">
+                  <h2 className="text-lg font-black text-slate-900 flex items-center gap-1.5">
+                    <Camera size={18} className="text-rose-500" /> Vos Photos de Galerie
+                  </h2>
+                  <p className="text-slate-500 text-xs leading-relaxed">
+                    Uploadez au minimum <strong>trois (3) photos réelles</strong> pour compléter votre galerie LoveRose. Les profils complets reçoivent 5x plus d'intérêt !
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 pt-2">
+                  {[0, 1, 2].map((index) => (
+                    <div key={index} className="flex flex-col items-center">
+                      <input
+                        type="file"
+                        id={`onboarding-gallery-${index}`}
+                        accept="image/*"
+                        onChange={(e) => handleGalleryFileChange(e, index)}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor={`onboarding-gallery-${index}`}
+                        className="aspect-square w-full rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-rose-300 transition cursor-pointer flex flex-col items-center justify-center overflow-hidden relative group"
+                      >
+                        {galleryPreviews[index] ? (
+                          <>
+                            <img src={galleryPreviews[index]!} alt={`Galerie ${index + 1}`} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[9px] font-bold">
+                              Changer
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center p-2 text-slate-400 space-y-1">
+                            <Camera size={18} className="mx-auto text-slate-350" />
+                            <span className="text-[9px] font-bold block">Photo {index + 1}</span>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-rose-50/50 border border-rose-100 p-2.5 rounded-2xl text-[10px] text-rose-600 font-semibold text-center mt-2">
+                  {galleryPreviews.filter(Boolean).length}/3 photos de galerie ajoutées
                 </div>
               </motion.div>
             )}

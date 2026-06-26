@@ -20,6 +20,19 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedViewProfile, setSelectedViewProfile] = useState<Profile | null>(null);
 
+  const getAlphabeticCount = (text: string) => {
+    const match = text.match(/[a-zA-ZÀ-ÿ]/g);
+    return match ? match.length : 0;
+  };
+
+  const hasDigits = (text: string) => {
+    return /[0-9]/.test(text);
+  };
+
+  const alphabeticCount = getAlphabeticCount(inputText);
+  const containsNumbers = hasDigits(inputText);
+  const isPostRestricted = !isPremium && (alphabeticCount > 100 || containsNumbers);
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -441,6 +454,32 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
               </div>
             )}
 
+            {/* Real-time pre-validation for non-Premium users */}
+            {!isPremium && inputText.trim() && (
+              <div className="space-y-1.5 pt-1">
+                <div className="flex justify-between items-center text-[10px] font-bold">
+                  <span className={`${alphabeticCount > 100 ? "text-red-500 font-extrabold animate-pulse" : "text-slate-500"}`}>
+                    Lettres : {alphabeticCount} / 100 maximum
+                  </span>
+                  {containsNumbers && (
+                    <span className="text-red-500 font-extrabold flex items-center gap-1 animate-pulse">
+                      ⚠️ Contient des chiffres
+                    </span>
+                  )}
+                </div>
+                {alphabeticCount > 100 && (
+                  <p className="text-[10px] text-red-500 font-semibold leading-normal bg-red-50 border border-red-100 p-2 rounded-xl">
+                    Les utilisateurs non-Premium sont limités à 100 caractères alphabétiques par publication. Passez Premium pour lever cette limite.
+                  </p>
+                )}
+                {containsNumbers && (
+                  <p className="text-[10px] text-red-500 font-semibold leading-normal bg-red-50 border border-red-100 p-2 rounded-xl">
+                    Les utilisateurs non-Premium ne peuvent pas publier de chiffres. Passez Premium pour lever cette limite.
+                  </p>
+                )}
+              </div>
+            )}
+
             {errorMessage && (
               <div className="bg-red-50 text-red-600 text-xs p-2 px-3 rounded-lg flex items-center gap-1">
                 <AlertCircle size={14} />
@@ -465,7 +504,7 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
               <button
                 id="create-post-btn"
                 type="submit"
-                disabled={isPosting || !inputText.trim()}
+                disabled={isPosting || !inputText.trim() || isPostRestricted}
                 className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl px-4 py-2 text-xs font-extrabold shadow-md shadow-rose-500/10 flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
               >
                 {isPosting ? (

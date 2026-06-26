@@ -197,17 +197,24 @@ export default function App() {
 
   const loadProfile = async (uid: string) => {
     try {
-      // 1. Fetch subscription status
-      const { data: subData } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", uid)
-        .single();
-
-      if (subData && subData.type === "premium" && subData.status === "active") {
-        setIsPremium(true);
+      // 1. Fetch subscription status via RPC function is_user_premium
+      const { data: premiumActive, error: rpcError } = await supabase.rpc('is_user_premium', { check_user_id: uid });
+      if (rpcError) {
+        console.warn("RPC is_user_premium error:", rpcError);
+        // Fallback checks
+        const { data: subData } = await supabase
+          .from("subscriptions")
+          .select("*")
+          .eq("user_id", uid)
+          .maybeSingle();
+        if (subData && subData.type === "premium" && (subData.status === "active" || subData.status === "cancelled")) {
+          const isExpired = subData.end_date ? new Date(subData.end_date) < new Date() : false;
+          setIsPremium(!isExpired);
+        } else {
+          setIsPremium(false);
+        }
       } else {
-        setIsPremium(false);
+        setIsPremium(!!premiumActive);
       }
 
       // 2. Fetch profile data

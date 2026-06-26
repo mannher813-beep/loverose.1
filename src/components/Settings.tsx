@@ -45,6 +45,54 @@ export default function Settings({
   // Navigation tabs within settings
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'security' | 'cgu' | 'privacy'>('profile');
 
+  // Subscription states
+  const [subscriptionData, setSubscriptionData] = useState<any>(null);
+  const [cancellingSub, setCancellingSub] = useState(false);
+
+  const loadSubscription = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+      if (data) {
+        setSubscriptionData(data);
+      }
+    } catch (err) {
+      console.error("Error loading subscription in Settings:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      loadSubscription();
+    }
+  }, [currentUser]);
+
+  const handleCancelSubscription = async () => {
+    if (!confirm("Êtes-vous sûr de vouloir résilier votre abonnement Premium ? Votre accès restera actif jusqu'à la fin de la période de facturation en cours.")) {
+      return;
+    }
+    setCancellingSub(true);
+    try {
+      const { error } = await supabase
+        .from("subscriptions")
+        .update({ status: 'cancelled' })
+        .eq("user_id", currentUser.id);
+
+      if (error) throw error;
+      
+      alert("Votre demande de résiliation a bien été prise en compte.");
+      await loadSubscription();
+      onProfileUpdated(); // reload overall App state
+    } catch (err: any) {
+      alert("Erreur lors de la résiliation : " + (err.message || err));
+    } finally {
+      setCancellingSub(false);
+    }
+  };
+
   // Profile Edit states
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
@@ -817,6 +865,94 @@ export default function Settings({
                       <strong>Rencontrez-vous dans des lieux publics :</strong> Pour vos premiers rendez-vous en personne, privilégiez un café ou restaurant fréquenté et prévenez un proche de votre sortie.
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Mon Abonnement Premium card */}
+              <div className="bg-white border border-slate-150 rounded-3xl p-6 shadow-sm space-y-4 text-left">
+                <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5 border-b border-slate-100 pb-3">
+                  <Sparkles size={16} className="text-rose-500" />
+                  <span>Mon Abonnement Premium</span>
+                </h3>
+
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800">Statut de l'abonnement</h4>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Vérifiez l'état et l'échéance de vos services Premium</p>
+                    </div>
+                    <div>
+                      {isPremium ? (
+                        subscriptionData?.status === "cancelled" ? (
+                          <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-100 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider block text-center">
+                            Résilié (Actif)
+                          </span>
+                        ) : (
+                          <span className="text-[10px] bg-rose-500 text-white font-extrabold px-3 py-1 rounded-full uppercase tracking-wider block text-center shadow-sm shadow-rose-500/10">
+                            Actif ✨
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-3 py-1 rounded-full uppercase tracking-wider block text-center">
+                          Aucun abonnement
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {isPremium && subscriptionData && (
+                    <div className="bg-slate-50 border border-slate-150 p-3.5 rounded-2xl space-y-2 text-xs">
+                      <div className="flex justify-between font-bold text-slate-700 text-[11px]">
+                        <span>Formule :</span>
+                        <span className="text-rose-500 uppercase">LoveRose Premium</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 text-[11px]">
+                        <span>Date d'échéance :</span>
+                        <span className="font-semibold text-slate-700">
+                          {subscriptionData.end_date ? new Date(subscriptionData.end_date).toLocaleDateString('fr-FR', {
+                            year: 'numeric', month: 'long', day: 'numeric'
+                          }) : "Illimitée"}
+                        </span>
+                      </div>
+
+                      {subscriptionData.status === "cancelled" ? (
+                        <p className="text-[10px] text-amber-600 bg-amber-50/50 p-2.5 rounded-xl border border-amber-100/50 leading-relaxed font-semibold mt-2">
+                          ⚠️ Votre abonnement reste actif jusqu'au {subscriptionData.end_date ? new Date(subscriptionData.end_date).toLocaleDateString('fr-FR', {
+                            year: 'numeric', month: 'long', day: 'numeric'
+                          }) : ""}, sans renouvellement après cette date.
+                        </p>
+                      ) : (
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            disabled={cancellingSub}
+                            onClick={handleCancelSubscription}
+                            className="w-full py-2 bg-white hover:bg-red-50 text-red-500 border border-red-100 font-bold text-[10px] uppercase tracking-wide rounded-xl transition cursor-pointer flex items-center justify-center gap-1 disabled:opacity-50"
+                          >
+                            {cancellingSub ? (
+                              <>
+                                <Loader2 size={12} className="animate-spin" />
+                                <span>Résiliation...</span>
+                              </>
+                            ) : (
+                              <span>Résilier mon abonnement</span>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!isPremium && (
+                    <div className="bg-rose-50/30 border border-rose-100/40 p-4 rounded-2xl text-center space-y-2">
+                      <p className="text-[11px] text-slate-600 leading-relaxed font-semibold">
+                        Débloquez les messages illimités, l'upload de 20 photos, le badge Premium et d'autres fonctionnalités exclusives.
+                      </p>
+                      <p className="text-[10px] font-bold text-rose-500">
+                        Rendez-vous dans la boutique pour souscrire !
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 

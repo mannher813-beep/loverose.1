@@ -37,21 +37,44 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
         setCredits(0);
       }
 
-      // 2. Fetch Subscription Status
-      const { data: subData } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", currentUser.id)
-        .single();
-
-      if (subData && subData.type === "premium" && subData.status === "active") {
+      // 2. Fetch Subscription Status via RPC function
+      const { data: premiumActive, error: rpcError } = await supabase.rpc('is_user_premium', { check_user_id: currentUser.id });
+      if (!rpcError && premiumActive) {
         setIsSubscribed(true);
-        if (subData.end_date) {
+        const { data: subData } = await supabase
+          .from("subscriptions")
+          .select("end_date")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+        if (subData?.end_date) {
           setExpiryDate(new Date(subData.end_date).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }));
+        } else {
+          setExpiryDate(null);
         }
       } else {
-        setIsSubscribed(false);
-        setExpiryDate(null);
+        const { data: subData } = await supabase
+          .from("subscriptions")
+          .select("*")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+
+        if (subData && subData.type === "premium" && (subData.status === "active" || subData.status === "cancelled")) {
+          const isExpired = subData.end_date ? new Date(subData.end_date) < new Date() : false;
+          if (!isExpired) {
+            setIsSubscribed(true);
+            if (subData.end_date) {
+              setExpiryDate(new Date(subData.end_date).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }));
+            } else {
+              setExpiryDate(null);
+            }
+          } else {
+            setIsSubscribed(false);
+            setExpiryDate(null);
+          }
+        } else {
+          setIsSubscribed(false);
+          setExpiryDate(null);
+        }
       }
 
       // 3. Fetch Recent Payments
