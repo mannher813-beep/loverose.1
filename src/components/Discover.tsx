@@ -15,7 +15,7 @@ interface DiscoverProps {
 export default function Discover({ currentUser, currentUserProfile, isPremium = false, onMatchDetected }: DiscoverProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedIntentFilter, setSelectedIntentFilter] = useState<string>("tous");
+  const [selectedIntentsFilter, setSelectedIntentsFilter] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [likedUids, setLikedUids] = useState<Set<string>>(new Set());
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -35,7 +35,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
   useEffect(() => {
     if (!currentUser) return;
     loadProfiles();
-  }, [currentUser, selectedIntentFilter]);
+  }, [currentUser, selectedIntentsFilter, currentUserProfile?.preferences]);
 
   const loadProfiles = async () => {
     setIsLoading(true);
@@ -55,20 +55,24 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
         .select("*")
         .neq("uid", currentUser.id); // Exclude self
 
+      // Filtre par genre recherché (preferences de l'utilisateur courant)
+      const myPreferences = currentUserProfile?.preferences || "tous";
+      if (myPreferences === 'homme') {
+        query = query.eq('gender', 'homme');
+      } else if (myPreferences === 'femme') {
+        query = query.eq('gender', 'femme');
+      }
+      // si myPreferences === 'tous', ne filtre pas sur le genre
+
+      // Filtre par type(s) de rencontre recherché(s) — overlaps
+      if (selectedIntentsFilter && selectedIntentsFilter.length > 0) {
+        query = query.overlaps('relationship_intents', selectedIntentsFilter);
+      }
+
       const { data: profilesData, error } = await query;
       if (error) throw error;
 
-      // Robust client-side filter fallback (bypasses any casing or postgres array-contains query variations)
       let filteredProfiles = profilesData || [];
-      if (selectedIntentFilter !== "tous") {
-        filteredProfiles = filteredProfiles.filter(p => 
-          p.relationship_intents && 
-          Array.isArray(p.relationship_intents) &&
-          p.relationship_intents.some((intent: string) => 
-            intent.toLowerCase().trim() === selectedIntentFilter.toLowerCase().trim()
-          )
-        );
-      }
 
       // Filter out profiles already liked or with missing complete profiles
       const unswiped = filteredProfiles.filter(p => !likedSet.has(p.uid));
@@ -184,38 +188,51 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
   const activeProfile = profiles[currentIndex];
   const compatibilityScore = activeProfile ? calculateCompatibility(currentUserProfile, activeProfile) : 0;
 
+  const toggleIntentFilter = (intent: string) => {
+    setSelectedIntentsFilter(prev => {
+      if (prev.includes(intent)) {
+        return prev.filter(i => i !== intent);
+      } else {
+        return [...prev, intent];
+      }
+    });
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50 relative">
       {/* Filter Header */}
       <div className="bg-white border-b border-slate-100 p-4 sticky top-0 z-20 flex flex-wrap gap-2 items-center justify-between">
         <div className="flex items-center gap-2">
           <Filter size={16} className="text-rose-500" />
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Intentions :</span>
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Filtres (Multi-sélection) :</span>
         </div>
         <div className="flex gap-1.5 overflow-x-auto max-w-full pb-1 md:pb-0 scrollbar-none">
           <button
-            onClick={() => setSelectedIntentFilter("tous")}
+            onClick={() => setSelectedIntentsFilter([])}
             className={`px-3 py-1.5 text-xs font-semibold rounded-full transition whitespace-nowrap cursor-pointer ${
-              selectedIntentFilter === "tous"
-                ? "bg-rose-500 text-white shadow-sm"
+              selectedIntentsFilter.length === 0
+                ? "bg-rose-500 text-white shadow-sm font-extrabold"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             Tous les profils
           </button>
-          {intentsList.map(intent => (
-            <button
-              key={intent}
-              onClick={() => setSelectedIntentFilter(intent)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-full transition whitespace-nowrap cursor-pointer ${
-                selectedIntentFilter === intent
-                  ? "bg-rose-500 text-white shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              {intent}
-            </button>
-          ))}
+          {intentsList.map(intent => {
+            const isActive = selectedIntentsFilter.includes(intent);
+            return (
+              <button
+                key={intent}
+                onClick={() => toggleIntentFilter(intent)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-full transition whitespace-nowrap cursor-pointer ${
+                  isActive
+                    ? "bg-rose-500 text-white shadow-sm font-extrabold"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {intent}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -366,7 +383,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
               Vous avez fait le tour des profils disponibles dans votre secteur géographique pour le filtre sélectionné.
             </p>
             <button
-              onClick={() => { setSelectedIntentFilter("tous"); loadProfiles(); }}
+              onClick={() => { setSelectedIntentsFilter([]); loadProfiles(); }}
               className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-semibold rounded-xl text-xs transition cursor-pointer"
             >
               Réinitialiser le filtre

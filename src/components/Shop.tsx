@@ -102,9 +102,17 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
               localStorage.setItem("last_payment_reference", data.reference);
             }
           }
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          if (errData.error) {
+            throw new Error(errData.error);
+          }
         }
-      } catch (apiErr) {
+      } catch (apiErr: any) {
         console.warn("Backend API not reachable or returned 404, trying direct client-side POST:", apiErr);
+        if (apiErr.message && !apiErr.message.includes("Failed to fetch") && !apiErr.message.includes("fetch failed") && !apiErr.message.includes("network")) {
+          throw apiErr;
+        }
       }
 
       // 2. Direct client-side fetch POST to Money Fusion (Official JSON API)

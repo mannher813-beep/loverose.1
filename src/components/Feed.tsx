@@ -8,9 +8,10 @@ interface FeedProps {
   currentUser: any;
   currentUserProfile: Profile | null;
   isPremium?: boolean;
+  onStartChat?: (partnerId: string) => void;
 }
 
-export default function Feed({ currentUser, currentUserProfile, isPremium = false }: FeedProps) {
+export default function Feed({ currentUser, currentUserProfile, isPremium = false, onStartChat }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [inputText, setInputText] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
@@ -637,6 +638,12 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
           currentUserProfile={currentUserProfile}
           isPremium={isPremium}
           onClose={() => setSelectedViewProfile(null)}
+          onStartChat={() => {
+            if (onStartChat) {
+              onStartChat(selectedViewProfile.uid);
+              setSelectedViewProfile(null);
+            }
+          }}
         />
       )}
     </div>

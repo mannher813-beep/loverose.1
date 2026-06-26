@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import { Profile } from "./types";
-import { Heart, MessageSquare, Newspaper, ShoppingBag, Settings, Coins, Sparkles, CheckCircle2, User, LogOut, Loader2, ArrowRight, X } from "lucide-react";
+import { Heart, MessageSquare, Newspaper, ShoppingBag, Settings, Coins, Sparkles, CheckCircle2, User, LogOut, Loader2, ArrowRight, X, Bell } from "lucide-react";
 
 // Component imports
 import SupabaseSetupBanner from "./components/SupabaseSetupBanner";
@@ -14,6 +14,8 @@ import Feed from "./components/Feed";
 import Shop from "./components/Shop";
 import ProfileSettings from "./components/ProfileSettings";
 import SettingsView from "./components/Settings";
+import NotificationsView from "./components/Notifications";
+import Onboarding from "./components/Onboarding";
 
 export default function App() {
   // Simple Path Routing
@@ -23,13 +25,19 @@ export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isPremium, setIsPremium] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'feed' | 'shop' | 'profile' | 'settings'>('discover');
+  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'feed' | 'shop' | 'profile' | 'settings' | 'notifications'>('discover');
+  const [targetChatPartnerId, setTargetChatPartnerId] = useState<string | null>(null);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   
   // Match alerts overlay
   const [matchedPartner, setMatchedPartner] = useState<Profile | null>(null);
 
   // Push notifications overlay state
   const [toastNotification, setToastNotification] = useState<{ title: string; body: string; icon?: string } | null>(null);
+
+  // PWA installation states
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState<boolean>(false);
 
   useEffect(() => {
     const handlePushToast = (e: Event) => {
@@ -50,11 +58,80 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to install prompt: ${outcome}`);
+    setDeferredPrompt(null);
+    setShowInstallBanner(false);
+  };
+
+  useEffect(() => {
     if (currentUser) {
       import("./lib/notifications").then(({ requestNotificationPermission }) => {
         requestNotificationPermission();
       });
     }
+  }, [currentUser]);
+
+  const fetchUnreadNotificationsCount = async (uid: string) => {
+    try {
+      const { count, error } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", uid)
+        .eq("lu", false);
+
+      if (!error && count !== null) {
+        setUnreadNotificationsCount(count);
+      }
+    } catch (err) {
+      console.error("Error loading unread notification count:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    fetchUnreadNotificationsCount(currentUser.id);
+
+    // Listen to manual unread counter triggers
+    const handleReadTrigger = () => fetchUnreadNotificationsCount(currentUser.id);
+    window.addEventListener("loverose-notification-read", handleReadTrigger);
+
+    // Subscribe to notifications updates
+    const channel = supabase
+      .channel(`user-notifications-count-${currentUser.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${currentUser.id}`
+        },
+        () => {
+          fetchUnreadNotificationsCount(currentUser.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("loverose-notification-read", handleReadTrigger);
+      supabase.removeChannel(channel);
+    };
   }, [currentUser]);
 
   useEffect(() => {
@@ -173,6 +250,42 @@ export default function App() {
     }
   };
 
+  const startChatWithUser = async (partnerId: string) => {
+    try {
+      // 1. Check if a match already exists between currentUser.id and partnerId
+      const { data: existingMatches, error: matchError } = await supabase
+        .from("matches")
+        .select("*")
+        .contains("users", [currentUser.id, partnerId]);
+
+      if (!matchError && existingMatches && existingMatches.length > 0) {
+        // Match already exists
+      } else {
+        // 2. No match exists, insert match directly
+        const { error: createError } = await supabase
+          .from("matches")
+          .insert([{ users: [currentUser.id, partnerId] }]);
+
+        if (createError) {
+          // Fallback: try inserting reciprocal likes to trigger automatic DB match trigger
+          await supabase.from("likes").upsert([
+            { from_uid: currentUser.id, to_uid: partnerId },
+            { from_uid: partnerId, to_uid: currentUser.id }
+          ]);
+        }
+      }
+
+      // 3. Navigate to chat and pre-select partner
+      setTargetChatPartnerId(partnerId);
+      setActiveTab("chat");
+    } catch (err) {
+      console.error("Error starting chat with user:", err);
+      // Fallback: navigate to chat tab anyway
+      setTargetChatPartnerId(partnerId);
+      setActiveTab("chat");
+    }
+  };
+
   // --- RENDERING PATH ROUTING FALLBACKS ---
 
   // Render Supabase Setup Guide if credentials aren't loaded yet
@@ -248,9 +361,25 @@ export default function App() {
     return <Auth onSuccess={() => setIsLoading(true)} />;
   }
 
-  // If logged in, check if user profile lacks mandatory relationship intentions.
-  // Force user to select at least one intent before swiping/matching.
-  const isProfileIncomplete = !profile || !profile.relationship_intents || profile.relationship_intents.length === 0;
+  // Check if profile is incomplete
+  const isProfileIncomplete = !profile || 
+    !profile.full_name || 
+    !profile.age || 
+    !profile.location || 
+    !profile.gender || 
+    !profile.preferences || 
+    !profile.relationship_intents || 
+    profile.relationship_intents.length === 0 || 
+    !profile.avatar_url;
+
+  if (isProfileIncomplete) {
+    return (
+      <Onboarding
+        currentUser={currentUser}
+        onComplete={() => loadProfile(currentUser.id)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col h-screen overflow-hidden font-sans text-slate-800">
@@ -298,6 +427,18 @@ export default function App() {
             <span>Boutique</span>
           </button>
           <button
+            onClick={() => setActiveTab('notifications')}
+            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 relative ${activeTab === 'notifications' ? 'text-rose-500 font-extrabold' : ''}`}
+          >
+            <Bell size={16} />
+            <span>Notifications</span>
+            {unreadNotificationsCount > 0 && (
+              <span className="absolute -top-2.5 -right-3 bg-rose-500 text-white text-[8px] font-black h-4.5 w-4.5 rounded-full flex items-center justify-center animate-pulse border border-white">
+                {unreadNotificationsCount}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setActiveTab('profile')}
             className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'profile' ? 'text-rose-500 font-extrabold' : ''}`}
           >
@@ -339,6 +480,29 @@ export default function App() {
       {/* Main Content Workspace viewport */}
       <main className="flex-1 overflow-hidden flex flex-col bg-slate-50 relative min-h-0">
         
+        {showInstallBanner && (
+          <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold shadow-inner relative flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <Heart size={14} className="fill-white animate-pulse" />
+              <span>Installez LoveRose sur votre écran d'accueil pour une expérience 100% immersive !</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleInstallApp}
+                className="bg-white text-rose-600 px-3 py-1 rounded-full font-black text-[10px] tracking-wide uppercase transition hover:bg-rose-50 cursor-pointer shadow-sm"
+              >
+                Installer
+              </button>
+              <button
+                onClick={() => setShowInstallBanner(false)}
+                className="text-white/80 hover:text-white cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {false ? (
           // Force Onboarding Flow for Completing intents
           <div className="flex-1 flex items-center justify-center p-4">
@@ -379,6 +543,8 @@ export default function App() {
                 currentUserProfile={profile}
                 isPremium={isPremium}
                 onOpenShop={() => setActiveTab('shop')}
+                targetChatPartnerId={targetChatPartnerId}
+                onClearTargetChatPartner={() => setTargetChatPartnerId(null)}
               />
             )}
             {activeTab === 'feed' && (
@@ -386,6 +552,7 @@ export default function App() {
                 currentUser={currentUser}
                 currentUserProfile={profile}
                 isPremium={isPremium}
+                onStartChat={startChatWithUser}
               />
             )}
             {activeTab === 'shop' && (
@@ -407,9 +574,17 @@ export default function App() {
               <SettingsView
                 currentUser={currentUser}
                 profile={profile}
+                isPremium={isPremium}
                 onBackToProfile={() => setActiveTab('profile')}
                 onLogout={handleLogout}
                 onProfileUpdated={() => loadProfile(currentUser.id)}
+              />
+            )}
+            {activeTab === 'notifications' && (
+              <NotificationsView
+                currentUser={currentUser}
+                onNavigateToTab={(tab) => setActiveTab(tab)}
+                onStartChat={startChatWithUser}
               />
             )}
           </>
@@ -445,6 +620,18 @@ export default function App() {
         >
           <ShoppingBag size={18} />
           <span className="text-[10px]">Boutique</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('notifications')}
+          className={`flex flex-col items-center gap-1 cursor-pointer relative ${activeTab === 'notifications' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
+        >
+          <Bell size={18} fill={activeTab === 'notifications' ? 'currentColor' : 'none'} />
+          <span className="text-[10px]">Notifs</span>
+          {unreadNotificationsCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[8px] font-black h-4.5 w-4.5 rounded-full flex items-center justify-center animate-pulse border border-white">
+              {unreadNotificationsCount}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab('profile')}

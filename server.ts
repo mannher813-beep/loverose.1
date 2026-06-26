@@ -190,7 +190,10 @@ async function startServer() {
           ]);
         if (error) {
           console.error("Error creating record in 'payments' table:", error);
+          return res.status(500).json({ error: "Impossible de créer l'enregistrement de paiement dans la base de données. Transaction annulée pour votre sécurité." });
         }
+      } else {
+        return res.status(500).json({ error: "Client d'administration de la base de données indisponible. Transaction annulée." });
       }
 
       return res.json({ checkoutUrl, reference, isSandbox: false });
@@ -229,9 +232,8 @@ async function startServer() {
         let isPaidDirectly = false;
 
         try {
-          // Check both variants of the notification URL
+          // Check the correct Money Fusion notification URL (avoiding www. which fails SSL validation)
           const checkUrls = [
-            `https://www.pay.moneyfusion.net/paiementNotif/${reference}`,
             `https://pay.moneyfusion.net/paiementNotif/${reference}`
           ];
 

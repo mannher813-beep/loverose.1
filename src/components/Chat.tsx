@@ -11,9 +11,18 @@ interface ChatProps {
   currentUserProfile: Profile | null;
   isPremium?: boolean;
   onOpenShop: () => void;
+  targetChatPartnerId?: string | null;
+  onClearTargetChatPartner?: () => void;
 }
 
-export default function Chat({ currentUser, currentUserProfile, isPremium = false, onOpenShop }: ChatProps) {
+export default function Chat({ 
+  currentUser, 
+  currentUserProfile, 
+  isPremium = false, 
+  onOpenShop,
+  targetChatPartnerId = null,
+  onClearTargetChatPartner
+}: ChatProps) {
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -26,6 +35,19 @@ export default function Chat({ currentUser, currentUserProfile, isPremium = fals
   const [selectedViewProfile, setSelectedViewProfile] = useState<Profile | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-focus selected conversation partner
+  useEffect(() => {
+    if (targetChatPartnerId && matches.length > 0) {
+      const matchingMatch = matches.find(m => m.other_profile?.uid === targetChatPartnerId);
+      if (matchingMatch) {
+        setSelectedMatch(matchingMatch);
+        if (onClearTargetChatPartner) {
+          onClearTargetChatPartner();
+        }
+      }
+    }
+  }, [targetChatPartnerId, matches, onClearTargetChatPartner]);
 
   useEffect(() => {
     if (!currentUser) return;

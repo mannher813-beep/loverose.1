@@ -21,96 +21,30 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
     if (!reference) return;
     setIsValidating(true);
     try {
-      // 1. Fetch payment details from Supabase directly
-      const { data: dbPayment, error: fetchErr } = await supabase
-        .from("payments")
-        .select("*")
-        .eq("reference", reference)
-        .single();
-
-      if (fetchErr || !dbPayment) {
-        throw new Error("Impossible de récupérer les détails du paiement. Veuillez réessayer.");
-      }
-
-      const pId = dbPayment.plan_id;
-      const amt = dbPayment.montant;
-      const pName = dbPayment.plan_name;
-      const pUserId = dbPayment.user_id;
-
-      // 2. Direct update payments table row to success
-      const { error: payErr } = await supabase
-        .from("payments")
-        .update({
-          statut: "success",
-          transaction_id: `MF-TX-CLIENT-${Date.now()}`
-        })
-        .eq("reference", reference);
-
-      if (payErr) {
-        console.error("Direct payment update error:", payErr);
-      }
-
-      // 3. Process credits/subscription directly via client-side Supabase
-      if (pId.startsWith("pack_")) {
-        let creditAmount = 10;
-        if (pId === "pack_argent") creditAmount = 50;
-        else if (pId === "pack_or") creditAmount = 100;
-
-        const { data: creditsData } = await supabase
-          .from("user_credits")
-          .select("*")
-          .eq("user_id", pUserId)
-          .single();
-
-        if (creditsData) {
-          await supabase
-            .from("user_credits")
-            .update({ balance: (creditsData.balance || 0) + creditAmount })
-            .eq("user_id", pUserId);
-        } else {
-          await supabase
-            .from("user_credits")
-            .insert([{ user_id: pUserId, balance: creditAmount }]);
+      // PROPRE ET SÉCURISÉ : On demande au serveur de vérifier le paiement auprès de Money Fusion
+      const res = await fetch(`/api/payments/verify?reference=${reference}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.payment) {
+          setPlanName(data.payment.plan_name);
+          setAmount(data.payment.montant);
         }
-      } else if (pId === "premium_sub") {
-        const now = new Date();
-        const expiresAt = new Date();
-        expiresAt.setDate(now.getDate() + 30);
-
-        await supabase
-          .from("subscriptions")
-          .upsert({
-            user_id: pUserId,
-            type: "premium",
-            status: "active",
-            start_date: now.toISOString(),
-            end_date: expiresAt.toISOString(),
-            updated_at: now.toISOString()
-          });
-      }
-
-      // 4. Insert success notification
-      await supabase
-        .from("notifications")
-        .insert([{
-          user_id: pUserId,
-          sender_id: pUserId,
-          type: "payment_success",
-          content: `Félicitations ! Votre achat pour "${pName}" a été validé avec succès (validation directe).`,
-          lu: false
-        }]);
-
-      setPlanName(pName);
-      setAmount(amt);
-      setStatus("success");
-      localStorage.removeItem("last_payment_reference");
-      
-      if (pUserId && loadProfile) {
-        await loadProfile(pUserId);
+        if (data.status === "success") {
+          setStatus("success");
+          localStorage.removeItem("last_payment_reference");
+          if (userId && loadProfile) {
+            await loadProfile(userId);
+          }
+        } else {
+          alert("La passerelle Money Fusion n'a pas encore validé ce paiement. Veuillez patienter ou réessayer dans un instant.");
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Erreur de validation serveur.");
       }
     } catch (err: any) {
-      console.error("Manual client validation error:", err);
-      alert("Erreur de validation directe : " + (err.message || "Impossible de mettre à jour le compte."));
+      console.error("Manual server validation error:", err);
+      alert("Erreur lors de la vérification : " + (err.message || "Veuillez réessayer plus tard."));
     } finally {
       setIsValidating(false);
     }
