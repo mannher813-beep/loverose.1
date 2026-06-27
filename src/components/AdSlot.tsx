@@ -9,7 +9,7 @@ interface AdSlotProps {
 }
 
 export default function AdSlot({ slot, className = "", userId, countryCode }: AdSlotProps) {
-  const [isEnabled, setIsEnabled] = useState<boolean>(true);
+  const [isEnabled, setIsEnabled] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hasRecordedImpression, setHasRecordedImpression] = useState<boolean>(false);
 
@@ -28,12 +28,12 @@ export default function AdSlot({ slot, className = "", userId, countryCode }: Ad
         if (data) {
           setIsEnabled(data.value === "1");
         } else {
-          // If not configured, default to enabled
-          setIsEnabled(true);
+          // If not configured, default to disabled (render nothing)
+          setIsEnabled(false);
         }
       } catch (err) {
         console.warn("Failed to fetch platform setting for ads:", err);
-        setIsEnabled(true);
+        setIsEnabled(false);
       } finally {
         setIsLoading(false);
       }

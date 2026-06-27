@@ -25,7 +25,9 @@ export default function App() {
   const [currentSearch, setCurrentSearch] = useState(window.location.search);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [subscription, setSubscription] = useState<any>(null);
   const [isPremium, setIsPremium] = useState<boolean>(false);
+  const [showConversionPopup, setShowConversionPopup] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'feed' | 'shop' | 'profile' | 'settings' | 'notifications' | 'creators'>('discover');
   const [targetChatPartnerId, setTargetChatPartnerId] = useState<string | null>(null);
@@ -305,24 +307,34 @@ export default function App() {
 
   const loadProfile = async (uid: string) => {
     try {
-      // 1. Fetch subscription status via RPC function is_user_premium
-      const { data: premiumActive, error: rpcError } = await supabase.rpc('is_user_premium', { check_user_id: uid });
-      if (rpcError) {
-        console.warn("RPC is_user_premium error:", rpcError);
-        // Fallback checks
-        const { data: subData } = await supabase
-          .from("subscriptions")
-          .select("*")
-          .eq("user_id", uid)
-          .maybeSingle();
-        if (subData && subData.type === "premium" && (subData.status === "active" || subData.status === "cancelled")) {
-          const isExpired = subData.end_date ? new Date(subData.end_date) < new Date() : false;
-          setIsPremium(!isExpired);
-        } else {
-          setIsPremium(false);
+      // 1. Fetch subscription status from subscriptions table directly
+      const { data: subData } = await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_id", uid)
+        .maybeSingle();
+
+      setSubscription(subData);
+
+      if (subData) {
+        const now = new Date();
+        const endDate = new Date(subData.end_date);
+        const isActiveOrTrial = subData.status === 'active' || subData.status === 'trial';
+        const isCurrentlyPremium = isActiveOrTrial && endDate > now;
+        setIsPremium(isCurrentlyPremium);
+
+        // Pop-up de conversion à J-3 avant expiration
+        if (isCurrentlyPremium && subData.status === 'trial') {
+          const diffTime = endDate.getTime() - now.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          // If 3 days or fewer remaining, and not yet seen in session
+          if (diffDays <= 3 && !sessionStorage.getItem("conversion_popup_seen")) {
+            setShowConversionPopup(true);
+            sessionStorage.setItem("conversion_popup_seen", "true");
+          }
         }
       } else {
-        setIsPremium(!!premiumActive);
+        setIsPremium(false);
       }
 
       // 2. Fetch profile data
@@ -513,6 +525,12 @@ export default function App() {
       />
     );
   }
+
+  const getRemainingDays = () => {
+    if (!subscription || !subscription.end_date) return 0;
+    const diff = new Date(subscription.end_date).getTime() - new Date().getTime();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col h-screen overflow-hidden font-sans text-slate-800">
@@ -875,6 +893,55 @@ export default function App() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Pop-up de conversion à J-3 avant expiration */}
+      {showConversionPopup && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex flex-col justify-center items-center p-4 z-50 animate-fade-in font-sans">
+          <div className="max-w-sm w-full text-center space-y-5 p-8 bg-white rounded-3xl border border-slate-100 shadow-2xl relative">
+            <button
+              onClick={() => setShowConversionPopup(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+            
+            <div className="mx-auto bg-amber-50 w-14 h-14 rounded-full flex items-center justify-center text-amber-500">
+              <Sparkles size={28} className="fill-amber-400 animate-pulse" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider inline-block">
+                Essai Premium bientôt terminé ⏳
+              </span>
+              <h2 className="text-lg font-black text-slate-900 tracking-tight">
+                Plus que {getRemainingDays()} jours d'essai gratuit !
+              </h2>
+              <p className="text-slate-500 text-[11px] leading-relaxed px-1">
+                Ne perdez pas l'accès à vos fonctionnalités exclusives LoveRose Premium ! Discutez en illimité, swipez sans limite et découvrez qui a liké votre profil.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                onClick={() => {
+                  setShowConversionPopup(false);
+                  setActiveTab('shop');
+                }}
+                className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-rose-500/10 flex items-center justify-center gap-1.5 transition cursor-pointer"
+              >
+                <span>Passer au Premium Permanent</span>
+                <ArrowRight size={14} />
+              </button>
+              <button
+                onClick={() => setShowConversionPopup(false)}
+                className="w-full py-2 text-slate-400 hover:text-slate-600 font-bold text-[10px] transition cursor-pointer"
+              >
+                Continuer l'essai pour l'instant
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -42,11 +42,36 @@ export default function ProfileSettings({
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [subscription, setSubscription] = useState<any>(null);
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [generatingCard, setGeneratingCard] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loadSub = async () => {
+      try {
+        const { data } = await supabase
+          .from("subscriptions")
+          .select("*")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+        setSubscription(data);
+      } catch (err) {
+        console.error("Error loading subscription in ProfileSettings:", err);
+      }
+    };
+    if (currentUser) {
+      loadSub();
+    }
+  }, [currentUser]);
+
+  const getRemainingDays = () => {
+    if (!subscription || !subscription.end_date) return 0;
+    const diff = new Date(subscription.end_date).getTime() - new Date().getTime();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  };
 
   const handleCopyLink = async () => {
     if (!profile) return;
@@ -225,10 +250,17 @@ export default function ProfileSettings({
 
                 {/* Premium badge */}
                 {isPremium && (
-                  <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                    <Sparkles size={11} className="text-amber-500 fill-amber-500 animate-pulse" />
-                    <span>Premium</span>
-                  </span>
+                  subscription?.status === 'trial' ? (
+                    <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                      <Sparkles size={11} className="text-amber-500 fill-amber-500 animate-pulse" />
+                      <span>Essai Premium — {getRemainingDays()} jours restants</span>
+                    </span>
+                  ) : (
+                    <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                      <Sparkles size={11} className="text-amber-500 fill-amber-500 animate-pulse" />
+                      <span>Premium</span>
+                    </span>
+                  )
                 )}
               </div>
               <p className="text-xs text-slate-400 font-extrabold mt-0.5">

@@ -920,6 +920,10 @@ export default function Settings({
                           <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-100 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider block text-center">
                             Résilié (Actif)
                           </span>
+                        ) : subscriptionData?.status === "trial" ? (
+                          <span className="text-[10px] bg-amber-500 text-white font-extrabold px-3 py-1 rounded-full uppercase tracking-wider block text-center shadow-sm shadow-amber-500/10 animate-pulse">
+                            Essai Premium ⏳
+                          </span>
                         ) : (
                           <span className="text-[10px] bg-rose-500 text-white font-extrabold px-3 py-1 rounded-full uppercase tracking-wider block text-center shadow-sm shadow-rose-500/10">
                             Actif ✨
@@ -937,7 +941,9 @@ export default function Settings({
                     <div className="bg-slate-50 border border-slate-150 p-3.5 rounded-2xl space-y-2 text-xs">
                       <div className="flex justify-between font-bold text-slate-700 text-[11px]">
                         <span>Formule :</span>
-                        <span className="text-rose-500 uppercase">LoveRose Premium</span>
+                        <span className="text-rose-500 uppercase">
+                          {subscriptionData.status === "trial" ? "Essai Gratuit LoveRose Premium" : "LoveRose Premium"}
+                        </span>
                       </div>
                       <div className="flex justify-between text-slate-500 text-[11px]">
                         <span>Date d'échéance :</span>

@@ -16,6 +16,7 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
   const [posts, setPosts] = useState<Post[]>([]);
   const [inputText, setInputText] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
+  const [mediaDimensions, setMediaDimensions] = useState<Array<{width: number; height: number; ratio: number}>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPosting, setIsPosting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -42,6 +43,17 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
       alert("L'image est trop volumineuse. Veuillez choisir un fichier de moins de 3 Mo.");
       return;
     }
+
+    // Capture dimensions of the selected image file
+    const img = new window.Image();
+    img.onload = () => {
+      setMediaDimensions([{
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        ratio: img.naturalWidth / img.naturalHeight
+      }]);
+    };
+    img.src = URL.createObjectURL(file);
 
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -400,7 +412,9 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
           {
             author_id: currentUser.id,
             contenu: inputText.trim(),
-            medias: mediaUrl ? [mediaUrl] : []
+            medias: mediaUrl ? [mediaUrl] : [],
+            media_types: mediaUrl ? ['image'] : [],
+            media_dimensions: mediaUrl ? mediaDimensions : []
           }
         ])
         .select();
@@ -574,12 +588,18 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
                     
                     {/* Post media */}
                     {p.medias && p.medias.length > 0 && p.medias[0] && (
-                      <div className="rounded-2xl overflow-hidden max-h-72 bg-slate-150">
+                      <div className="rounded-2xl overflow-hidden bg-slate-950 border border-slate-100/5 flex items-center justify-center max-h-[80vh] w-full">
                         <img
                           src={p.medias[0]}
                           alt="Illustration post"
                           referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover hover:scale-[1.01] transition duration-300"
+                          style={{
+                            width: '100%',
+                            aspectRatio: p.media_dimensions && p.media_dimensions[0] ? `${p.media_dimensions[0].ratio}` : 'auto',
+                            objectFit: 'contain',
+                            maxHeight: '80vh',
+                          }}
+                          className="hover:scale-[1.005] transition duration-300"
                         />
                       </div>
                     )}

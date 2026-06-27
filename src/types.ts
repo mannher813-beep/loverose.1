@@ -66,6 +66,8 @@ export interface Post {
   author_id: string;
   contenu: string;
   medias?: string[];
+  media_types?: string[];
+  media_dimensions?: Array<{ width: number; height: number; ratio: number }>;
   created_at: string;
   author_profile?: Profile;
 }

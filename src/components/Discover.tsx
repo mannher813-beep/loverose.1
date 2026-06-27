@@ -420,7 +420,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
             <p className="text-slate-400 text-xs font-medium">Recherche des profils compatibles...</p>
           </div>
         ) : activeProfile ? (
-          <div className="w-full max-w-md flex flex-col h-full md:max-h-[600px] justify-between space-y-4">
+          <div className="w-full max-w-md flex flex-col items-center justify-between space-y-4 mx-auto">
             
             {/* The Main Swing Card */}
             <AnimatePresence mode="wait">
@@ -430,110 +430,115 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.95, opacity: 0, y: -15 }}
                 transition={{ duration: 0.3 }}
-                className="flex-1 bg-white border border-slate-150 rounded-3xl overflow-hidden shadow-md flex flex-col relative"
+                style={{
+                  aspectRatio: '9/16',
+                  width: '100%',
+                  maxWidth: '380px',
+                  borderRadius: '24px',
+                  overflow: 'hidden',
+                  position: 'relative',
+                }}
+                className="bg-white border border-slate-150 shadow-xl flex flex-col relative"
               >
-                {/* Photo and compatibility overlay */}
-                <div className="relative h-72 md:h-80 bg-slate-100 flex-shrink-0">
-                  <img
-                    src={activeProfile.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${activeProfile.full_name || activeProfile.uid}`}
-                    alt={activeProfile.full_name || "Profil"}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover"
-                  />
-                  
-                  {/* Compatibility Badge */}
-                  <div className="absolute top-4 left-4 bg-white/95 backdrop-blur shadow-sm px-3.5 py-1.5 rounded-full flex items-center space-x-1.5 z-10 border border-rose-500/10">
-                    <Sparkles size={14} className="text-rose-500 animate-pulse fill-rose-500" />
-                    <span className="text-xs font-bold text-slate-800">
-                      {compatibilityScore}% de compatibilité
-                    </span>
-                  </div>
+                {/* Photo underlay */}
+                <img
+                  src={activeProfile.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${activeProfile.full_name || activeProfile.uid}`}
+                  alt={activeProfile.full_name || "Profil"}
+                  referrerPolicy="no-referrer"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'center top',
+                  }}
+                  className="absolute inset-0"
+                />
+                
+                {/* Shading overlay (black gradient for clear text contrast) */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-1"></div>
 
-                  {/* Verification Status Badge */}
-                  {activeProfile.verification_status === "verified" && (
-                    <div className="absolute top-4 right-4 bg-emerald-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[10px] font-bold shadow-md uppercase tracking-wider">
-                      <CheckCircle size={10} fill="white" className="text-emerald-500" />
-                      <span>Vérifié</span>
-                    </div>
-                  )}
-
-                  {/* Shading overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-
-                  {/* Basic Info Absolute Bottom inside the image */}
-                  <div className="absolute bottom-4 left-6 right-6 text-white space-y-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-baseline space-x-2">
-                        <h2 className="text-2xl font-bold tracking-tight">{activeProfile.full_name || "Anonyme"}</h2>
-                        {activeProfile.age && <span className="text-xl font-medium">{activeProfile.age} ans</span>}
-                      </div>
-                      
-                      {renderOnlineStatus(activeProfile)}
-                    </div>
-                    {activeProfile.location && (
-                      <p className="text-xs text-slate-200 flex items-center">
-                        <MapPin size={12} className="mr-1 text-rose-400" />
-                        <span>{activeProfile.location}</span>
-                        {currentUserProfile?.latitude && currentUserProfile?.longitude && activeProfile.latitude && activeProfile.longitude && (
-                          <span className="ml-2 bg-rose-950/40 border border-rose-500/20 px-2 py-0.5 rounded-full text-[10px] font-extrabold text-rose-300">
-                            à {Math.round(calculateDistance(currentUserProfile.latitude, currentUserProfile.longitude, activeProfile.latitude, activeProfile.longitude))} km
-                          </span>
-                        )}
-                      </p>
-                    )}
-                  </div>
+                {/* Compatibility Badge */}
+                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur shadow-sm px-3 py-1 rounded-full flex items-center space-x-1 z-10 border border-rose-500/10">
+                  <Sparkles size={11} className="text-rose-500 animate-pulse fill-rose-500" />
+                  <span className="text-[10px] font-black text-slate-800">
+                    {compatibilityScore}% Compatibilité
+                  </span>
                 </div>
 
-                {/* Profile Details Content */}
-                <div className="flex-1 p-6 space-y-4 overflow-y-auto">
-                  {/* Bio */}
+                {/* Verification Status Badge */}
+                {activeProfile.verification_status === "verified" && (
+                  <div className="absolute top-4 right-4 bg-emerald-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[9px] font-bold shadow-md uppercase tracking-wider z-10">
+                    <CheckCircle size={10} fill="white" className="text-emerald-500" />
+                    <span>Vérifié</span>
+                  </div>
+                )}
+
+                {/* Information Overlay Content */}
+                <div className="absolute bottom-0 left-0 right-0 p-5 text-white space-y-2.5 flex flex-col justify-end z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-baseline space-x-2">
+                      <h2 className="text-xl font-extrabold tracking-tight drop-shadow-md">{activeProfile.full_name || "Anonyme"}</h2>
+                      {activeProfile.age && <span className="text-base font-bold text-white/95 drop-shadow-md">{activeProfile.age} ans</span>}
+                    </div>
+                    {renderOnlineStatus(activeProfile)}
+                  </div>
+
+                  {activeProfile.location && (
+                    <p className="text-[11px] text-slate-200 flex items-center">
+                      <MapPin size={11} className="mr-1 text-rose-400 flex-shrink-0" />
+                      <span className="truncate">{activeProfile.location}</span>
+                      {currentUserProfile?.latitude && currentUserProfile?.longitude && activeProfile.latitude && activeProfile.longitude && (
+                        <span className="ml-2 bg-rose-950/60 border border-rose-500/25 px-1.5 py-0.2 rounded-full text-[9px] font-extrabold text-rose-300">
+                          {Math.round(calculateDistance(currentUserProfile.latitude, currentUserProfile.longitude, activeProfile.latitude, activeProfile.longitude))} km
+                        </span>
+                      )}
+                    </p>
+                  )}
+
                   {activeProfile.bio ? (
-                    <p className="text-slate-600 text-sm leading-relaxed">{activeProfile.bio}</p>
+                    <p className="text-white/85 text-[11px] leading-snug line-clamp-2 drop-shadow-sm font-medium">
+                      {activeProfile.bio}
+                    </p>
                   ) : (
-                    <p className="text-slate-400 text-xs italic">Cet utilisateur n'a pas encore rédigé sa biographie.</p>
+                    <p className="text-white/60 text-[11px] italic">Cet utilisateur n'a pas encore rédigé sa biographie.</p>
                   )}
 
                   {/* Intents tags */}
-                  <div className="space-y-2">
-                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recherche :</h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {activeProfile.relationship_intents && activeProfile.relationship_intents.length > 0 ? (
-                        activeProfile.relationship_intents.map(intent => {
-                          const isShared = currentUserProfile?.relationship_intents?.includes(intent);
-                          return (
-                            <span
-                              key={intent}
-                              className={`text-xs px-2.5 py-1 rounded-lg font-medium border ${
-                                isShared
-                                  ? "bg-rose-50 border-rose-200 text-rose-700 font-bold"
-                                  : "bg-slate-50 border-slate-100 text-slate-500"
-                              }`}
-                            >
-                              {intent} {isShared && "✓"}
-                            </span>
-                          );
-                        })
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">Aucune intention sélectionnée</span>
-                      )}
+                  {activeProfile.relationship_intents && activeProfile.relationship_intents.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {activeProfile.relationship_intents.slice(0, 3).map(intent => {
+                        const isShared = currentUserProfile?.relationship_intents?.includes(intent);
+                        return (
+                          <span
+                            key={intent}
+                            className={`text-[9px] px-2 py-0.5 rounded-lg font-bold ${
+                              isShared
+                                ? "bg-rose-500 text-white border border-rose-400"
+                                : "bg-black/55 text-slate-300 border border-white/10"
+                            }`}
+                          >
+                            {intent}
+                          </span>
+                        );
+                      })}
                     </div>
-                  </div>
+                  )}
 
                   {/* Report and View actions */}
-                  <div className="pt-2 flex justify-between items-center border-t border-slate-100 mt-2">
+                  <div className="pt-2.5 flex justify-between items-center border-t border-white/10 mt-1">
                     <button
                       onClick={() => setSelectedViewProfile(activeProfile)}
-                      className="text-rose-500 hover:text-rose-600 text-xs flex items-center gap-1 transition cursor-pointer font-bold bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100"
+                      className="text-white hover:text-rose-200 text-[10px] flex items-center gap-1 transition cursor-pointer font-extrabold bg-rose-500/80 hover:bg-rose-500 px-2.5 py-1.5 rounded-lg border border-rose-400/20"
                     >
-                      <Eye size={14} />
+                      <Eye size={12} />
                       <span>Détails & Photos</span>
                     </button>
                     <button
                       onClick={() => setIsReportOpen(true)}
-                      className="text-slate-400 hover:text-red-500 text-xs flex items-center gap-1 transition cursor-pointer font-medium"
+                      className="text-white/60 hover:text-red-400 text-[10px] flex items-center gap-1 transition cursor-pointer font-bold"
                     >
-                      <ShieldAlert size={14} />
-                      <span>Signaler ce profil</span>
+                      <ShieldAlert size={12} />
+                      <span>Signaler</span>
                     </button>
                   </div>
                 </div>
