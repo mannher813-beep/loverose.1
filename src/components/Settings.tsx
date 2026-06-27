@@ -105,6 +105,8 @@ export default function Settings({
   const [selectedIntents, setSelectedIntents] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [preferredLanguage, setPreferredLanguage] = useState<'fr' | 'en'>('fr');
+  const [maxDistanceKm, setMaxDistanceKm] = useState<number>(50);
 
   // Verification states
   const [verificationStatus, setVerificationStatus] = useState<string>("none");
@@ -134,6 +136,8 @@ export default function Settings({
       setAvatarUrl(profile.avatar_url || "");
       setSelectedIntents(profile.relationship_intents || []);
       setVerificationStatus(profile.verification_status || "none");
+      setPreferredLanguage(profile.preferred_language || "fr");
+      setMaxDistanceKm(profile.max_distance_km || 50);
       
       const loadedPhotos = profile.photos || JSON.parse(localStorage.getItem(`profile_photos_${currentUser.id}`) || "[]");
       setPhotos(loadedPhotos);
@@ -245,6 +249,8 @@ export default function Settings({
         avatar_url: avatarUrl || validPhotos[0] || "",
         relationship_intents: selectedIntents,
         photos: validPhotos,
+        preferred_language: preferredLanguage,
+        max_distance_km: maxDistanceKm,
         updated_at: new Date().toISOString()
       };
 
@@ -649,6 +655,33 @@ export default function Settings({
                       <option value="homme">Des Hommes</option>
                       <option value="tous">Tout le monde</option>
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Langue Préférée</label>
+                    <select
+                      value={preferredLanguage}
+                      onChange={(e) => setPreferredLanguage(e.target.value as any)}
+                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-400 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                    >
+                      <option value="fr">Français</option>
+                      <option value="en">English</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Distance Maximale : {maxDistanceKm} km</label>
+                    <div className="flex items-center space-x-3 mt-3">
+                      <input
+                        type="range"
+                        min={5}
+                        max={200}
+                        step={5}
+                        value={maxDistanceKm}
+                        onChange={(e) => setMaxDistanceKm(parseInt(e.target.value) || 50)}
+                        className="w-full accent-rose-500 cursor-pointer"
+                      />
+                    </div>
                   </div>
                 </div>
 

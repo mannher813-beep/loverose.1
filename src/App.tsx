@@ -135,6 +135,112 @@ export default function App() {
     };
   }, [currentUser]);
 
+  // Real-time presence status, location tracker, and subscription watcher
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // 1. Initial location sync if permission is granted
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            await supabase.rpc('update_my_location', {
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+            });
+          } catch (e) {
+            console.warn("Failed to update location in Supabase:", e);
+          }
+        },
+        (err) => {
+          console.log("Geolocation permission not active or rejected:", err);
+        }
+      );
+    }
+
+    // 2. Set presence online immediately
+    const setOnline = async () => {
+      try {
+        await supabase.rpc('update_my_presence', { online: true });
+      } catch (e) {
+        console.warn("Failed to update presence online", e);
+      }
+    };
+    setOnline();
+
+    // Heartbeat every 60 seconds
+    const presenceHeartbeat = setInterval(async () => {
+      try {
+        await supabase.rpc('update_my_presence', { online: true });
+      } catch (e) {}
+    }, 60000);
+
+    // Set offline callback
+    const setOffline = async () => {
+      try {
+        await supabase.rpc('update_my_presence', { online: false });
+      } catch (e) {}
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        setOffline();
+      } else {
+        setOnline();
+      }
+    };
+
+    window.addEventListener("beforeunload", setOffline);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // 3. Realtime subscription to the user's subscription record
+    const subChannel = supabase
+      .channel(`user-subscriptions-${currentUser.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "subscriptions",
+          filter: `user_id=eq.${currentUser.id}`
+        },
+        async () => {
+          // Re-evaluate premium status
+          loadProfile(currentUser.id);
+        }
+      )
+      .subscribe();
+
+    // 4. Realtime subscription to the user's profile changes (online status / updates)
+    const profileChannel = supabase
+      .channel(`user-profile-${currentUser.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "profiles",
+          filter: `uid=eq.${currentUser.id}`
+        },
+        (payload) => {
+          if (payload.new) {
+            setProfile(payload.new as Profile);
+            localStorage.setItem(`profile_backup_${currentUser.id}`, JSON.stringify(payload.new));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(presenceHeartbeat);
+      window.removeEventListener("beforeunload", setOffline);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      supabase.removeChannel(subChannel);
+      supabase.removeChannel(profileChannel);
+      setOffline();
+    };
+  }, [currentUser]);
+
   useEffect(() => {
     // Sync location path and search
     const handleLocationChange = () => {

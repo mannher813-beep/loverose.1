@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { Coins, CheckCircle, Sparkles, Loader2, ArrowRight, ShieldCheck, ShoppingBag } from "lucide-react";
+import { Coins, CheckCircle, Sparkles, Loader2, ArrowRight, ShieldCheck, ShoppingBag, Zap } from "lucide-react";
 import { Profile } from "../types";
 
 interface ShopProps {
@@ -17,10 +17,53 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
   const [isVerifyingRef, setIsVerifyingRef] = useState<string | null>(null);
+  const [activeBoostEnd, setActiveBoostEnd] = useState<string | null>(null);
+  const [isBoosting, setIsBoosting] = useState<boolean>(false);
 
   useEffect(() => {
     if (!currentUser) return;
     loadAccountStatus();
+
+    // Realtime credits subscriber
+    const creditsSub = supabase
+      .channel(`shop-credits-${currentUser.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_credits",
+          filter: `user_id=eq.${currentUser.id}`
+        },
+        (payload) => {
+          if (payload.new) {
+            setCredits((payload.new as any).balance);
+          }
+        }
+      )
+      .subscribe();
+
+    // Realtime subscriptions subscriber
+    const subsSub = supabase
+      .channel(`shop-subs-${currentUser.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "subscriptions",
+          filter: `user_id=eq.${currentUser.id}`
+        },
+        () => {
+          loadAccountStatus();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(creditsSub);
+      supabase.removeChannel(subsSub);
+    };
   }, [currentUser, isPremium]);
 
   const loadAccountStatus = async () => {
@@ -55,6 +98,22 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
         setExpiryDate(null);
       }
 
+      // 2.5 Fetch Active Profile Boost
+      const { data: boostData } = await supabase
+        .from("profile_boosts")
+        .select("ends_at")
+        .eq("user_id", currentUser.id)
+        .gt("ends_at", new Date().toISOString())
+        .order("ends_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (boostData?.ends_at) {
+        setActiveBoostEnd(boostData.ends_at);
+      } else {
+        setActiveBoostEnd(null);
+      }
+
       // 3. Fetch Recent Payments
       const { data: paymentsData } = await supabase
         .from("payments")
@@ -68,6 +127,50 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
       }
     } catch (err) {
       console.error("Error loading account status:", err);
+    }
+  };
+
+  const handlePurchaseBoost = async () => {
+    if (credits < 10) {
+      alert("Vous avez besoin de 10 crédits pour activer un Boost d'une heure. Veuillez recharger votre solde de crédits !");
+      return;
+    }
+    
+    setIsBoosting(true);
+    try {
+      // 1. Deduct 10 credits
+      const { error: deductErr } = await supabase
+        .from("user_credits")
+        .update({ balance: credits - 10 })
+        .eq("user_id", currentUser.id);
+
+      if (deductErr) throw deductErr;
+
+      // 2. Insert/add boost in profile_boosts
+      const startedAt = new Date();
+      const endsAt = new Date(startedAt.getTime() + 60 * 60 * 1000); // 1 hour
+      
+      const { error: boostErr } = await supabase
+        .from("profile_boosts")
+        .insert([
+          {
+            user_id: currentUser.id,
+            started_at: startedAt.toISOString(),
+            ends_at: endsAt.toISOString()
+          }
+        ]);
+
+      if (boostErr) throw boostErr;
+
+      // Update state
+      setCredits(prev => prev - 10);
+      setActiveBoostEnd(endsAt.toISOString());
+      alert("🚀 Votre profil est maintenant BOOSTÉ pour 1 heure ! Vous apparaitrez en priorité absolue dans le flux Discover des autres membres !");
+    } catch (err: any) {
+      console.error("Error activating boost:", err);
+      alert("Impossible d'activer le boost : " + err.message);
+    } finally {
+      setIsBoosting(false);
     }
   };
 
@@ -316,6 +419,16 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
           {isSubscribed && expiryDate && (
             <p className="text-[10px] text-slate-400 text-right">Renouvellement le : {expiryDate}</p>
           )}
+          {activeBoostEnd && (
+            <div className="flex justify-between items-center border-t border-white/5 pt-2 text-[10px] text-amber-300">
+              <span className="flex items-center gap-1">
+                <Zap size={10} className="fill-amber-300 text-amber-400 animate-pulse" /> Boost actif :
+              </span>
+              <span className="font-bold">
+                Jusqu'à {new Date(activeBoostEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -378,6 +491,50 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                 <>
                   <span>S'abonner maintenant</span>
                   <ArrowRight size={12} />
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Section 1.5: Profile Boost */}
+        <div className="bg-white border border-slate-150 rounded-3xl p-6 md:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-4 max-w-xl text-left">
+            <div className="space-y-1">
+              <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-1.5">
+                <Zap className="text-amber-500 fill-amber-450" size={18} />
+                <span>Boost de profil (1 Heure)</span>
+              </h3>
+              <p className="text-xs text-slate-500">Dépassez la file d'attente ! Votre profil passe en priorité absolue dans le Discover de tous les membres de votre région.</p>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3 pt-2 text-xs font-semibold text-slate-600">
+              <p className="flex items-center gap-2">🚀 Visibilité multipliée par 10</p>
+              <p className="flex items-center gap-2">💬 Plus de chances de matchs et de conversations</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center justify-center p-4 bg-amber-50/50 border border-amber-100 rounded-2xl md:min-w-56 text-center space-y-3">
+            <div>
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Activer avec vos crédits</p>
+              <p className="text-2xl font-black text-amber-600 flex items-center justify-center gap-1">
+                <Coins size={20} className="fill-amber-400 text-amber-500" /> 10 Crédits
+              </p>
+              <p className="text-[10px] text-slate-400">Boost actif instantanément pendant 1 heure</p>
+            </div>
+            
+            <button
+              onClick={handlePurchaseBoost}
+              disabled={isBoosting || credits < 10}
+              className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40"
+            >
+              {isBoosting ? (
+                <Loader2 className="animate-spin" size={12} />
+              ) : activeBoostEnd ? (
+                <span>Boost déjà actif !</span>
+              ) : (
+                <>
+                  <span>Activer le Boost (10 cr.)</span>
+                  <Zap size={11} className="fill-white" />
                 </>
               )}
             </button>

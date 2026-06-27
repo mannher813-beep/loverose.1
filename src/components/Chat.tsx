@@ -53,6 +53,85 @@ export default function Chat({
     if (!currentUser) return;
     loadMatches();
     loadCredits();
+
+    // Subscribe to credit balance updates in real-time
+    const creditsChannel = supabase
+      .channel(`user-credits-${currentUser.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_credits",
+          filter: `user_id=eq.${currentUser.id}`
+        },
+        (payload) => {
+          if (payload.new) {
+            setCredits((payload.new as any).balance);
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to matches updates in real-time (to refresh conversation list)
+    const matchesChannel = supabase
+      .channel(`user-matches-${currentUser.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "matches"
+        },
+        () => {
+          loadMatches();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to profiles changes in real-time (to refresh presence status)
+    const profilesChannel = supabase
+      .channel(`chat-profiles-realtime`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "profiles"
+        },
+        (payload) => {
+          const updatedProfile = payload.new as Profile;
+          
+          // Update selectedMatch if they are the one updated
+          setSelectedMatch(prev => {
+            if (prev && prev.other_profile && prev.other_profile.uid === updatedProfile.uid) {
+              return {
+                ...prev,
+                other_profile: { ...prev.other_profile, ...updatedProfile }
+              };
+            }
+            return prev;
+          });
+
+          // Update matches list profile
+          setMatches(prev => prev.map(m => {
+            if (m.other_profile && m.other_profile.uid === updatedProfile.uid) {
+              return {
+                ...m,
+                other_profile: { ...m.other_profile, ...updatedProfile }
+              };
+            }
+            return m;
+          }));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(creditsChannel);
+      supabase.removeChannel(matchesChannel);
+      supabase.removeChannel(profilesChannel);
+    };
   }, [currentUser]);
 
   // Handle scrolling to bottom of messages
@@ -124,6 +203,20 @@ export default function Chat({
   const loadMatches = async () => {
     setIsLoadingMatches(true);
     try {
+      // 1. Fetch blocked users involving current user
+      const { data: blockedData } = await supabase
+        .from("blocked_users")
+        .select("blocker_id, blocked_id")
+        .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`);
+
+      const blockedSet = new Set<string>();
+      if (blockedData) {
+        blockedData.forEach(b => {
+          blockedSet.add(b.blocker_id);
+          blockedSet.add(b.blocked_id);
+        });
+      }
+
       // Query matches involving the current user
       const { data: matchesData, error } = await supabase
         .from("matches")
@@ -161,7 +254,13 @@ export default function Chat({
         })
       );
 
-      setMatches(populatedMatches);
+      // Filter out any matches involving a blocked user
+      const filteredMatches = populatedMatches.filter(m => {
+        const otherUserId = m.users.find((id: string) => id !== currentUser.id);
+        return !blockedSet.has(otherUserId);
+      });
+
+      setMatches(filteredMatches);
     } catch (err) {
       console.error("Failed to fetch matches:", err);
     } finally {
@@ -184,6 +283,32 @@ export default function Chat({
       console.error("Failed to fetch messages:", err);
     } finally {
       setIsLoadingChat(false);
+    }
+  };
+
+  const handleBlockUser = async (targetUid: string) => {
+    if (!currentUser || !targetUid) return;
+    const confirmBlock = window.confirm("Êtes-vous sûr de vouloir bloquer ce membre ? Vous ne verrez plus son profil et vos conversations seront masquées définitivement.");
+    if (!confirmBlock) return;
+
+    try {
+      const { error } = await supabase
+        .from("blocked_users")
+        .insert([
+          {
+            blocker_id: currentUser.id,
+            blocked_id: targetUid
+          }
+        ]);
+
+      if (error) throw error;
+
+      alert("Membre bloqué avec succès.");
+      setSelectedMatch(null);
+      loadMatches();
+    } catch (err: any) {
+      console.error("Error blocking user:", err);
+      alert("Impossible de bloquer ce membre : " + err.message);
     }
   };
 
@@ -298,12 +423,17 @@ export default function Chat({
                   onClick={() => setSelectedMatch(m)}
                   className={`w-full p-4 flex items-center space-x-3 text-left transition cursor-pointer hover:bg-slate-50 ${isSelected ? 'bg-rose-50/50 hover:bg-rose-50' : ''}`}
                 >
-                  <img
-                    src={other?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${other?.full_name || other?.uid}`}
-                    alt={other?.full_name}
-                    referrerPolicy="no-referrer"
-                    className="w-12 h-12 rounded-full object-cover bg-slate-100 border border-slate-100"
-                  />
+                  <div className="relative flex-shrink-0">
+                    <img
+                      src={other?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${other?.full_name || other?.uid}`}
+                      alt={other?.full_name}
+                      referrerPolicy="no-referrer"
+                      className="w-12 h-12 rounded-full object-cover bg-slate-100 border border-slate-100"
+                    />
+                    {other?.is_online && (
+                      <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white animate-pulse" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-0.5">
                       <span className="font-bold text-slate-800 truncate text-sm">{other?.full_name || "Membre LoveRose"}</span>
@@ -354,26 +484,60 @@ export default function Chat({
                       <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block border border-white" title="Profil vérifié"></span>
                     )}
                   </h3>
-                  <div className="flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-                    <span className="text-[10px] text-slate-400 font-medium">En ligne</span>
+                  <div className="flex items-center gap-1.5">
+                    {selectedMatch.other_profile?.is_online ? (
+                      <>
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                        <span className="text-[10px] text-emerald-600 font-bold">En ligne</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-1.5 h-1.5 bg-slate-300 rounded-full"></div>
+                        <span className="text-[10px] text-slate-450 font-medium">
+                          {selectedMatch.other_profile?.last_seen ? (
+                            (() => {
+                              const lastSeenDate = new Date(selectedMatch.other_profile.last_seen);
+                              const now = new Date();
+                              const diffMs = now.getTime() - lastSeenDate.getTime();
+                              const diffMins = Math.floor(diffMs / 60000);
+                              const diffHours = Math.floor(diffMins / 60);
+                              const diffDays = Math.floor(diffHours / 24);
+
+                              if (diffMins < 1) return "Hors-ligne (à l'instant)";
+                              if (diffMins < 60) return `Vu(e) il y a ${diffMins} min`;
+                              if (diffHours < 24) return `Vu(e) il y a ${diffHours} h`;
+                              return `Vu(e) il y a ${diffDays} j`;
+                            })()
+                          ) : "Hors-ligne"}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Dynamic counters based on message types */}
-              <div className="text-right flex flex-col items-end gap-1">
-                {freeMessagesLeft > 0 ? (
-                  <span className="bg-emerald-50 text-emerald-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-100 flex items-center gap-1 shadow-sm">
-                    <Sparkles size={11} className="fill-emerald-400 text-emerald-500" />
-                    <span>{freeMessagesLeft} messages gratuits restants</span>
-                  </span>
-                ) : (
-                  <span className="bg-amber-50 text-amber-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-amber-150 flex items-center gap-1">
-                    <Coins size={11} className="fill-amber-500 text-amber-600" />
-                    <span>{credits} crédits disponibles</span>
-                  </span>
-                )}
+              {/* Actions & dynamic counters */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleBlockUser(selectedMatch.other_profile?.uid)}
+                  className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition cursor-pointer"
+                  title="Bloquer cet utilisateur"
+                >
+                  <ShieldAlert size={18} />
+                </button>
+                <div className="text-right flex flex-col items-end gap-1">
+                  {freeMessagesLeft > 0 ? (
+                    <span className="bg-emerald-50 text-emerald-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-100 flex items-center gap-1 shadow-sm">
+                      <Sparkles size={11} className="fill-emerald-400 text-emerald-500" />
+                      <span>{freeMessagesLeft} messages gratuits restants</span>
+                    </span>
+                  ) : (
+                    <span className="bg-amber-50 text-amber-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-amber-150 flex items-center gap-1">
+                      <Coins size={11} className="fill-amber-500 text-amber-600" />
+                      <span>{credits} crédits disponibles</span>
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

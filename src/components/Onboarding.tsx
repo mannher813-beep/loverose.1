@@ -14,7 +14,17 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
   const [loading, setLoading] = useState(false);
 
   // Form states
-  const [phone, setPhone] = useState("");
+  interface CountryCode {
+    iso_code: string;
+    name_fr: string;
+    dial_code: string;
+    flag_emoji: string;
+    phone_length: number;
+  }
+
+  const [countryCodes, setCountryCodes] = useState<CountryCode[]>([]);
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode | null>(null);
+  const [phoneLocal, setPhoneLocal] = useState("");
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [age, setAge] = useState<number>(25);
@@ -97,11 +107,42 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
     );
   };
 
+  React.useEffect(() => {
+    async function fetchCountries() {
+      try {
+        const { data, error } = await supabase
+          .from("country_codes")
+          .select("*")
+          .order("name_fr");
+        if (!error && data) {
+          setCountryCodes(data);
+          // Auto-select Cameroon ('CM') or Ivory Coast ('CI') or first country
+          const defaultCountry = data.find(c => c.iso_code === "CM") || data.find(c => c.iso_code === "CI") || data[0];
+          setSelectedCountry(defaultCountry || null);
+        }
+      } catch (err) {
+        console.error("Error loading country codes:", err);
+      }
+    }
+    fetchCountries();
+  }, []);
+
   const handleNext = () => {
     // Basic validation per step
-    if (step === 1 && !phone.trim()) {
-      alert("Veuillez renseigner votre numéro de téléphone.");
-      return;
+    if (step === 1) {
+      if (!selectedCountry) {
+        alert("Veuillez sélectionner un pays.");
+        return;
+      }
+      if (!phoneLocal.trim()) {
+        alert("Veuillez renseigner votre numéro de téléphone.");
+        return;
+      }
+      const digitsOnly = phoneLocal.trim().replace(/\D/g, "");
+      if (digitsOnly.length !== selectedCountry.phone_length) {
+        alert(`Le numéro de téléphone pour ${selectedCountry.name_fr} doit contenir exactement ${selectedCountry.phone_length} chiffres.`);
+        return;
+      }
     }
     if (step === 2) {
       if (!fullName.trim()) {
@@ -226,10 +267,11 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       const finalBio = bio.trim() ? `${bio.trim()}\n\n${formattedHobbies}` : formattedHobbies;
 
       // 4. Try to update phone in Auth metadata
+      const formattedAuthPhone = selectedCountry ? `+${selectedCountry.dial_code}${phoneLocal.trim().replace(/\D/g, '')}` : phoneLocal.trim();
       try {
         await supabase.auth.updateUser({
-          phone: phone,
-          data: { phone_number: phone }
+          phone: formattedAuthPhone,
+          data: { phone_number: formattedAuthPhone }
         });
       } catch (phoneErr) {
         console.warn("Could not save phone to Auth service, saving to profile metadata:", phoneErr);
@@ -251,6 +293,8 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
           avatar_url: finalAvatarUrl,
           photos: galleryUrls,
           verification_status: "none",
+          phone_country_code: selectedCountry?.iso_code || "",
+          phone_number: phoneLocal.trim(),
           updated_at: new Date().toISOString()
         });
 
@@ -307,15 +351,55 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                     Saisissez votre numéro de mobile. Il servira à sécuriser votre compte LoveRose et à valider vos transactions de rechargement.
                   </p>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Téléphone (avec indicatif)</label>
-                  <input
-                    type="tel"
-                    placeholder="Ex: +225 0700000000"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
-                  />
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Téléphone portable</label>
+                  
+                  <div className="flex gap-2">
+                    <div className="w-1/3 relative">
+                      <select
+                        value={selectedCountry?.iso_code || ""}
+                        onChange={(e) => {
+                          const found = countryCodes.find(c => c.iso_code === e.target.value);
+                          if (found) setSelectedCountry(found);
+                        }}
+                        className="w-full h-[46px] px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-rose-500 appearance-none cursor-pointer"
+                      >
+                        {countryCodes.map((c) => (
+                          <option key={c.iso_code} value={c.iso_code}>
+                            {c.flag_emoji} +{c.dial_code}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center px-1 text-slate-400 text-[10px]">
+                        ▼
+                      </div>
+                    </div>
+
+                    <div className="w-2/3">
+                      <input
+                        type="text"
+                        pattern="[0-9]*"
+                        inputMode="numeric"
+                        placeholder={selectedCountry ? `Ex: 6${'0'.repeat(selectedCountry.phone_length - 1)}` : "677123456"}
+                        value={phoneLocal}
+                        onChange={(e) => setPhoneLocal(e.target.value.replace(/\D/g, ""))}
+                        className="w-full h-[46px] px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
+                      />
+                    </div>
+                  </div>
+
+                  {selectedCountry && (
+                    <div className="flex justify-between items-center text-[10px] font-bold mt-1.5">
+                      <span className={`${phoneLocal.length !== selectedCountry.phone_length ? "text-slate-500" : "text-emerald-500"}`}>
+                        Chiffres : {phoneLocal.length} / {selectedCountry.phone_length} requis
+                      </span>
+                      {phoneLocal.length > 0 && phoneLocal.length !== selectedCountry.phone_length && (
+                        <span className="text-rose-500 font-bold">
+                          ⚠️ Longueur attendue : {selectedCountry.phone_length}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}

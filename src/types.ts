@@ -13,6 +13,15 @@ export interface Profile {
   verification_status?: 'none' | 'pending' | 'verified';
   photos?: string[];
   created_at?: string;
+  is_online?: boolean;
+  last_seen?: string;
+  latitude?: number;
+  longitude?: number;
+  location_updated_at?: string;
+  preferred_language?: 'fr' | 'en';
+  max_distance_km?: number;
+  phone_country_code?: string;
+  phone_number?: string;
 }
 
 export interface Like {

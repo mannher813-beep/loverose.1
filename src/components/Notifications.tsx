@@ -10,7 +10,8 @@ import {
   ShieldCheck, 
   Loader2, 
   Trash2, 
-  Inbox 
+  Inbox,
+  Star
 } from "lucide-react";
 import { Profile } from "../types";
 
@@ -227,12 +228,19 @@ export default function Notifications({ currentUser, onNavigateToTab, onStartCha
                 )}
 
                 {/* Sender Avatar */}
-                <div className="w-11 h-11 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0 relative">
-                  <img src={senderAvatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  <div className="absolute -bottom-1 -right-1 bg-white p-1 rounded-full border border-slate-100 shadow-xs">
-                    {getNotificationIcon(notif.type)}
-                  </div>
-                </div>
+                {(() => {
+                  const isSuperLike = notif.content.toLowerCase().includes("super like") || notif.type === "super_like";
+                  return (
+                    <div className={`w-11 h-11 rounded-full flex-shrink-0 relative ${
+                      isSuperLike ? "ring-2 ring-amber-400 border border-amber-300 shadow-md shadow-amber-400/15" : "border border-slate-200"
+                    }`}>
+                      <img src={senderAvatar} alt="" className="w-full h-full object-cover rounded-full bg-slate-100" referrerPolicy="no-referrer" />
+                      <div className="absolute -bottom-1 -right-1 bg-white p-1 rounded-full border border-slate-100 shadow-xs">
+                        {isSuperLike ? <Star className="text-amber-500 fill-amber-500" size={14} /> : getNotificationIcon(notif.type)}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Content */}
                 <div className="flex-1 min-w-0 text-left space-y-1">

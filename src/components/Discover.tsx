@@ -1,7 +1,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
-import { Heart, X, Sparkles, MapPin, CheckCircle, ShieldAlert, Filter, Send, MessageCircle, Eye } from "lucide-react";
+import { Heart, X, Sparkles, MapPin, CheckCircle, ShieldAlert, Filter, Send, MessageCircle, Eye, Star } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ProfileDetailModal from "./ProfileDetailModal";
 
@@ -10,6 +10,58 @@ interface DiscoverProps {
   currentUserProfile: Profile | null;
   isPremium?: boolean;
   onMatchDetected: (partner: Profile) => void;
+}
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function renderOnlineStatus(profile: Profile) {
+  if (profile.is_online) {
+    return (
+      <div className="flex items-center space-x-1 text-emerald-400 font-extrabold text-[10px] uppercase tracking-wider animate-pulse bg-emerald-950/40 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+        <span>En ligne</span>
+      </div>
+    );
+  }
+
+  if (profile.last_seen) {
+    const lastSeenDate = new Date(profile.last_seen);
+    const now = new Date();
+    const diffMs = now.getTime() - lastSeenDate.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    let text = "";
+    if (diffMins < 1) {
+      text = "En ligne";
+    } else if (diffMins < 60) {
+      text = `Il y a ${diffMins}m`;
+    } else if (diffHours < 24) {
+      text = `Il y a ${diffHours}h`;
+    } else {
+      text = `Il y a ${diffDays}j`;
+    }
+
+    return (
+      <div className="flex items-center space-x-1 text-slate-300 font-extrabold text-[9px] uppercase tracking-wider bg-slate-900/50 border border-slate-700/30 px-2 py-0.5 rounded-full">
+        <span className="w-1 h-1 rounded-full bg-slate-400"></span>
+        <span>{text}</span>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 export default function Discover({ currentUser, currentUserProfile, isPremium = false, onMatchDetected }: DiscoverProps) {
@@ -37,6 +89,29 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
     loadProfiles();
   }, [currentUser, selectedIntentsFilter, currentUserProfile?.preferences]);
 
+  // Real-time subscription to update profile cards instantly when people go online/offline or change info
+  useEffect(() => {
+    const channel = supabase
+      .channel("discover-profiles-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "profiles"
+        },
+        (payload) => {
+          const updated = payload.new as Profile;
+          setProfiles(prev => prev.map(p => p.uid === updated.uid ? { ...p, ...updated } : p));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const loadProfiles = async () => {
     setIsLoading(true);
     try {
@@ -48,6 +123,20 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       
       const likedSet = new Set<string>((likesData || []).map(l => l.to_uid));
       setLikedUids(likedSet);
+
+      // 1.5 Get blocked users to exclude them completely
+      const { data: blockedData } = await supabase
+        .from("blocked_users")
+        .select("blocker_id, blocked_id")
+        .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`);
+
+      const blockedSet = new Set<string>();
+      if (blockedData) {
+        blockedData.forEach(b => {
+          blockedSet.add(b.blocker_id);
+          blockedSet.add(b.blocked_id);
+        });
+      }
 
       // 2. Query profiles
       let query = supabase
@@ -73,16 +162,44 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       const { data: profilesData, error } = await query;
       if (error) throw error;
 
+      // Fetch active profile boosts to prioritize boosted users absolutely
+      const { data: boostsData } = await supabase
+        .from("profile_boosts")
+        .select("user_id")
+        .gt("ends_at", new Date().toISOString());
+
+      const boostedUserIds = new Set<string>((boostsData || []).map(b => b.user_id));
+
       let filteredProfiles = profilesData || [];
 
-      // Filter out profiles already liked or with missing complete profiles
-      const unswiped = filteredProfiles.filter(p => !likedSet.has(p.uid));
+      // Filter out profiles already liked or with missing complete profiles or too far based on max_distance_km
+      const maxDist = currentUserProfile?.max_distance_km || 50;
+      const unswiped = filteredProfiles.filter(p => {
+        if (likedSet.has(p.uid)) return false;
+        if (blockedSet.has(p.uid)) return false;
+
+        if (currentUserProfile?.latitude && currentUserProfile?.longitude && p.latitude && p.longitude) {
+          const dist = calculateDistance(
+            currentUserProfile.latitude,
+            currentUserProfile.longitude,
+            p.latitude,
+            p.longitude
+          );
+          if (dist > maxDist) return false;
+        }
+        return true;
+      });
       
-      // Shuffle slightly or sort by compatibility score for a richer discovery feel
+      // Sort with boosted users at the absolute top, then by compatibility score
       const scored = unswiped.map(p => {
+        const isBoosted = boostedUserIds.has(p.uid);
         const score = calculateCompatibility(currentUserProfile, p);
-        return { profile: p, score };
-      }).sort((a, b) => b.score - a.score).map(x => x.profile);
+        return { profile: p, score, isBoosted };
+      }).sort((a, b) => {
+        if (a.isBoosted && !b.isBoosted) return -1;
+        if (!a.isBoosted && b.isBoosted) return 1;
+        return b.score - a.score;
+      }).map(x => x.profile);
 
       setProfiles(scored);
       setCurrentIndex(0);
@@ -152,6 +269,63 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
 
     // Advance to next profile
     setCurrentIndex(prev => prev + 1);
+  };
+
+  const handleSuperLike = async () => {
+    if (profiles.length === 0 || currentIndex >= profiles.length) return;
+    const candidate = profiles[currentIndex];
+
+    try {
+      if (!isPremium) {
+        // Fetch current credits
+        const { data: creditData } = await supabase
+          .from("user_credits")
+          .select("balance")
+          .eq("user_id", currentUser.id)
+          .single();
+
+        const balance = creditData?.balance || 0;
+        if (balance < 5) {
+          alert("Le Super Like coûte 5 crédits pour les membres gratuits. Vous n'avez pas assez de crédits. Veuillez recharger votre solde dans la boutique !");
+          return;
+        }
+
+        // Deduct 5 credits
+        const { error: deductErr } = await supabase
+          .from("user_credits")
+          .update({ balance: balance - 5 })
+          .eq("user_id", currentUser.id);
+
+        if (deductErr) throw deductErr;
+      }
+
+      // Create the super_like
+      const { error: insertErr } = await supabase
+        .from("likes")
+        .insert([{ from_uid: currentUser.id, to_uid: candidate.uid, type: "super_like" }]);
+
+      if (insertErr) throw insertErr;
+
+      // Check if they already liked us back
+      const { data: reciprocalLike } = await supabase
+        .from("likes")
+        .select("*")
+        .eq("from_uid", candidate.uid)
+        .eq("to_uid", currentUser.id)
+        .single();
+
+      if (reciprocalLike) {
+        onMatchDetected(candidate);
+      } else {
+        alert(`⭐ Super Like envoyé à ${candidate.full_name} !`);
+      }
+
+      // Advance to next profile
+      setCurrentIndex(prev => prev + 1);
+    } catch (err: any) {
+      console.error("Error sending super like:", err);
+      alert("Une erreur s'est produite lors de l'envoi du Super Like : " + err.message);
+    }
   };
 
   const handleReport = async (e: FormEvent) => {
@@ -287,14 +461,23 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
 
                   {/* Basic Info Absolute Bottom inside the image */}
                   <div className="absolute bottom-4 left-6 right-6 text-white space-y-1">
-                    <div className="flex items-baseline space-x-2">
-                      <h2 className="text-2xl font-bold tracking-tight">{activeProfile.full_name || "Anonyme"}</h2>
-                      {activeProfile.age && <span className="text-xl font-medium">{activeProfile.age} ans</span>}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-baseline space-x-2">
+                        <h2 className="text-2xl font-bold tracking-tight">{activeProfile.full_name || "Anonyme"}</h2>
+                        {activeProfile.age && <span className="text-xl font-medium">{activeProfile.age} ans</span>}
+                      </div>
+                      
+                      {renderOnlineStatus(activeProfile)}
                     </div>
                     {activeProfile.location && (
                       <p className="text-xs text-slate-200 flex items-center">
                         <MapPin size={12} className="mr-1 text-rose-400" />
                         <span>{activeProfile.location}</span>
+                        {currentUserProfile?.latitude && currentUserProfile?.longitude && activeProfile.latitude && activeProfile.longitude && (
+                          <span className="ml-2 bg-rose-950/40 border border-rose-500/20 px-2 py-0.5 rounded-full text-[10px] font-extrabold text-rose-300">
+                            à {Math.round(calculateDistance(currentUserProfile.latitude, currentUserProfile.longitude, activeProfile.latitude, activeProfile.longitude))} km
+                          </span>
+                        )}
                       </p>
                     )}
                   </div>
@@ -362,13 +545,25 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                 id="swipe-dislike-btn"
                 onClick={() => handleSwipe(false)}
                 className="w-14 h-14 bg-white hover:bg-red-50 text-red-500 hover:scale-105 active:scale-95 border border-slate-150 rounded-full shadow-md flex items-center justify-center transition cursor-pointer"
+                title="Passer"
               >
                 <X size={24} />
               </button>
+              
+              <button
+                id="swipe-super-like-btn"
+                onClick={handleSuperLike}
+                className="w-12 h-12 bg-white hover:bg-amber-50 text-amber-500 hover:scale-105 active:scale-95 border border-slate-150 rounded-full shadow-md flex items-center justify-center transition cursor-pointer"
+                title="Super Like"
+              >
+                <Star size={20} fill="currentColor" />
+              </button>
+
               <button
                 id="swipe-like-btn"
                 onClick={() => handleSwipe(true)}
                 className="w-16 h-16 bg-gradient-to-br from-rose-500 to-pink-600 text-white hover:scale-105 active:scale-95 rounded-full shadow-lg shadow-rose-500/20 flex items-center justify-center transition cursor-pointer"
+                title="Liker"
               >
                 <Heart size={28} fill="currentColor" />
               </button>
