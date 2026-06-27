@@ -413,7 +413,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       </div>
 
       {/* Profile Card Stage */}
-      <div className="flex-1 flex flex-col justify-center items-center p-4 min-h-0 relative">
+      <div className="flex-1 overflow-y-auto flex flex-col justify-start md:justify-center items-center p-4 min-h-0 relative w-full">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center space-y-3">
             <div className="w-10 h-10 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>

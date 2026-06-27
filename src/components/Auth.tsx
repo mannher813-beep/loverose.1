@@ -104,7 +104,7 @@ export default function Auth({ onSuccess }: AuthProps) {
   };
 
   return (
-    <div id="auth-page" className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans">
+    <div id="auth-page" className="min-h-screen bg-slate-50 flex flex-col justify-start md:justify-center items-center p-4 relative overflow-y-auto py-8 md:py-4 font-sans">
       {/* Absolute background accents */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-rose-200/30 rounded-full blur-3xl"></div>
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-rose-300/20 rounded-full blur-3xl"></div>

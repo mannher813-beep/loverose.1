@@ -311,7 +311,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
   };
 
   return (
-    <div className="min-h-screen bg-rose-50/30 flex flex-col justify-center items-center p-4 font-sans">
+    <div className="min-h-screen bg-rose-50/30 flex flex-col justify-start md:justify-center items-center p-4 overflow-y-auto font-sans py-8 md:py-4">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden flex flex-col relative">
         {/* Progress bar */}
         <div className="absolute top-0 inset-x-0 h-1.5 bg-slate-100">
