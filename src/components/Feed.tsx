@@ -350,21 +350,29 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
 
       if (error) throw error;
 
-      // Populate author profiles
-      const populatedPosts = await Promise.all(
-        (data || []).map(async (p) => {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("uid", p.author_id)
-            .single();
+      // Populate author profiles in a single batch query to solve the N+1 query performance bottleneck
+      const authorIds = Array.from(new Set((data || []).map(p => p.author_id).filter(Boolean)));
+      const profilesMap: Record<string, any> = {};
+      
+      if (authorIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("uid", authorIds);
+        
+        if (profilesData) {
+          profilesData.forEach(prof => {
+            profilesMap[prof.uid] = prof;
+          });
+        }
+      }
 
-          return {
-            ...p,
-            author_profile: profile || { full_name: "Membre LoveRose" }
-          } as Post;
-        })
-      );
+      const populatedPosts = (data || []).map((p) => {
+        return {
+          ...p,
+          author_profile: profilesMap[p.author_id] || { full_name: "Membre LoveRose" }
+        } as Post;
+      });
 
       setPosts(populatedPosts);
       // Load interactions for loaded posts

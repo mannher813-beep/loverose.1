@@ -7,11 +7,12 @@ interface ShopProps {
   currentUser: any;
   currentUserProfile: Profile | null;
   onPaymentSuccess?: () => void;
+  isPremium?: boolean;
 }
 
-export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess }: ShopProps) {
+export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess, isPremium = false }: ShopProps) {
   const [credits, setCredits] = useState<number>(0);
-  const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
+  const [isSubscribed, setIsSubscribed] = useState<boolean>(isPremium);
   const [expiryDate, setExpiryDate] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
@@ -20,7 +21,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
   useEffect(() => {
     if (!currentUser) return;
     loadAccountStatus();
-  }, [currentUser]);
+  }, [currentUser, isPremium]);
 
   const loadAccountStatus = async () => {
     try {
@@ -37,10 +38,9 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
         setCredits(0);
       }
 
-      // 2. Fetch Subscription Status via RPC function
-      const { data: premiumActive, error: rpcError } = await supabase.rpc('is_user_premium', { check_user_id: currentUser.id });
-      if (!rpcError && premiumActive) {
-        setIsSubscribed(true);
+      // 2. Fetch Subscription Status via cache / local check
+      setIsSubscribed(isPremium);
+      if (isPremium) {
         const { data: subData } = await supabase
           .from("subscriptions")
           .select("end_date")
@@ -52,29 +52,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
           setExpiryDate(null);
         }
       } else {
-        const { data: subData } = await supabase
-          .from("subscriptions")
-          .select("*")
-          .eq("user_id", currentUser.id)
-          .maybeSingle();
-
-        if (subData && subData.type === "premium" && (subData.status === "active" || subData.status === "cancelled")) {
-          const isExpired = subData.end_date ? new Date(subData.end_date) < new Date() : false;
-          if (!isExpired) {
-            setIsSubscribed(true);
-            if (subData.end_date) {
-              setExpiryDate(new Date(subData.end_date).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }));
-            } else {
-              setExpiryDate(null);
-            }
-          } else {
-            setIsSubscribed(false);
-            setExpiryDate(null);
-          }
-        } else {
-          setIsSubscribed(false);
-          setExpiryDate(null);
-        }
+        setExpiryDate(null);
       }
 
       // 3. Fetch Recent Payments

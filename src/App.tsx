@@ -16,6 +16,7 @@ import ProfileSettings from "./components/ProfileSettings";
 import SettingsView from "./components/Settings";
 import NotificationsView from "./components/Notifications";
 import Onboarding from "./components/Onboarding";
+import PublicProfile from "./components/PublicProfile";
 
 export default function App() {
   // Simple Path Routing
@@ -301,6 +302,24 @@ export default function App() {
   }
 
   const urlParams = new URLSearchParams(currentSearch);
+  const queryUsername = urlParams.get("profil") || urlParams.get("profile");
+  const isPublicProfileView = currentPath.startsWith("/profil/") || !!queryUsername;
+  const publicUsername = queryUsername || currentPath.replace("/profil/", "").trim();
+
+  // Render Public Profile without requiring user to be logged in
+  if (isPublicProfileView && publicUsername) {
+    return (
+      <PublicProfile 
+        username={publicUsername} 
+        onGoHome={() => {
+          setCurrentPath("/");
+          setCurrentSearch("");
+          window.history.replaceState({}, document.title, "/");
+        }} 
+      />
+    );
+  }
+
   const isPaymentSuccess = currentPath === "/payment-success" || urlParams.get("payment") === "success";
   const isPaymentCancel = currentPath === "/payment-cancel" || urlParams.get("payment") === "cancel";
 
@@ -566,6 +585,7 @@ export default function App() {
               <Shop
                 currentUser={currentUser}
                 currentUserProfile={profile}
+                isPremium={isPremium}
               />
             )}
             {activeTab === 'profile' && (

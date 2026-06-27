@@ -53,7 +53,8 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       let query = supabase
         .from("profiles")
         .select("*")
-        .neq("uid", currentUser.id); // Exclude self
+        .neq("uid", currentUser.id) // Exclude self
+        .limit(30); // Paginate profiles limit for lightning-fast network execution
 
       // Filtre par genre recherché (preferences de l'utilisateur courant)
       const myPreferences = currentUserProfile?.preferences || "tous";
