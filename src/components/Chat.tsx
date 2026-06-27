@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { Match, Message, Profile, UserCredits } from "../types";
 import { Send, ArrowLeft, MessageSquare, ShieldAlert, Sparkles, AlertCircle, ShoppingBag, Loader2, Coins, HelpCircle } from "lucide-react";
 import ProfileDetailModal from "./ProfileDetailModal";
+import AdSlot from "./AdSlot";
 import { playMessageSentSound, playMessageReceivedSound } from "../lib/sounds";
 import { triggerPushNotification } from "../lib/notifications";
 
@@ -452,6 +453,11 @@ export default function Chat({
             </div>
           )}
         </div>
+
+        {/* AdSlot in Left matches sidebar */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+          <AdSlot slot="chat_list_1" userId={currentUser?.id} />
+        </div>
       </div>
 
       {/* Right Column: Active Chat */}
@@ -592,6 +598,11 @@ export default function Chat({
                 </div>
               )}
               <div ref={messagesEndRef} />
+            </div>
+
+            {/* Conversation Banner AdSlot */}
+            <div className="bg-white px-4 py-1.5 border-t border-slate-100 flex-shrink-0">
+              <AdSlot slot="chat_conversation_banner" userId={currentUser?.id} />
             </div>
 
             {/* Send form */}

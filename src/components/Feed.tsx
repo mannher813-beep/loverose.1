@@ -1,6 +1,7 @@
 import React, { useState, useEffect, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { Post, Profile } from "../types";
+import AdSlot from "./AdSlot";
 import { Image, Send, MessageCircle, Heart, Share2, Sparkles, AlertCircle, Loader2 } from "lucide-react";
 import ProfileDetailModal from "./ProfileDetailModal";
 
@@ -537,136 +538,145 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
             <span>Chargement des posts...</span>
           </div>
         ) : posts.length > 0 ? (
-          posts.map(p => {
+          posts.map((p, index) => {
             const author = p.author_profile;
             return (
-              <div key={p.id} className="bg-white border border-slate-150 rounded-3xl p-5 shadow-xs space-y-4">
-                {/* Post Header */}
-                <div 
-                  onClick={() => author && setSelectedViewProfile(author)}
-                  className="flex items-center space-x-3 cursor-pointer hover:opacity-85 transition"
-                  title="Visiter le profil public"
-                >
-                  <img
-                    src={author?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${author?.full_name || p.author_id}`}
-                    alt={author?.full_name}
-                    referrerPolicy="no-referrer"
-                    className="w-10 h-10 rounded-full object-cover bg-slate-100 border border-slate-100"
-                  />
-                  <div>
-                    <div className="flex items-center gap-1">
-                      <span className="font-bold text-slate-800 text-sm">{author?.full_name || "Membre LoveRose"}</span>
-                      {author?.verification_status === "verified" && (
-                        <span className="bg-rose-50 text-rose-500 text-[9px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider">Vérifié</span>
-                      )}
+              <React.Fragment key={p.id}>
+                <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-xs space-y-4">
+                  {/* Post Header */}
+                  <div 
+                    onClick={() => author && setSelectedViewProfile(author)}
+                    className="flex items-center space-x-3 cursor-pointer hover:opacity-85 transition"
+                    title="Visiter le profil public"
+                  >
+                    <img
+                      src={author?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${author?.full_name || p.author_id}`}
+                      alt={author?.full_name}
+                      referrerPolicy="no-referrer"
+                      className="w-10 h-10 rounded-full object-cover bg-slate-100 border border-slate-100"
+                    />
+                    <div>
+                      <div className="flex items-center gap-1">
+                        <span className="font-bold text-slate-800 text-sm">{author?.full_name || "Membre LoveRose"}</span>
+                        {author?.verification_status === "verified" && (
+                          <span className="bg-rose-50 text-rose-500 text-[9px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider">Vérifié</span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        {new Date(p.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
                     </div>
-                    <p className="text-[10px] text-slate-400">
-                      {new Date(p.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </p>
                   </div>
-                </div>
 
-                {/* Post Content */}
-                <div className="space-y-3">
-                  <p className="text-slate-700 text-xs md:text-sm leading-relaxed whitespace-pre-wrap">{p.contenu}</p>
-                  
-                  {/* Post media */}
-                  {p.medias && p.medias.length > 0 && p.medias[0] && (
-                    <div className="rounded-2xl overflow-hidden max-h-72 bg-slate-150">
-                      <img
-                        src={p.medias[0]}
-                        alt="Illustration post"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover hover:scale-[1.01] transition duration-300"
-                      />
+                  {/* Post Content */}
+                  <div className="space-y-3">
+                    <p className="text-slate-700 text-xs md:text-sm leading-relaxed whitespace-pre-wrap">{p.contenu}</p>
+                    
+                    {/* Post media */}
+                    {p.medias && p.medias.length > 0 && p.medias[0] && (
+                      <div className="rounded-2xl overflow-hidden max-h-72 bg-slate-150">
+                        <img
+                          src={p.medias[0]}
+                          alt="Illustration post"
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover hover:scale-[1.01] transition duration-300"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Post Footer Actions */}
+                  {shareToastMessage && (
+                    <div className="bg-rose-500 text-white text-xs font-bold py-2 px-4 rounded-xl text-center animate-bounce">
+                      {shareToastMessage}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-slate-400 text-xs font-semibold">
+                    <button 
+                      onClick={() => handleLikeToggle(p.id)}
+                      className={`flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer ${likesState[p.id]?.userLiked ? 'text-rose-500 font-bold' : ''}`}
+                    >
+                      <Heart size={16} fill={likesState[p.id]?.userLiked ? "currentColor" : "none"} className={likesState[p.id]?.userLiked ? "animate-pulse" : ""} />
+                      <span>{likesState[p.id]?.count ?? (Math.floor(Math.random() * 8) + 2)} J'aime</span>
+                    </button>
+                    <button 
+                      onClick={() => setActiveCommentsPostId(activeCommentsPostId === p.id ? null : p.id)}
+                      className={`flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer ${activeCommentsPostId === p.id ? 'text-rose-500 font-bold' : ''}`}
+                    >
+                      <MessageCircle size={16} />
+                      <span>{(commentsState[p.id] || []).length} Commenter</span>
+                    </button>
+                    <button 
+                      onClick={() => handleSharePost(p.id)}
+                      className="flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer"
+                    >
+                      <Share2 size={16} />
+                      <span>{sharesState[p.id] ?? 0} Partager</span>
+                    </button>
+                  </div>
+
+                  {/* Sub Comments Accordion */}
+                  {activeCommentsPostId === p.id && (
+                    <div className="bg-slate-50 rounded-2xl p-4 space-y-4 border border-slate-100 animate-fadeIn text-xs">
+                      <h5 className="font-extrabold text-slate-800 flex items-center gap-1">
+                        <MessageCircle size={14} className="text-rose-500" />
+                        <span>Commentaires ({(commentsState[p.id] || []).length})</span>
+                      </h5>
+
+                      {/* Comments List */}
+                      <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                        {(commentsState[p.id] || []).length > 0 ? (
+                          (commentsState[p.id] || []).map((c: any) => (
+                            <div key={c.id} className="flex gap-2.5 items-start bg-white p-2.5 rounded-xl border border-slate-100 shadow-3xs">
+                              <img src={c.avatar_url} alt="User avatar" className="w-6 h-6 rounded-full object-cover" />
+                              <div className="flex-1 space-y-1">
+                                <div className="flex justify-between items-center">
+                                  <span className="font-extrabold text-slate-800 text-[10px]">{c.author_name}</span>
+                                  <span className="text-[8px] text-slate-400">{new Date(c.created_at).toLocaleDateString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                </div>
+                                <p className="text-slate-600 font-medium text-[11px] leading-normal">{c.text}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-[10px] text-slate-400 font-medium text-center py-2">Aucun commentaire pour le moment. Écrivez le premier ! ✨</p>
+                        )}
+                      </div>
+
+                      {/* Input comment field */}
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={newCommentText}
+                          onChange={(e) => setNewCommentText(e.target.value)}
+                          placeholder="Écrire un commentaire doux..."
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleAddComment(p.id);
+                            }
+                          }}
+                          className="flex-1 bg-white border border-slate-200 focus:border-rose-500 focus:outline-none rounded-xl px-3 py-2 text-[11px] font-medium"
+                        />
+                        <button
+                          onClick={() => handleAddComment(p.id)}
+                          disabled={!newCommentText.trim()}
+                          className="bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white p-2 rounded-xl transition cursor-pointer disabled:opacity-40"
+                        >
+                          <Send size={12} />
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* Post Footer Actions */}
-                {shareToastMessage && (
-                  <div className="bg-rose-500 text-white text-xs font-bold py-2 px-4 rounded-xl text-center animate-bounce">
-                    {shareToastMessage}
+                {/* Inline Feed AdSlot after every 3rd post */}
+                {(index + 1) % 3 === 0 && (
+                  <div className="w-full max-w-xl mx-auto py-1">
+                    <AdSlot slot={`news_feed_${Math.floor(index / 3) + 1}`} userId={currentUser?.id} />
                   </div>
                 )}
-
-                <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-slate-400 text-xs font-semibold">
-                  <button 
-                    onClick={() => handleLikeToggle(p.id)}
-                    className={`flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer ${likesState[p.id]?.userLiked ? 'text-rose-500 font-bold' : ''}`}
-                  >
-                    <Heart size={16} fill={likesState[p.id]?.userLiked ? "currentColor" : "none"} className={likesState[p.id]?.userLiked ? "animate-pulse" : ""} />
-                    <span>{likesState[p.id]?.count ?? (Math.floor(Math.random() * 8) + 2)} J'aime</span>
-                  </button>
-                  <button 
-                    onClick={() => setActiveCommentsPostId(activeCommentsPostId === p.id ? null : p.id)}
-                    className={`flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer ${activeCommentsPostId === p.id ? 'text-rose-500 font-bold' : ''}`}
-                  >
-                    <MessageCircle size={16} />
-                    <span>{(commentsState[p.id] || []).length} Commenter</span>
-                  </button>
-                  <button 
-                    onClick={() => handleSharePost(p.id)}
-                    className="flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer"
-                  >
-                    <Share2 size={16} />
-                    <span>{sharesState[p.id] ?? 0} Partager</span>
-                  </button>
-                </div>
-
-                {/* Sub Comments Accordion */}
-                {activeCommentsPostId === p.id && (
-                  <div className="bg-slate-50 rounded-2xl p-4 space-y-4 border border-slate-100 animate-fadeIn text-xs">
-                    <h5 className="font-extrabold text-slate-800 flex items-center gap-1">
-                      <MessageCircle size={14} className="text-rose-500" />
-                      <span>Commentaires ({(commentsState[p.id] || []).length})</span>
-                    </h5>
-
-                    {/* Comments List */}
-                    <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
-                      {(commentsState[p.id] || []).length > 0 ? (
-                        (commentsState[p.id] || []).map((c: any) => (
-                          <div key={c.id} className="flex gap-2.5 items-start bg-white p-2.5 rounded-xl border border-slate-100 shadow-3xs">
-                            <img src={c.avatar_url} alt="User avatar" className="w-6 h-6 rounded-full object-cover" />
-                            <div className="flex-1 space-y-1">
-                              <div className="flex justify-between items-center">
-                                <span className="font-extrabold text-slate-800 text-[10px]">{c.author_name}</span>
-                                <span className="text-[8px] text-slate-400">{new Date(c.created_at).toLocaleDateString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                              </div>
-                              <p className="text-slate-600 font-medium text-[11px] leading-normal">{c.text}</p>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-[10px] text-slate-400 font-medium text-center py-2">Aucun commentaire pour le moment. Écrivez le premier ! ✨</p>
-                      )}
-                    </div>
-
-                    {/* Input comment field */}
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        value={newCommentText}
-                        onChange={(e) => setNewCommentText(e.target.value)}
-                        placeholder="Écrire un commentaire doux..."
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            handleAddComment(p.id);
-                          }
-                        }}
-                        className="flex-1 bg-white border border-slate-200 focus:border-rose-500 focus:outline-none rounded-xl px-3 py-2 text-[11px] font-medium"
-                      />
-                      <button
-                        onClick={() => handleAddComment(p.id)}
-                        disabled={!newCommentText.trim()}
-                        className="bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white p-2 rounded-xl transition cursor-pointer disabled:opacity-40"
-                      >
-                        <Send size={12} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              </React.Fragment>
             );
           })
         ) : (

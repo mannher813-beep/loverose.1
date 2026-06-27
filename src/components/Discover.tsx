@@ -1,6 +1,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
+import AdSlot from "./AdSlot";
 import { Heart, X, Sparkles, MapPin, CheckCircle, ShieldAlert, Filter, Send, MessageCircle, Eye, Star } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ProfileDetailModal from "./ProfileDetailModal";
@@ -568,22 +569,34 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                 <Heart size={28} fill="currentColor" />
               </button>
             </div>
+
+            {/* AdSlot when active suggestions are shown */}
+            <div className="w-full max-w-md mx-auto pt-1 pb-2">
+              <AdSlot slot="discovery_feed_1" userId={currentUser?.id} />
+            </div>
           </div>
         ) : (
-          <div className="text-center p-8 bg-white border border-slate-150 rounded-3xl max-w-sm space-y-4 shadow-sm">
-            <div className="mx-auto w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-500">
-              <Sparkles size={24} />
+          <div className="flex flex-col items-center space-y-4">
+            <div className="text-center p-8 bg-white border border-slate-150 rounded-3xl max-w-sm space-y-4 shadow-sm">
+              <div className="mx-auto w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-500">
+                <Sparkles size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800">Fin des suggestions !</h3>
+              <p className="text-slate-500 text-xs leading-relaxed">
+                Vous avez fait le tour des profils disponibles dans votre secteur géographique pour le filtre sélectionné.
+              </p>
+              <button
+                onClick={() => { setSelectedIntentsFilter([]); loadProfiles(); }}
+                className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-semibold rounded-xl text-xs transition cursor-pointer"
+              >
+                Réinitialiser le filtre
+              </button>
             </div>
-            <h3 className="text-lg font-bold text-slate-800">Fin des suggestions !</h3>
-            <p className="text-slate-500 text-xs leading-relaxed">
-              Vous avez fait le tour des profils disponibles dans votre secteur géographique pour le filtre sélectionné.
-            </p>
-            <button
-              onClick={() => { setSelectedIntentsFilter([]); loadProfiles(); }}
-              className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-semibold rounded-xl text-xs transition cursor-pointer"
-            >
-              Réinitialiser le filtre
-            </button>
+
+            {/* AdSlot when suggestions are finished */}
+            <div className="w-full max-w-sm mx-auto">
+              <AdSlot slot="discovery_feed_empty" userId={currentUser?.id} />
+            </div>
           </div>
         )}
       </div>

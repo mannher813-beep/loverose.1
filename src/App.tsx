@@ -17,6 +17,7 @@ import SettingsView from "./components/Settings";
 import NotificationsView from "./components/Notifications";
 import Onboarding from "./components/Onboarding";
 import PublicProfile from "./components/PublicProfile";
+import Creators from "./components/Creators";
 
 export default function App() {
   // Simple Path Routing
@@ -26,7 +27,7 @@ export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isPremium, setIsPremium] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'feed' | 'shop' | 'profile' | 'settings' | 'notifications'>('discover');
+  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'feed' | 'shop' | 'profile' | 'settings' | 'notifications' | 'creators'>('discover');
   const [targetChatPartnerId, setTargetChatPartnerId] = useState<string | null>(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   
@@ -559,6 +560,13 @@ export default function App() {
             <span>Boutique</span>
           </button>
           <button
+            onClick={() => setActiveTab('creators')}
+            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'creators' ? 'text-rose-500 font-extrabold' : ''}`}
+          >
+            <Sparkles size={16} className="text-amber-500 fill-amber-400" />
+            <span>Créateurs</span>
+          </button>
+          <button
             onClick={() => setActiveTab('notifications')}
             className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 relative ${activeTab === 'notifications' ? 'text-rose-500 font-extrabold' : ''}`}
           >
@@ -720,6 +728,14 @@ export default function App() {
                 onStartChat={startChatWithUser}
               />
             )}
+            {activeTab === 'creators' && (
+              <Creators
+                currentUser={currentUser}
+                currentUserProfile={profile}
+                onOpenShop={() => setActiveTab('shop')}
+                onNavigateToTab={(tab) => setActiveTab(tab)}
+              />
+            )}
           </>
         )}
       </main>
@@ -753,6 +769,13 @@ export default function App() {
         >
           <ShoppingBag size={18} />
           <span className="text-[10px]">Boutique</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('creators')}
+          className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'creators' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
+        >
+          <Sparkles size={18} className={activeTab === 'creators' ? "text-amber-500 fill-amber-400 animate-pulse" : ""} />
+          <span className="text-[10px]">Créateurs</span>
         </button>
         <button
           onClick={() => setActiveTab('notifications')}

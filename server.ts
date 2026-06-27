@@ -95,10 +95,18 @@ async function startServer() {
   // Create a Money Fusion payment checkout url
   app.post("/api/payments/create", async (req, res) => {
     try {
-      const { userId, planId, planName, amount, email } = req.body;
+      const { userId, planId, planName, amount, email, related_page_id, related_post_id } = req.body;
       
       if (!userId || !planId || !amount) {
         return res.status(400).json({ error: "Missing required parameters: userId, planId, amount" });
+      }
+
+      // Encode targets directly in plan_id to preserve the existing database schema without adding new columns
+      let finalPlanId = planId;
+      if (related_page_id) {
+        finalPlanId = `${planId}:${related_page_id}`;
+      } else if (related_post_id) {
+        finalPlanId = `${planId}:${related_post_id}`;
       }
 
       // Generate merchant reference
@@ -183,7 +191,7 @@ async function startServer() {
               user_id: userId,
               montant: amount,
               statut: "pending",
-              plan_id: planId,
+              plan_id: finalPlanId,
               plan_name: planName,
               reference: reference
             }
@@ -202,6 +210,253 @@ async function startServer() {
       return res.status(500).json({ error: err.message || "Internal server error" });
     }
   });
+
+  // Reusable helper to fulfill and execute any verified or webhook payment
+  async function fulfillPayment(userId: string, planId: string, planName: string, amount: number, reference: string, transactionId: string) {
+    console.log(`[LoveRose Payment Fulfill] Fulfilling payment. User: ${userId}, Plan: ${planId}, Amount: ${amount}`);
+
+    // A. STANDARD PACKS CREDITS
+    if (planId.startsWith("pack_")) {
+      let creditAmount = 10;
+      if (planId === "pack_argent") creditAmount = 50;
+      else if (planId === "pack_or") creditAmount = 100;
+
+      const { data: userCredits } = await supabaseAdmin
+        .from("user_credits")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      let newBalance = creditAmount;
+      if (userCredits) {
+        newBalance = (userCredits.balance || 0) + creditAmount;
+        await supabaseAdmin
+          .from("user_credits")
+          .update({ balance: newBalance, updated_at: new Date() })
+          .eq("user_id", userId);
+      } else {
+        await supabaseAdmin
+          .from("user_credits")
+          .insert([{ user_id: userId, balance: creditAmount }]);
+      }
+
+      await supabaseAdmin
+        .from("credit_transactions")
+        .insert([
+          {
+            user_id: userId,
+            amount: creditAmount,
+            type: "purchase",
+            description: `Achat Pack ${planName}`,
+            reference: reference
+          }
+        ]);
+      console.log(`[Fulfill] Credited ${creditAmount} credits to user ${userId}`);
+    } 
+    // B. PREMIUM APP SUBSCRIPTION
+    else if (planId === "premium_sub") {
+      const now = new Date();
+      const expiresAt = new Date();
+      expiresAt.setDate(now.getDate() + 30);
+
+      await supabaseAdmin
+        .from("subscriptions")
+        .upsert({
+          user_id: userId,
+          type: "premium",
+          status: "active",
+          start_date: now,
+          end_date: expiresAt,
+          updated_at: now
+        });
+      console.log(`[Fulfill] Activated Premium subscription for user ${userId}`);
+    }
+    // C. CREATOR PAGE ACTIVATION FEE (1,000 FCFA unique)
+    else if (planId === "creator_page_activation") {
+      const { error: pageErr } = await supabaseAdmin
+        .from("creator_pages")
+        .update({ activation_paid: true, status: "active" })
+        .eq("owner_id", userId)
+        .eq("activation_paid", false);
+      
+      if (pageErr) {
+        console.error("[Fulfill] Error activating creator pages:", pageErr);
+      } else {
+        console.log(`[Fulfill] Creator page access activated for user ${userId}`);
+      }
+    }
+    // D. MONTHLY CREATOR PAGE SUBSCRIPTION (page_subscription:PAGE_ID)
+    else if (planId.startsWith("page_subscription:")) {
+      const pageId = planId.split(":")[1];
+      const now = new Date();
+      const expiresAt = new Date();
+      expiresAt.setDate(now.getDate() + 30);
+
+      const { error: subErr } = await supabaseAdmin
+        .from("page_subscriptions")
+        .insert([
+          {
+            user_id: userId,
+            page_id: pageId,
+            status: "active",
+            ends_at: expiresAt
+          }
+        ]);
+
+      if (subErr) {
+        console.error("[Fulfill] Error creating page subscription:", subErr);
+      }
+
+      // Add to creator earnings ledger
+      const { error: earnErr } = await supabaseAdmin
+        .from("creator_earnings")
+        .insert([
+          {
+            page_id: pageId,
+            amount: amount,
+            source: "page_subscription"
+          }
+        ]);
+      
+      if (earnErr) {
+        console.error("[Fulfill] Error logging creator earnings:", earnErr);
+      }
+      console.log(`[Fulfill] Activated Creator Page Subscription for page ${pageId}, user ${userId}`);
+    }
+    // E. SENDER TIP FOR CREATOR (tip:PAGE_ID)
+    else if (planId.startsWith("tip:")) {
+      const pageId = planId.split(":")[1];
+
+      // Add to creator tips details
+      const { error: tipErr } = await supabaseAdmin
+        .from("creator_tips")
+        .insert([
+          {
+            page_id: pageId,
+            user_id: userId,
+            amount: amount,
+            message: "Pourboire de soutien"
+          }
+        ]);
+
+      if (tipErr) {
+        console.error("[Fulfill] Error logging creator tip details:", tipErr);
+      }
+
+      // Add to creator earnings ledger
+      const { error: earnErr } = await supabaseAdmin
+        .from("creator_earnings")
+        .insert([
+          {
+            page_id: pageId,
+            amount: amount,
+            source: "tip"
+          }
+        ]);
+      
+      if (earnErr) {
+        console.error("[Fulfill] Error logging creator tip earnings:", earnErr);
+      }
+      console.log(`[Fulfill] Processed Creator tip of ${amount} for page ${pageId} from user ${userId}`);
+    }
+    // F. PREMIUM CONTENT / POST UNLOCK (premium_content_unlock:POST_ID)
+    else if (planId.startsWith("premium_content_unlock:")) {
+      const postId = planId.split(":")[1];
+
+      const { error: unlockErr } = await supabaseAdmin
+        .from("post_unlocks")
+        .insert([
+          {
+            user_id: userId,
+            post_id: postId
+          }
+        ]);
+
+      if (unlockErr) {
+        console.error("[Fulfill] Error inserting post unlock:", unlockErr);
+      }
+
+      // Retrieve post's page_id to credit the correct creator
+      const { data: post, error: postErr } = await supabaseAdmin
+        .from("posts")
+        .select("page_id")
+        .eq("id", postId)
+        .maybeSingle();
+
+      if (post && post.page_id) {
+        const { error: earnErr } = await supabaseAdmin
+          .from("creator_earnings")
+          .insert([
+            {
+              page_id: post.page_id,
+              amount: amount,
+              source: "premium_content"
+            }
+          ]);
+        
+        if (earnErr) {
+          console.error("[Fulfill] Error logging post unlock creator earnings:", earnErr);
+        }
+      } else {
+        console.warn("[Fulfill] Could not find associated creator page for post unlock", postId, postErr);
+      }
+      console.log(`[Fulfill] Unlocked post ${postId} for user ${userId}`);
+    }
+
+    // G. AUTO REFERRAL COMMISSION PAYOUT CHECK (10% of any successful transaction)
+    try {
+      const { data: referral } = await supabaseAdmin
+        .from("referrals")
+        .select("referrer_id")
+        .eq("referred_id", userId)
+        .maybeSingle();
+
+      if (referral && referral.referrer_id) {
+        // Find referrer's active creator page
+        const { data: referrerPage } = await supabaseAdmin
+          .from("creator_pages")
+          .select("id")
+          .eq("owner_id", referral.referrer_id)
+          .eq("activation_paid", true)
+          .maybeSingle();
+
+        if (referrerPage) {
+          const commissionAmount = Math.round(amount * 0.10); // 10% commission
+          if (commissionAmount > 0) {
+            await supabaseAdmin
+              .from("creator_earnings")
+              .insert([
+                {
+                  page_id: referrerPage.id,
+                  amount: commissionAmount,
+                  source: "referral_commission"
+                }
+              ]);
+            console.log(`[Referral Commission] Credited ${commissionAmount} FCFA to referrer ${referral.referrer_id} for purchase by referred user ${userId}`);
+          }
+        }
+      }
+    } catch (refErr) {
+      console.warn("[Fulfill] Referral commission logic execution skipped:", refErr);
+    }
+
+    // H. INSERT IN-APP NOTIFICATION
+    try {
+      await supabaseAdmin
+        .from("notifications")
+        .insert([
+          {
+            user_id: userId,
+            sender_id: userId,
+            type: "payment_success",
+            content: `Félicitations ! Votre achat pour "${planName}" a été validé avec succès.`,
+            lu: false
+          }
+        ]);
+    } catch (notifErr) {
+      console.warn("[Fulfill] Notification insert failed:", notifErr);
+    }
+  }
 
   // Verify status of a payment (called by the frontend to confirm status changes)
   app.get("/api/payments/verify", async (req, res) => {
@@ -232,7 +487,7 @@ async function startServer() {
         let isPaidDirectly = false;
 
         try {
-          // Check the correct Money Fusion notification URL (avoiding www. which fails SSL validation)
+          // Check the correct Money Fusion notification URL
           const checkUrls = [
             `https://pay.moneyfusion.net/paiementNotif/${reference}`
           ];
@@ -288,75 +543,15 @@ async function startServer() {
           if (!updateErr) {
             payment.statut = "success"; // Update local representation for immediate return
 
-            // 2. Process credits or subscription
-            const userId = payment.user_id;
-            const planId = payment.plan_id;
-            const planName = payment.plan_name;
-
-            if (planId.startsWith("pack_")) {
-              let creditAmount = 10;
-              if (planId === "pack_argent") creditAmount = 50;
-              else if (planId === "pack_or") creditAmount = 100;
-
-              // Get or create user_credits row
-              const { data: userCredits } = await supabaseAdmin
-                .from("user_credits")
-                .select("*")
-                .eq("user_id", userId)
-                .single();
-
-              if (userCredits) {
-                await supabaseAdmin
-                  .from("user_credits")
-                  .update({ balance: (userCredits.balance || 0) + creditAmount, updated_at: new Date() })
-                  .eq("user_id", userId);
-              } else {
-                await supabaseAdmin
-                  .from("user_credits")
-                  .insert([{ user_id: userId, balance: creditAmount }]);
-              }
-
-              // Log transaction
-              await supabaseAdmin
-                .from("credit_transactions")
-                .insert([
-                  {
-                    user_id: userId,
-                    amount: creditAmount,
-                    type: "purchase",
-                    description: `Achat Pack ${planName}`,
-                    reference: reference
-                  }
-                ]);
-            } else if (planId === "premium_sub") {
-              const now = new Date();
-              const expiresAt = new Date();
-              expiresAt.setDate(now.getDate() + 30);
-
-              await supabaseAdmin
-                .from("subscriptions")
-                .upsert({
-                  user_id: userId,
-                  type: "premium",
-                  status: "active",
-                  start_date: now,
-                  end_date: expiresAt,
-                  updated_at: now
-                });
-            }
-
-            // 3. Insert notification
-            await supabaseAdmin
-              .from("notifications")
-              .insert([
-                {
-                  user_id: userId,
-                  sender_id: userId,
-                  type: "payment_success",
-                  content: `Félicitations ! Votre achat pour "${planName}" a été validé avec succès (vérification directe).`,
-                  lu: false
-                }
-              ]);
+            // 2. Process credits, subscription or creator channels via helper
+            await fulfillPayment(
+              payment.user_id,
+              payment.plan_id,
+              payment.plan_name,
+              payment.montant,
+              reference,
+              `MF-DIRECT-VERIFY-${Date.now()}`
+            );
           } else {
             console.error("[LoveRose Verify] Direct status database update failed:", updateErr);
           }
@@ -415,81 +610,15 @@ async function startServer() {
           .update({ statut: "success", transaction_id: transaction_id || reference })
           .eq("reference", reference);
 
-        const userId = payment.user_id;
-        const planId = payment.plan_id;
-        const planName = payment.plan_name;
-
-        // Process Credits Pack or Premium Subscription
-        if (planId.startsWith("pack_")) {
-          let creditAmount = 10;
-          if (planId === "pack_argent") creditAmount = 50;
-          else if (planId === "pack_or") creditAmount = 100;
-
-          // 1. Get or create user_credits row
-          const { data: userCredits } = await supabaseAdmin
-            .from("user_credits")
-            .select("*")
-            .eq("user_id", userId)
-            .single();
-
-          let newBalance = creditAmount;
-          if (userCredits) {
-            newBalance = (userCredits.balance || 0) + creditAmount;
-            await supabaseAdmin
-              .from("user_credits")
-              .update({ balance: newBalance, updated_at: new Date() })
-              .eq("user_id", userId);
-          } else {
-            await supabaseAdmin
-              .from("user_credits")
-              .insert([{ user_id: userId, balance: creditAmount }]);
-          }
-
-          // 2. Log in transactions
-          await supabaseAdmin
-            .from("credit_transactions")
-            .insert([
-              {
-                user_id: userId,
-                amount: creditAmount,
-                type: "purchase",
-                description: `Achat Pack ${planName}`,
-                reference: reference
-              }
-            ]);
-
-          console.log(`Credited ${creditAmount} credits to ${userId}. New balance: ${newBalance}`);
-        } else if (planId === "premium_sub") {
-          const now = new Date();
-          const expiresAt = new Date();
-          expiresAt.setDate(now.getDate() + 30);
-
-          await supabaseAdmin
-            .from("subscriptions")
-            .upsert({
-              user_id: userId,
-              type: "premium",
-              status: "active",
-              start_date: now,
-              end_date: expiresAt,
-              updated_at: now
-            });
-
-          console.log(`Activated Premium subscription for user ${userId} until ${expiresAt}`);
-        }
-
-        // Send a in-app notification to the user
-        await supabaseAdmin
-          .from("notifications")
-          .insert([
-            {
-              user_id: userId,
-              sender_id: userId,
-              type: "payment_success",
-              content: `Félicitations ! Votre achat pour "${planName}" a été validé avec succès.`,
-              lu: false
-            }
-          ]);
+        // Fulfill the purchase and trigger corresponding creator / subscription assets
+        await fulfillPayment(
+          payment.user_id,
+          payment.plan_id,
+          payment.plan_name,
+          payment.montant,
+          reference,
+          transaction_id || reference
+        );
       } else {
         await supabaseAdmin
           .from("payments")
