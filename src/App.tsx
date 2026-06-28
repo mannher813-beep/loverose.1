@@ -18,6 +18,7 @@ import NotificationsView from "./components/Notifications";
 import Onboarding from "./components/Onboarding";
 import PublicProfile from "./components/PublicProfile";
 import Creators from "./components/Creators";
+import PublicLayout from "./components/public/PublicLayout";
 
 export default function App() {
   // Simple Path Routing
@@ -503,7 +504,60 @@ export default function App() {
 
   // Render Auth flow if no logged user
   if (!currentUser) {
-    return <Auth onSuccess={() => setIsLoading(true)} />;
+    const publicPaths = ["/", "/accueil", "/a-propos", "/faq", "/contact", "/conditions-d-utilisation", "/politique-de-confidentialite"];
+    if (publicPaths.includes(currentPath)) {
+      return (
+        <PublicLayout 
+          currentPath={currentPath} 
+          onNavigate={(path) => {
+            setCurrentPath(path);
+            window.history.pushState(null, "", path);
+          }} 
+          onShowAuth={(signUp) => {
+            setCurrentPath(signUp ? "/inscription" : "/connexion");
+            window.history.pushState(null, "", signUp ? "/inscription" : "/connexion");
+          }} 
+        />
+      );
+    }
+
+    // For any other path, or specific auth paths (/connexion or /inscription), render Auth
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
+        <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+          <div 
+            onClick={() => {
+              setCurrentPath("/");
+              window.history.pushState(null, "", "/");
+            }}
+            className="flex items-center space-x-2 cursor-pointer group"
+          >
+            <div className="bg-rose-500 p-2 rounded-xl text-white group-hover:scale-105 transition-all">
+              <Heart size={20} fill="currentColor" />
+            </div>
+            <div>
+              <span className="font-black text-xl tracking-tight text-slate-900">Love</span>
+              <span className="font-black text-xl tracking-tight text-rose-500">Rose</span>
+            </div>
+          </div>
+          <button 
+            onClick={() => {
+              setCurrentPath("/");
+              window.history.pushState(null, "", "/");
+            }}
+            className="text-xs font-bold text-slate-500 hover:text-rose-500 transition cursor-pointer"
+          >
+            Retour à l'accueil
+          </button>
+        </header>
+        <main className="flex-1 flex items-center justify-center py-10 px-4 bg-slate-50">
+          <Auth 
+            onSuccess={() => setIsLoading(true)} 
+            initialIsSignUp={currentPath === "/inscription"} 
+          />
+        </main>
+      </div>
+    );
   }
 
   // Check if profile is incomplete

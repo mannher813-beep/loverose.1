@@ -4,10 +4,11 @@ import { Heart, Mail, Lock, User, Sparkles, LogIn, UserPlus, AlertCircle, Loader
 
 interface AuthProps {
   onSuccess: () => void;
+  initialIsSignUp?: boolean;
 }
 
-export default function Auth({ onSuccess }: AuthProps) {
-  const [isSignUp, setIsSignUp] = useState(false);
+export default function Auth({ onSuccess, initialIsSignUp = false }: AuthProps) {
+  const [isSignUp, setIsSignUp] = useState(initialIsSignUp);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
