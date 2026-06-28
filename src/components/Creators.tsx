@@ -33,6 +33,8 @@ import {
 } from "lucide-react";
 import { Profile } from "../types";
 import AdSlot from "./AdSlot";
+import CreatorOnboarding from "./CreatorOnboarding";
+import CreatorDashboard from "./CreatorDashboard";
 
 interface CreatorsProps {
   currentUser: any;
@@ -841,8 +843,8 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
 
   // Check if current user has any creator page
   const hasPage = myPages.length > 0;
-  // Check if any owned page is fully activated (activation paid)
-  const isCreatorActive = myPages.some(p => p.activation_paid === true);
+  // Check if any owned page is fully activated (active status)
+  const isCreatorActive = myPages.some(p => p.status === 'active');
 
   return (
     <div className="flex-1 overflow-y-auto w-full max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-6 text-left">
@@ -1292,6 +1294,35 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
 
       {/* CREATOR CONSOLE HUB (For Creators) */}
       {activeTab === 'creator_hub' && !selectedPage && (
+        <div className="w-full">
+          {myPagesLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="animate-spin text-rose-500" size={32} />
+            </div>
+          ) : isCreatorActive ? (
+            <CreatorDashboard 
+              page={selectedDashboardPage} 
+              currentUser={currentUser} 
+              currentUserProfile={currentUserProfile} 
+              onBackToApp={() => setActiveTab('discover')} 
+            />
+          ) : (
+            <CreatorOnboarding 
+              currentUser={currentUser} 
+              currentUserProfile={currentUserProfile} 
+              onPageCreated={(newPage) => {
+                fetchMyCreatorPages();
+              }} 
+              onBack={() => {
+                setActiveTab('discover');
+              }} 
+            />
+          )}
+        </div>
+      )}
+
+      {/* LEGACY INLINE CREATOR CONSOLE HUB (Bypassed) */}
+      {false && activeTab === 'creator_hub' && !selectedPage && (
         <div>
           {myPagesLoading ? (
             <div className="flex justify-center items-center py-20">
