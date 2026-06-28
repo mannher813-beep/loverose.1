@@ -70,6 +70,41 @@ export default function Auth({ onSuccess, initialIsSignUp = false }: AuthProps) 
 
           // Initialize user credits balance with 0
           await supabase.from("user_credits").upsert([{ user_id: data.user.id, balance: 0 }]);
+
+          // Check for referral code and insert into referrals table
+          const referralCodeUsed = localStorage.getItem("referral_code_used") || new URLSearchParams(window.location.search).get("ref");
+          if (referralCodeUsed) {
+            try {
+              // Find creator page that has this referral_code or slug
+              const { data: pageData } = await supabase
+                .from("creator_pages")
+                .select("id, owner_id")
+                .or(`referral_code.eq.${referralCodeUsed},slug.eq.${referralCodeUsed}`)
+                .maybeSingle();
+
+              if (pageData && pageData.owner_id) {
+                // Insert into referrals table
+                const { error: refInsertErr } = await supabase
+                  .from("referrals")
+                  .insert([
+                    {
+                      referred_id: data.user.id,
+                      referrer_id: pageData.owner_id,
+                      referral_code_used: referralCodeUsed
+                    }
+                  ]);
+
+                if (refInsertErr) {
+                  console.error("Failed to insert referral mapping:", refInsertErr);
+                } else {
+                  console.log("[Referral System] Linked referred user to referrer owner:", pageData.owner_id);
+                  localStorage.removeItem("referral_code_used");
+                }
+              }
+            } catch (refErr) {
+              console.error("Error during referral processing on signup:", refErr);
+            }
+          }
         }
 
         alert("Inscription réussie ! Vous pouvez maintenant vous connecter ou votre session va s'ouvrir.");

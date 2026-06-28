@@ -19,6 +19,7 @@ import Onboarding from "./components/Onboarding";
 import PublicProfile from "./components/PublicProfile";
 import Creators from "./components/Creators";
 import PublicLayout from "./components/public/PublicLayout";
+import PublicCreatorPage from "./components/PublicCreatorPage";
 
 export default function App() {
   // Simple Path Routing
@@ -436,6 +437,29 @@ export default function App() {
           setCurrentSearch("");
           window.history.replaceState({}, document.title, "/");
         }} 
+      />
+    );
+  }
+
+  const isPublicCreatorPageView = currentPath.startsWith("/page/");
+  const creatorSlug = currentPath.replace("/page/", "").split("?")[0].trim();
+
+  // Render Public Creator Page without requiring user to be logged in
+  if (isPublicCreatorPageView && creatorSlug) {
+    return (
+      <PublicCreatorPage 
+        slug={creatorSlug} 
+        currentUser={currentUser} 
+        currentUserProfile={profile} 
+        onGoHome={() => {
+          setCurrentPath("/");
+          setCurrentSearch("");
+          window.history.pushState(null, "", "/");
+        }} 
+        onShowAuth={(signUp) => {
+          setCurrentPath(signUp ? "/inscription" : "/connexion");
+          window.history.pushState(null, "", signUp ? "/inscription" : "/connexion");
+        }}
       />
     );
   }

@@ -387,21 +387,9 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
         console.warn("Backend checkout URL generation failed, falling back:", err);
       }
 
-      // If checkout URL wasn't retrieved, insert directly to payments table and prepare Sandbox route
+      // If checkout URL wasn't retrieved, throw error
       if (!checkoutUrl) {
-        await supabase.from("payments").insert([
-          {
-            user_id: currentUser.id,
-            montant: 1000,
-            statut: "pending",
-            plan_id: "creator_page_activation",
-            plan_name: `Activation Page ${newPage.page_name}`,
-            reference: reference
-          }
-        ]);
-        
-        // Build Sandbox redirection url to test easily
-        checkoutUrl = `/payment-sandbox?reference=${reference}&amount=1000&planId=creator_page_activation&planName=Activation+Page+${encodeURIComponent(newPage.page_name)}&userId=${currentUser.id}`;
+        throw new Error("Impossible d'initialiser la session de paiement avec Money Fusion. Veuillez vérifier votre connexion.");
       }
 
       alert("Draft page créée ! Redirection vers la plateforme de paiement Money Fusion...");
@@ -560,18 +548,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
       }
 
       if (!checkoutUrl) {
-        await supabase.from("payments").insert([
-          {
-            user_id: currentUser.id,
-            montant: price,
-            statut: "pending",
-            plan_id: `page_subscription:${selectedPage.id}`,
-            plan_name: `Abonnement page ${selectedPage.page_name}`,
-            reference: reference
-          }
-        ]);
-
-        checkoutUrl = `/payment-sandbox?reference=${reference}&amount=${price}&planId=page_subscription:${selectedPage.id}&planName=Abonnement+Page+${encodeURIComponent(selectedPage.page_name)}&userId=${currentUser.id}`;
+        throw new Error("Impossible d'initialiser la session d'abonnement avec Money Fusion. Veuillez réessayer.");
       }
 
       alert("Redirection vers Money Fusion pour confirmer votre abonnement...");
@@ -627,19 +604,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
       }
 
       if (!checkoutUrl) {
-        await supabase.from("payments").insert([
-          {
-            user_id: currentUser.id,
-            montant: amount,
-            statut: "pending",
-            plan_id: `tip:${selectedPage.id}`,
-            plan_name: `Pourboire pour ${selectedPage.page_name}`,
-            reference: reference
-          }
-        ]);
-
-        // Insert creator_tips as pending if required, but trigger SQL usually handles earnings on webhook success
-        checkoutUrl = `/payment-sandbox?reference=${reference}&amount=${amount}&planId=tip:${selectedPage.id}&planName=Pourboire+Page+${encodeURIComponent(selectedPage.page_name)}&userId=${currentUser.id}`;
+        throw new Error("Impossible d'initialiser la session de pourboire avec Money Fusion. Veuillez réessayer.");
       }
 
       alert("Envoi du pourboire de " + amount + " FCFA via Money Fusion...");
@@ -691,18 +656,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
       }
 
       if (!checkoutUrl) {
-        await supabase.from("payments").insert([
-          {
-            user_id: currentUser.id,
-            montant: price,
-            statut: "pending",
-            plan_id: `premium_content_unlock:${post.id}`,
-            plan_name: "Déblocage de publication",
-            reference: reference
-          }
-        ]);
-
-        checkoutUrl = `/payment-sandbox?reference=${reference}&amount=${price}&planId=premium_content_unlock:${post.id}&planName=Déblocage+Publication&userId=${currentUser.id}`;
+        throw new Error("Impossible d'initialiser la session de déblocage avec Money Fusion. Veuillez réessayer.");
       }
 
       alert("Déverrouillage en cours via Money Fusion...");
