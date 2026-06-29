@@ -78,8 +78,9 @@ export default function Notifications({ currentUser, onNavigateToTab, onStartCha
     loadNotifications();
 
     // Subscribe to real-time notification additions/deletions/updates
+    const channelName = `notifications-view-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
     const channel = supabase
-      .channel(`notifications-view-${currentUser.id}`)
+      .channel(channelName)
       .on(
         "postgres_changes",
         {

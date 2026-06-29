@@ -89,8 +89,9 @@ export function usePremiumStatus(userId: string | undefined) {
     fetchEntitlements();
 
     // Subscribe to realtime updates on subscriptions and user_credits to refresh entitlements
+    const subChannelName = `entitlements-sub-${userId}-${Math.random().toString(36).substring(2, 11)}`;
     const subChannel = supabase
-      .channel(`entitlements-sub-${userId}`)
+      .channel(subChannelName)
       .on(
         "postgres_changes",
         {
@@ -105,8 +106,9 @@ export function usePremiumStatus(userId: string | undefined) {
       )
       .subscribe();
 
+    const creditsChannelName = `entitlements-credits-${userId}-${Math.random().toString(36).substring(2, 11)}`;
     const creditsChannel = supabase
-      .channel(`entitlements-credits-${userId}`)
+      .channel(creditsChannelName)
       .on(
         "postgres_changes",
         {

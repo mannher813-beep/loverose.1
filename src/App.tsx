@@ -120,8 +120,9 @@ export default function App() {
     window.addEventListener("loverose-notification-read", handleReadTrigger);
 
     // Subscribe to notifications updates
+    const channelName = `user-notifications-count-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
     const channel = supabase
-      .channel(`user-notifications-count-${currentUser.id}`)
+      .channel(channelName)
       .on(
         "postgres_changes",
         {
@@ -201,8 +202,9 @@ export default function App() {
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     // 3. Realtime subscription to the user's subscription record
+    const subChannelName = `user-subscriptions-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
     const subChannel = supabase
-      .channel(`user-subscriptions-${currentUser.id}`)
+      .channel(subChannelName)
       .on(
         "postgres_changes",
         {
@@ -219,8 +221,9 @@ export default function App() {
       .subscribe();
 
     // 4. Realtime subscription to the user's profile changes (online status / updates)
+    const profileChannelName = `user-profile-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
     const profileChannel = supabase
-      .channel(`user-profile-${currentUser.id}`)
+      .channel(profileChannelName)
       .on(
         "postgres_changes",
         {

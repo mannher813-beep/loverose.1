@@ -92,8 +92,9 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
 
   // Real-time subscription to update profile cards instantly when people go online/offline or change info
   useEffect(() => {
+    const channelName = `discover-profiles-realtime-${Math.random().toString(36).substring(2, 11)}`;
     const channel = supabase
-      .channel("discover-profiles-realtime")
+      .channel(channelName)
       .on(
         "postgres_changes",
         {
@@ -114,6 +115,10 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
   }, []);
 
   const loadProfiles = async () => {
+    if (!currentUser || !currentUser.id) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       // 1. Get already liked profiles to filter them out

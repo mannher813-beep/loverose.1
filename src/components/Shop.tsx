@@ -46,8 +46,9 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
     loadAccountStatus();
 
     // Realtime credits subscriber
+    const creditsSubName = `shop-credits-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
     const creditsSub = supabase
-      .channel(`shop-credits-${currentUser.id}`)
+      .channel(creditsSubName)
       .on(
         "postgres_changes",
         {
@@ -65,8 +66,9 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
       .subscribe();
 
     // Realtime subscriptions subscriber
+    const subsSubName = `shop-subs-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
     const subsSub = supabase
-      .channel(`shop-subs-${currentUser.id}`)
+      .channel(subsSubName)
       .on(
         "postgres_changes",
         {

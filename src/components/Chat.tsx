@@ -60,8 +60,9 @@ export default function Chat({
     loadCredits();
 
     // Subscribe to credit balance updates in real-time
+    const creditsChannelName = `user-credits-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
     const creditsChannel = supabase
-      .channel(`user-credits-${currentUser.id}`)
+      .channel(creditsChannelName)
       .on(
         "postgres_changes",
         {
@@ -79,8 +80,9 @@ export default function Chat({
       .subscribe();
 
     // Subscribe to matches updates in real-time (to refresh conversation list)
+    const matchesChannelName = `user-matches-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
     const matchesChannel = supabase
-      .channel(`user-matches-${currentUser.id}`)
+      .channel(matchesChannelName)
       .on(
         "postgres_changes",
         {
@@ -95,8 +97,9 @@ export default function Chat({
       .subscribe();
 
     // Subscribe to profiles changes in real-time (to refresh presence status)
+    const profilesChannelName = `chat-profiles-realtime-${Math.random().toString(36).substring(2, 11)}`;
     const profilesChannel = supabase
-      .channel(`chat-profiles-realtime`)
+      .channel(profilesChannelName)
       .on(
         "postgres_changes",
         {
@@ -152,8 +155,9 @@ export default function Chat({
     loadMessages(selectedMatch.id);
 
     // Subscribe to new messages for this specific match
+    const matchChannelName = `match_${selectedMatch.id}-${Math.random().toString(36).substring(2, 11)}`;
     const channel = supabase
-      .channel(`match_${selectedMatch.id}`)
+      .channel(matchChannelName)
       .on(
         "postgres_changes",
         {
@@ -172,8 +176,8 @@ export default function Chat({
 
           if (newMsg.sender_id !== currentUser.id) {
             playMessageReceivedSound();
-            const senderName = selectedMatch.partner_profile?.full_name || "Nouveau message";
-            const senderAvatar = selectedMatch.partner_profile?.avatar_url;
+            const senderName = selectedMatch.other_profile?.full_name || "Nouveau message";
+            const senderAvatar = selectedMatch.other_profile?.avatar_url;
             triggerPushNotification(`Nouveau message de ${senderName} 🌹`, newMsg.contenu, senderAvatar);
           }
         }
@@ -237,36 +241,70 @@ export default function Chat({
       // Map match records to populate candidates profile
       const populatedMatches = await Promise.all(
         (matchesData || []).map(async (m) => {
-          const otherUserId = m.users.find((id: string) => id !== currentUser.id);
+          const otherUserId = m.users && Array.isArray(m.users)
+            ? m.users.find((id: string) => id !== currentUser.id)
+            : null;
           
-          // Get candidate profile
-          const { data: otherProfile } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("uid", otherUserId)
-            .single();
+          // Get candidate profile safely
+          let otherProfile = null;
+          if (otherUserId) {
+            try {
+              const { data, error: profileErr } = await supabase
+                .from("profiles")
+                .select("*")
+                .eq("uid", otherUserId)
+                .single();
+              if (!profileErr && data) {
+                otherProfile = data;
+              }
+            } catch (profileFetchErr) {
+              console.warn(`Could not load profile for uid ${otherUserId}:`, profileFetchErr);
+            }
+          }
 
-          // Get latest message for summary
-          const { data: lastMsg } = await supabase
-            .from("messages")
-            .select("*")
-            .eq("match_id", m.id)
-            .order("created_at", { ascending: false })
-            .limit(1);
+          // Get latest message for summary safely
+          let lastMsg = null;
+          try {
+            const { data } = await supabase
+              .from("messages")
+              .select("*")
+              .eq("match_id", m.id)
+              .order("created_at", { ascending: false })
+              .limit(1);
+            lastMsg = data;
+          } catch (msgFetchErr) {
+            console.warn(`Could not load latest message for match ${m.id}:`, msgFetchErr);
+          }
+
+          // Safe date parsing to prevent RangeError: Invalid time value
+          let lastMsgTime = "";
+          const hasLastMsg = lastMsg && lastMsg[0];
+          if (hasLastMsg && lastMsg[0].created_at) {
+            try {
+              const dateObj = new Date(lastMsg[0].created_at);
+              if (!isNaN(dateObj.getTime())) {
+                lastMsgTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              }
+            } catch (dateErr) {
+              console.warn("Error parsing or formatting message date:", dateErr);
+            }
+          }
 
           return {
             ...m,
-            other_profile: otherProfile || { uid: otherUserId, full_name: "Membre LoveRose" },
-            last_message: lastMsg && lastMsg[0] ? lastMsg[0].contenu : "Nouvelle affinité ! Dites bonjour 👋",
-            last_message_time: lastMsg && lastMsg[0] ? new Date(lastMsg[0].created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""
+            other_profile: otherProfile || { uid: otherUserId || "", full_name: "Membre LoveRose" },
+            last_message: hasLastMsg ? lastMsg[0].contenu : "Nouvelle affinité ! Dites bonjour 👋",
+            last_message_time: lastMsgTime
           } as Match;
         })
       );
 
-      // Filter out any matches involving a blocked user
+      // Filter out any matches involving a blocked user safely
       const filteredMatches = populatedMatches.filter(m => {
-        const otherUserId = m.users.find((id: string) => id !== currentUser.id);
-        return !blockedSet.has(otherUserId);
+        const otherUserId = m.users && Array.isArray(m.users)
+          ? m.users.find((id: string) => id !== currentUser.id)
+          : null;
+        return otherUserId ? !blockedSet.has(otherUserId) : true;
       });
 
       setMatches(filteredMatches);
@@ -513,6 +551,7 @@ export default function Chat({
                           {selectedMatch.other_profile?.last_seen ? (
                             (() => {
                               const lastSeenDate = new Date(selectedMatch.other_profile.last_seen);
+                              if (isNaN(lastSeenDate.getTime())) return "Hors-ligne";
                               const now = new Date();
                               const diffMs = now.getTime() - lastSeenDate.getTime();
                               const diffMins = Math.floor(diffMs / 60000);
