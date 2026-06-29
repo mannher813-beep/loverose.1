@@ -1,5 +1,6 @@
 import React, { useState, useEffect, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
+import { compressImageIfNeeded } from "../lib/imageCompression";
 import { Post, Profile } from "../types";
 import AdSlot from "./AdSlot";
 import { Image, Send, MessageCircle, Heart, Share2, Sparkles, AlertCircle, Loader2 } from "lucide-react";
@@ -35,33 +36,35 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
   const containsNumbers = hasDigits(inputText);
   const isPostRestricted = !isPremium && (alphabeticCount > 100 || containsNumbers);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 3 * 1024 * 1024) {
-      alert("L'image est trop volumineuse. Veuillez choisir un fichier de moins de 3 Mo.");
-      return;
+    try {
+      // Compress the image locally prior to rendering/uploading
+      const optimizedFile = await compressImageIfNeeded(file);
+
+      // Capture dimensions of the optimized image file
+      const img = new window.Image();
+      img.onload = () => {
+        setMediaDimensions([{
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+          ratio: img.naturalWidth / img.naturalHeight
+        }]);
+      };
+      img.src = URL.createObjectURL(optimizedFile);
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          setMediaUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(optimizedFile);
+    } catch (err) {
+      console.error("Failed to compress or preview image in feed:", err);
     }
-
-    // Capture dimensions of the selected image file
-    const img = new window.Image();
-    img.onload = () => {
-      setMediaDimensions([{
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-        ratio: img.naturalWidth / img.naturalHeight
-      }]);
-    };
-    img.src = URL.createObjectURL(file);
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === "string") {
-        setMediaUrl(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   const triggerImageUpload = () => {

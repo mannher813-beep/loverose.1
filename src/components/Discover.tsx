@@ -468,6 +468,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                   src={activeProfile.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${activeProfile.full_name || activeProfile.uid}`}
                   alt={activeProfile.full_name || "Profil"}
                   referrerPolicy="no-referrer"
+                  decoding="async"
                   style={{
                     width: '100%',
                     height: '100%',

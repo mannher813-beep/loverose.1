@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { compressImageIfNeeded } from "../lib/imageCompression";
 import { 
   Sparkles, 
   UserCheck, 
@@ -711,9 +712,10 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
       // Document Upload folder: verifications/{uid}/
       if (idFile) {
         const idPath = `verifications/${currentUser.id}/id_${Date.now()}_${idFile.name}`;
+        const optimizedIdFile = await compressImageIfNeeded(idFile);
         const { error: idUploadError } = await supabase.storage
           .from("loverose")
-          .upload(idPath, idFile);
+          .upload(idPath, optimizedIdFile);
         
         if (!idUploadError) {
           const { data } = supabase.storage.from("loverose").getPublicUrl(idPath);
@@ -728,9 +730,10 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
 
       if (selfieFile) {
         const selfiePath = `verifications/${currentUser.id}/selfie_${Date.now()}_${selfieFile.name}`;
+        const optimizedSelfieFile = await compressImageIfNeeded(selfieFile);
         const { error: selfieUploadError } = await supabase.storage
           .from("loverose")
-          .upload(selfiePath, selfieFile);
+          .upload(selfiePath, optimizedSelfieFile);
 
         if (!selfieUploadError) {
           const { data } = supabase.storage.from("loverose").getPublicUrl(selfiePath);

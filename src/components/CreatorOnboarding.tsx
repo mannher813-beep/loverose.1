@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Sparkles, ArrowRight, ArrowLeft, Camera, Image as ImageIcon, Check, Loader2, Info } from "lucide-react";
+import { compressImageIfNeeded } from "../lib/imageCompression";
 
 interface CreatorOnboardingProps {
   currentUser: any;
@@ -36,23 +37,19 @@ export default function CreatorOnboarding({ currentUser, currentUserProfile, onP
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
 
-    if (file.size > 3 * 1024 * 1024) {
-      alert("La taille du fichier ne doit pas dépasser 3 Mo.");
-      return;
-    }
-
     if (type === "avatar") setAvatarUploading(true);
     else setCoverUploading(true);
 
     try {
-      const fileExt = file.name.split(".").pop();
+      const optimizedFile = await compressImageIfNeeded(file);
+      const fileExt = optimizedFile.name.split(".").pop();
       const fileName = `${currentUser.id}/${type}-${Date.now()}.${fileExt}`;
       const filePath = `creator-pages/${fileName}`;
 
       // Upload file to 'avatars' bucket
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, optimizedFile, { upsert: true });
 
       if (uploadError) {
         // Fallback to 'loverose' bucket if 'avatars' has issues

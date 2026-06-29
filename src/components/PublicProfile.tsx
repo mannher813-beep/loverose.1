@@ -19,6 +19,18 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
   const [isPremiumUser, setIsPremiumUser] = useState(false);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
 
+  // Preload all gallery images in background to avoid flashes and delays when navigation is clicked
+  useEffect(() => {
+    if (profile && Array.isArray(profile.photos)) {
+      profile.photos.forEach((src: any) => {
+        if (src && typeof src === "string") {
+          const img = new window.Image();
+          img.src = src;
+        }
+      });
+    }
+  }, [profile]);
+
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -275,6 +287,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
                     src={photos[activePhotoIndex]}
                     alt={`Galerie ${activePhotoIndex + 1}`}
                     referrerPolicy="no-referrer"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute bottom-3 right-3 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded-full">

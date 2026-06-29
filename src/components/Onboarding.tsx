@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
+import { compressImageIfNeeded } from "../lib/imageCompression";
 import { Profile } from "../types";
 import { Heart, Phone, MapPin, Smile, Compass, FileText, Camera, ArrowRight, ArrowLeft, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -209,13 +210,14 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
 
       // 1. Upload avatar to Supabase Storage if a real file is chosen
       if (avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop();
+        const optimizedAvatar = await compressImageIfNeeded(avatarFile);
+        const fileExt = optimizedAvatar.name.split('.').pop();
         const fileName = `avatar_${Date.now()}.${fileExt}`;
         const filePath = `avatars/${currentUser.id}/${fileName}`;
 
         const { data: uploadData, error: uploadErr } = await supabase.storage
           .from("loverose")
-          .upload(filePath, avatarFile, {
+          .upload(filePath, optimizedAvatar, {
             cacheControl: "3600",
             upsert: true
           });
@@ -235,13 +237,14 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       for (let i = 0; i < galleryFiles.length; i++) {
         const file = galleryFiles[i];
         if (file) {
-          const fileExt = file.name.split('.').pop();
+          const optimizedFile = await compressImageIfNeeded(file);
+          const fileExt = optimizedFile.name.split('.').pop();
           const fileName = `photo_${i + 1}_${Date.now()}.${fileExt}`;
           const filePath = `gallery/${currentUser.id}/${fileName}`;
 
           const { error: uploadErr } = await supabase.storage
             .from("loverose")
-            .upload(filePath, file, {
+            .upload(filePath, optimizedFile, {
               cacheControl: "3600",
               upsert: true
             });

@@ -23,6 +23,7 @@ import {
   Smartphone 
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { compressImageIfNeeded } from "../lib/imageCompression";
 import { Profile } from "../types";
 
 interface SettingsProps {
@@ -151,33 +152,33 @@ export default function Settings({
   }, [profile, currentUser.id]);
 
   // Profile photo methods
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 3 * 1024 * 1024) {
-      alert("L'image est trop volumineuse. Veuillez choisir un fichier de moins de 3 Mo.");
-      return;
+    try {
+      const optimizedFile = await compressImageIfNeeded(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          const val = reader.result;
+          setPhotos(prev => {
+            const next = [...prev];
+            next[index] = val;
+            if (index === 0 || !avatarUrl) {
+              setAvatarUrl(val);
+            }
+            return next;
+          });
+        }
+      };
+      reader.readAsDataURL(optimizedFile);
+    } catch (err) {
+      console.error("Error processing photo upload in settings:", err);
     }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === "string") {
-        const val = reader.result;
-        setPhotos(prev => {
-          const next = [...prev];
-          next[index] = val;
-          if (index === 0 || !avatarUrl) {
-            setAvatarUrl(val);
-          }
-          return next;
-        });
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
-  const handleAddPhotoPremium = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddPhotoPremium = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -186,25 +187,25 @@ export default function Settings({
       return;
     }
 
-    if (file.size > 3 * 1024 * 1024) {
-      alert("L'image est trop volumineuse. Veuillez choisir un fichier de moins de 3 Mo.");
-      return;
+    try {
+      const optimizedFile = await compressImageIfNeeded(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          const val = reader.result;
+          setPhotos(prev => {
+            const next = [...prev, val];
+            if (next.length === 1 || !avatarUrl) {
+              setAvatarUrl(val);
+            }
+            return next;
+          });
+        }
+      };
+      reader.readAsDataURL(optimizedFile);
+    } catch (err) {
+      console.error("Error processing premium photo upload in settings:", err);
     }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === "string") {
-        const val = reader.result;
-        setPhotos(prev => {
-          const next = [...prev, val];
-          if (next.length === 1 || !avatarUrl) {
-            setAvatarUrl(val);
-          }
-          return next;
-        });
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleRemovePhoto = (index: number) => {

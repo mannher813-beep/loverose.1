@@ -765,15 +765,15 @@ export default function App() {
         ) : (
           // Core Application Tabs switcher
           <>
-            {activeTab === 'discover' && (
+            <div className={activeTab === 'discover' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
               <Discover
                 currentUser={currentUser}
                 currentUserProfile={profile}
                 isPremium={isPremiumUser}
                 onMatchDetected={(partner) => setMatchedPartner(partner)}
               />
-            )}
-            {activeTab === 'chat' && (
+            </div>
+            <div className={activeTab === 'chat' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
               <Chat
                 currentUser={currentUser}
                 currentUserProfile={profile}
@@ -782,23 +782,23 @@ export default function App() {
                 targetChatPartnerId={targetChatPartnerId}
                 onClearTargetChatPartner={() => setTargetChatPartnerId(null)}
               />
-            )}
-            {activeTab === 'feed' && (
+            </div>
+            <div className={activeTab === 'feed' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
               <Feed
                 currentUser={currentUser}
                 currentUserProfile={profile}
                 isPremium={isPremiumUser}
                 onStartChat={startChatWithUser}
               />
-            )}
-            {activeTab === 'shop' && (
+            </div>
+            <div className={activeTab === 'shop' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
               <Shop
                 currentUser={currentUser}
                 currentUserProfile={profile}
                 isPremium={isPremiumUser}
               />
-            )}
-            {activeTab === 'profile' && (
+            </div>
+            <div className={activeTab === 'profile' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
               <ProfileSettings
                 currentUser={currentUser}
                 profile={profile}
@@ -806,8 +806,8 @@ export default function App() {
                 onProfileUpdated={() => loadProfile(currentUser.id)}
                 onGoToSettings={() => setActiveTab('settings')}
               />
-            )}
-            {activeTab === 'settings' && (
+            </div>
+            <div className={activeTab === 'settings' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
               <SettingsView
                 currentUser={currentUser}
                 profile={profile}
@@ -816,22 +816,22 @@ export default function App() {
                 onLogout={handleLogout}
                 onProfileUpdated={() => loadProfile(currentUser.id)}
               />
-            )}
-            {activeTab === 'notifications' && (
+            </div>
+            <div className={activeTab === 'notifications' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
               <NotificationsView
                 currentUser={currentUser}
                 onNavigateToTab={(tab) => setActiveTab(tab)}
                 onStartChat={startChatWithUser}
               />
-            )}
-            {activeTab === 'creators' && (
+            </div>
+            <div className={activeTab === 'creators' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
               <Creators
                 currentUser={currentUser}
                 currentUserProfile={profile}
                 onOpenShop={() => setActiveTab('shop')}
                 onNavigateToTab={(tab) => setActiveTab(tab)}
               />
-            )}
+            </div>
           </>
         )}
       </main>
