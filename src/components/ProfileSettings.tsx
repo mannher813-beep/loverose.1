@@ -43,6 +43,7 @@ export default function ProfileSettings({
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
+  const [isPremiumActive, setIsPremiumActive] = useState<boolean>(isPremium);
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -52,6 +53,9 @@ export default function ProfileSettings({
   useEffect(() => {
     const loadSub = async () => {
       try {
+        const { data: isPremiumRpc } = await supabase.rpc('is_user_premium', { check_user_id: currentUser.id });
+        setIsPremiumActive(!!isPremiumRpc);
+
         const { data } = await supabase
           .from("subscriptions")
           .select("*")
@@ -249,7 +253,7 @@ export default function ProfileSettings({
                 )}
 
                 {/* Premium badge */}
-                {isPremium && (
+                {isPremiumActive && (
                   subscription?.status === 'trial' ? (
                     <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-0.5">
                       <Sparkles size={11} className="text-amber-500 fill-amber-500 animate-pulse" />

@@ -5,7 +5,6 @@ import { Heart, MessageSquare, Newspaper, ShoppingBag, Settings, Coins, Sparkles
 
 // Component imports
 import SupabaseSetupBanner from "./components/SupabaseSetupBanner";
-import PaymentSandbox from "./components/PaymentSandbox";
 import PaymentSuccess from "./components/PaymentSuccess";
 import Auth from "./components/Auth";
 import Discover from "./components/Discover";
@@ -318,12 +317,14 @@ export default function App() {
 
       setSubscription(subData);
 
+      // Check premium status via official RPC
+      const { data: isPremiumRpc } = await supabase.rpc('is_user_premium', { check_user_id: uid });
+      const isCurrentlyPremium = !!isPremiumRpc;
+      setIsPremium(isCurrentlyPremium);
+
       if (subData) {
         const now = new Date();
         const endDate = new Date(subData.end_date);
-        const isActiveOrTrial = subData.status === 'active' || subData.status === 'trial';
-        const isCurrentlyPremium = isActiveOrTrial && endDate > now;
-        setIsPremium(isCurrentlyPremium);
 
         // Pop-up de conversion à J-3 avant expiration
         if (isCurrentlyPremium && subData.status === 'trial') {
@@ -335,8 +336,6 @@ export default function App() {
             sessionStorage.setItem("conversion_popup_seen", "true");
           }
         }
-      } else {
-        setIsPremium(false);
       }
 
       // 2. Fetch profile data
@@ -466,11 +465,6 @@ export default function App() {
 
   const isPaymentSuccess = currentPath === "/payment-success" || urlParams.get("payment") === "success";
   const isPaymentCancel = currentPath === "/payment-cancel" || urlParams.get("payment") === "cancel";
-
-  // Render Money Fusion Sandbox checkout simulator
-  if (currentPath === "/payment-sandbox") {
-    return <PaymentSandbox />;
-  }
 
   // Render Payment Success Screen
   if (isPaymentSuccess) {

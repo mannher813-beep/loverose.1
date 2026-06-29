@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { Coins, CheckCircle, Sparkles, Loader2, ArrowRight, ShieldCheck, ShoppingBag, Zap } from "lucide-react";
+import { Coins, CheckCircle, Sparkles, Loader2, ArrowRight, ShieldCheck, ShoppingBag, Zap, X } from "lucide-react";
 import { Profile } from "../types";
 
 interface ShopProps {
@@ -19,6 +19,27 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
   const [isVerifyingRef, setIsVerifyingRef] = useState<string | null>(null);
   const [activeBoostEnd, setActiveBoostEnd] = useState<string | null>(null);
   const [isBoosting, setIsBoosting] = useState<boolean>(false);
+  
+  // Payment confirmation dialog state
+  const [showPaymentConfirm, setShowPaymentConfirm] = useState<boolean>(false);
+  const [paymentForm, setPaymentForm] = useState({
+    planId: "",
+    planName: "",
+    amount: 0,
+    phoneNumber: currentUserProfile?.phone_number || "",
+    fullName: currentUserProfile?.full_name || currentUserProfile?.username || ""
+  });
+
+  // Sync profile details if they load later
+  useEffect(() => {
+    if (currentUserProfile) {
+      setPaymentForm(prev => ({
+        ...prev,
+        phoneNumber: prev.phoneNumber || currentUserProfile.phone_number || "",
+        fullName: prev.fullName || currentUserProfile.full_name || currentUserProfile.username || ""
+      }));
+    }
+  }, [currentUserProfile]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -81,9 +102,12 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
         setCredits(0);
       }
 
-      // 2. Fetch Subscription Status via cache / local check
-      setIsSubscribed(isPremium);
-      if (isPremium) {
+      // 2. Fetch Subscription Status via official RPC check
+      const { data: isPremiumRpc } = await supabase.rpc('is_user_premium', { check_user_id: currentUser.id });
+      const isCurrentlyPremium = !!isPremiumRpc;
+      setIsSubscribed(isCurrentlyPremium);
+
+      if (isCurrentlyPremium) {
         const { data: subData } = await supabase
           .from("subscriptions")
           .select("end_date")
@@ -175,155 +199,59 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
   };
 
   const handlePurchase = async (planId: string, planName: string, amount: number) => {
+    setPaymentForm({
+      planId,
+      planName,
+      amount,
+      phoneNumber: currentUserProfile?.phone_number || "",
+      fullName: currentUserProfile?.full_name || currentUserProfile?.username || ""
+    });
+    setShowPaymentConfirm(true);
+  };
+
+  const handleConfirmPaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { planId, planName, amount, phoneNumber, fullName } = paymentForm;
+    
+    if (!phoneNumber.trim()) {
+      alert("Veuillez renseigner votre numéro de téléphone mobile money.");
+      return;
+    }
+    if (!fullName.trim()) {
+      alert("Veuillez renseigner votre nom complet.");
+      return;
+    }
+
     setIsLoading(planId);
+    setShowPaymentConfirm(false);
+
     try {
-      const fallbackReference = `LR-PAY-${Math.floor(100000 + Math.random() * 900000)}`;
-      let checkoutUrl = "";
-      let reference = fallbackReference;
-
-      // 1. Try server-side integration if the Express server is running (CORS-free)
-      try {
-        const response = await fetch("/api/payments/create", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            userId: currentUser.id,
-            planId: planId,
-            planName: planName,
-            amount: amount,
-            email: currentUser.email
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.checkoutUrl) {
-            checkoutUrl = data.checkoutUrl;
-            if (data.reference) {
-              reference = data.reference;
-              localStorage.setItem("last_payment_reference", data.reference);
-            }
-          }
-        } else {
-          const errData = await response.json().catch(() => ({}));
-          if (errData.error) {
-            throw new Error(errData.error);
-          }
+      // Direct call to official moneyfusion-create-payment Edge Function
+      const { data, error } = await supabase.functions.invoke('moneyfusion-create-payment', {
+        body: {
+          plan_id: planId,
+          plan_name: planName,
+          montant: amount,
+          phone_number: phoneNumber,
+          full_name: fullName,
+          related_page_id: null,
+          related_post_id: null
         }
-      } catch (apiErr: any) {
-        console.warn("Backend API not reachable or returned 404, trying direct client-side POST:", apiErr);
-        if (apiErr.message && !apiErr.message.includes("Failed to fetch") && !apiErr.message.includes("fetch failed") && !apiErr.message.includes("network")) {
-          throw apiErr;
-        }
+      });
+
+      if (error) {
+        throw error;
       }
 
-      // 2. Direct client-side fetch POST to Money Fusion (Official JSON API)
-      if (!checkoutUrl) {
-        try {
-          const payload = {
-            totalPrice: amount,
-            article: [{ [planId]: amount }],
-            personal_Info: [{ userId: currentUser.id, orderId: fallbackReference }],
-            numeroSend: "01010101",
-            nomclient: currentUser.email ? currentUser.email.split("@")[0] : "Membre LoveRose",
-            return_url: `${window.location.origin}/payment-success`,
-            webhook_url: "https://iqoceeaqwfdqiucrsicm.supabase.co/functions/v1/moneyfusion-webhook"
-          };
-
-          const response = await fetch("https://pay.moneyfusion.net/LoveRose/5e63aa25ec22c9fa/pay/", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.statut && data.token && data.url) {
-              checkoutUrl = data.url;
-              reference = data.token;
-
-              // Create payments table record directly from client
-              const { error: insertErr } = await supabase
-                .from("payments")
-                .insert([
-                  {
-                    user_id: currentUser.id,
-                    montant: amount,
-                    statut: "pending",
-                    plan_id: planId,
-                    plan_name: planName,
-                    reference: reference,
-                  }
-                ]);
-
-              if (insertErr) {
-                console.error("Direct client-side payment insertion failed:", insertErr);
-              }
-
-              localStorage.setItem("last_payment_reference", reference);
-            }
-          }
-        } catch (directErr) {
-          console.warn("Direct client-side POST failed (could be CORS), using URL parameter fallback:", directErr);
-        }
+      if (data?.payment_url) {
+        // Redirect user directly to the official Money Fusion gateway
+        window.location.href = data.payment_url;
+      } else {
+        throw new Error(data?.error || "Impossible d'initialiser l'URL de paiement.");
       }
-
-      // 3. Last fallback: Direct URL parameter navigation (guaranteed 100% uptime fallback)
-      if (!checkoutUrl) {
-        localStorage.setItem("last_payment_reference", fallbackReference);
-
-        const { error: insertErr } = await supabase
-          .from("payments")
-          .insert([
-            {
-              user_id: currentUser.id,
-              montant: amount,
-              statut: "pending",
-              plan_id: planId,
-              plan_name: planName,
-              reference: fallbackReference,
-            }
-          ]);
-
-        if (insertErr) {
-          console.error("Fallback payment insertion failed:", insertErr);
-        }
-
-        const returnUrl = `${window.location.origin}/payment-success?reference=${fallbackReference}`;
-        const cancelUrl = `${window.location.origin}/`;
-        const moneyFusionUrl = "https://pay.moneyfusion.net/LoveRose/5e63aa25ec22c9fa/pay/";
-        
-        const params = new URLSearchParams({
-          amount: String(amount),
-          prix: String(amount),
-          total: String(amount),
-          reference: fallbackReference,
-          ref: fallbackReference,
-          order_id: fallbackReference,
-          libelle: planName,
-          description: `Achat ${planName} sur LoveRose`,
-          name: planName,
-          email: currentUser.email || "",
-          mail: currentUser.email || "",
-          userId: currentUser.id,
-          user_id: currentUser.id,
-          return_url: returnUrl,
-          url_retour: returnUrl,
-          cancel_url: cancelUrl,
-          url_annulation: cancelUrl
-        });
-
-        checkoutUrl = `${moneyFusionUrl}?${params.toString()}`;
-      }
-
-      window.location.href = checkoutUrl;
     } catch (err: any) {
-      console.error("Purchase checkout failed:", err);
-      alert(err.message || "Erreur de connexion avec le serveur.");
+      console.error("Payment initiation failed:", err);
+      alert("Erreur d'initialisation de paiement avec Money Fusion : " + (err.message || "Veuillez réessayer."));
     } finally {
       setIsLoading(null);
     }
@@ -671,6 +599,87 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
         </div>
 
       </div>
+
+      {/* Modern Billing Confirmation Modal */}
+      {showPaymentConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl p-6 border border-slate-100 space-y-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                <ShieldCheck className="text-rose-500 fill-rose-500/10" size={20} />
+                <span>Paiement Sécurisé</span>
+              </h3>
+              <button 
+                onClick={() => setShowPaymentConfirm(false)}
+                className="text-slate-400 hover:text-slate-600 transition p-1"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 space-y-2 text-center">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Achat sélectionné</p>
+              <h4 className="text-md font-extrabold text-slate-900">{paymentForm.planName}</h4>
+              <p className="text-3xl font-black text-rose-500">{paymentForm.amount} FCFA</p>
+            </div>
+
+            <form onSubmit={handleConfirmPaymentSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Nom Complet du Client
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Jean Dupont"
+                  value={paymentForm.fullName}
+                  onChange={(e) => setPaymentForm(p => ({ ...p, fullName: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Numéro de Téléphone Mobile Money
+                </label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="Ex: 677123456"
+                  value={paymentForm.phoneNumber}
+                  onChange={(e) => setPaymentForm(p => ({ ...p, phoneNumber: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
+                />
+                <span className="text-[10px] text-slate-400 block font-medium">
+                  Entrez le numéro associé à votre compte de paiement (Orange, MTN, Moov, Wave, etc.)
+                </span>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentConfirm(false)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-rose-500/10 flex items-center justify-center gap-1.5 transition cursor-pointer"
+                >
+                  <span>Payer {paymentForm.amount} FCFA</span>
+                  <ArrowRight size={12} />
+                </button>
+              </div>
+            </form>
+
+            <p className="text-[9px] text-slate-400 text-center font-medium leading-relaxed">
+              En cliquant sur "Payer", vous serez redirigé vers l'interface officielle de Money Fusion pour effectuer votre transaction en toute sécurité.
+            </p>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

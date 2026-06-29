@@ -72,6 +72,29 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
   const [onboardingStep, setOnboardingStep] = useState<number>(1);
   const [isPayingCreator, setIsPayingCreator] = useState<boolean>(false);
 
+  // Billing confirmation modal states
+  const [showCreatorPaymentConfirm, setShowCreatorPaymentConfirm] = useState<boolean>(false);
+  const [creatorPaymentForm, setCreatorPaymentForm] = useState({
+    planId: "",
+    planName: "",
+    amount: 0,
+    phoneNumber: currentUserProfile?.phone_number || "",
+    fullName: currentUserProfile?.full_name || currentUserProfile?.username || "",
+    relatedPageId: null as string | null,
+    relatedPostId: null as string | null
+  });
+
+  // Sync profile details if they load later
+  useEffect(() => {
+    if (currentUserProfile) {
+      setCreatorPaymentForm(prev => ({
+        ...prev,
+        phoneNumber: prev.phoneNumber || currentUserProfile.phone_number || "",
+        fullName: prev.fullName || currentUserProfile.full_name || currentUserProfile.username || ""
+      }));
+    }
+  }, [currentUserProfile]);
+
   // Page Creator Form
   const [pageForm, setPageForm] = useState({
     page_name: "",
@@ -149,6 +172,52 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
       loadPublicPageData(selectedPage);
     }
   }, [selectedPage, currentUser]);
+
+  const handleCreatorPaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { planId, planName, amount, phoneNumber, fullName, relatedPageId, relatedPostId } = creatorPaymentForm;
+    
+    if (!phoneNumber.trim()) {
+      alert("Veuillez renseigner votre numéro de téléphone mobile money.");
+      return;
+    }
+    if (!fullName.trim()) {
+      alert("Veuillez renseigner votre nom complet.");
+      return;
+    }
+
+    setIsActionLoading(planId);
+    setShowCreatorPaymentConfirm(false);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('moneyfusion-create-payment', {
+        body: {
+          plan_id: planId,
+          plan_name: planName,
+          montant: amount,
+          phone_number: phoneNumber,
+          full_name: fullName,
+          related_page_id: relatedPageId || null,
+          related_post_id: relatedPostId || null
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.payment_url) {
+        window.location.href = data.payment_url;
+      } else {
+        throw new Error(data?.error || "Impossible d'initialiser la session de paiement.");
+      }
+    } catch (err: any) {
+      console.error("Payment initiation failed:", err);
+      alert("Erreur lors de l'initialisation du paiement avec Money Fusion : " + (err.message || "Veuillez réessayer."));
+    } finally {
+      setIsActionLoading(null);
+    }
+  };
 
   const fetchCreatorPages = async () => {
     setIsLoading(true);
@@ -355,45 +424,17 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
 
       if (createError) throw createError;
 
-      // 2. Create the Money Fusion checkout flow on server (1,000 FCFA)
-      const fallbackReference = `LR-CR-${newPage.id}-${Math.floor(10000 + Math.random() * 90000)}`;
-      let checkoutUrl = "";
-      let reference = fallbackReference;
-
-      try {
-        const response = await fetch("/api/payments/create", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            userId: currentUser.id,
-            planId: "creator_page_activation",
-            planName: `Activation Page ${newPage.page_name}`,
-            amount: 1000,
-            email: currentUser.email,
-            related_page_id: newPage.id
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.checkoutUrl) {
-            checkoutUrl = data.checkoutUrl;
-            reference = data.reference || reference;
-          }
-        }
-      } catch (err) {
-        console.warn("Backend checkout URL generation failed, falling back:", err);
-      }
-
-      // If checkout URL wasn't retrieved, throw error
-      if (!checkoutUrl) {
-        throw new Error("Impossible d'initialiser la session de paiement avec Money Fusion. Veuillez vérifier votre connexion.");
-      }
-
-      alert("Draft page créée ! Redirection vers la plateforme de paiement Money Fusion...");
-      window.location.href = checkoutUrl;
+      // 2. Open billing details confirmation modal for page activation (1,000 FCFA)
+      setCreatorPaymentForm({
+        planId: "creator_page_activation",
+        planName: `Activation de la page ${newPage.page_name}`,
+        amount: 1000,
+        phoneNumber: currentUserProfile?.phone_number || "",
+        fullName: currentUserProfile?.full_name || currentUserProfile?.username || "",
+        relatedPageId: newPage.id,
+        relatedPostId: null
+      });
+      setShowCreatorPaymentConfirm(true);
 
     } catch (err: any) {
       console.error("Error creating creator page:", err);
@@ -513,53 +554,17 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
   const handlePageSubscribe = async () => {
     if (!currentUser || !selectedPage) return;
 
-    setIsActionLoading("subscribe");
-    try {
-      const price = selectedPage.subscription_price || 2500;
-      const fallbackReference = `LR-SUB-${selectedPage.id}-${Math.floor(10000 + Math.random() * 90000)}`;
-      let checkoutUrl = "";
-      let reference = fallbackReference;
-
-      try {
-        const response = await fetch("/api/payments/create", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            userId: currentUser.id,
-            planId: "page_subscription",
-            planName: `Abonnement page ${selectedPage.page_name}`,
-            amount: price,
-            email: currentUser.email,
-            related_page_id: selectedPage.id
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.checkoutUrl) {
-            checkoutUrl = data.checkoutUrl;
-            reference = data.reference || reference;
-          }
-        }
-      } catch (err) {
-        console.warn("Backend subscribe checkout URL generation failed:", err);
-      }
-
-      if (!checkoutUrl) {
-        throw new Error("Impossible d'initialiser la session d'abonnement avec Money Fusion. Veuillez réessayer.");
-      }
-
-      alert("Redirection vers Money Fusion pour confirmer votre abonnement...");
-      window.location.href = checkoutUrl;
-
-    } catch (err: any) {
-      console.error("Error during subscribe payment creation:", err);
-      alert("Erreur de connexion : " + err.message);
-    } finally {
-      setIsActionLoading(null);
-    }
+    const price = selectedPage.subscription_price || 2500;
+    setCreatorPaymentForm({
+      planId: "page_subscription",
+      planName: `Abonnement à la page ${selectedPage.page_name}`,
+      amount: price,
+      phoneNumber: currentUserProfile?.phone_number || "",
+      fullName: currentUserProfile?.full_name || currentUserProfile?.username || "",
+      relatedPageId: selectedPage.id,
+      relatedPostId: null
+    });
+    setShowCreatorPaymentConfirm(true);
   };
 
   const handleSendTip = async () => {
@@ -570,104 +575,32 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
       return;
     }
 
-    setIsActionLoading("tip");
-    try {
-      const fallbackReference = `LR-TIP-${selectedPage.id}-${Math.floor(10000 + Math.random() * 90000)}`;
-      let checkoutUrl = "";
-      let reference = fallbackReference;
-
-      try {
-        const response = await fetch("/api/payments/create", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            userId: currentUser.id,
-            planId: "tip",
-            planName: `Pourboire pour ${selectedPage.page_name}`,
-            amount: amount,
-            email: currentUser.email,
-            related_page_id: selectedPage.id
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.checkoutUrl) {
-            checkoutUrl = data.checkoutUrl;
-            reference = data.reference || reference;
-          }
-        }
-      } catch (err) {
-        console.warn("Backend tip URL generation failed, falling back:", err);
-      }
-
-      if (!checkoutUrl) {
-        throw new Error("Impossible d'initialiser la session de pourboire avec Money Fusion. Veuillez réessayer.");
-      }
-
-      alert("Envoi du pourboire de " + amount + " FCFA via Money Fusion...");
-      window.location.href = checkoutUrl;
-
-    } catch (err: any) {
-      console.error("Error creating tip payment:", err);
-      alert("Impossible d'initier le pourboire : " + err.message);
-    } finally {
-      setIsActionLoading(null);
-    }
+    setCreatorPaymentForm({
+      planId: "tip",
+      planName: `Pourboire pour ${selectedPage.page_name}`,
+      amount: amount,
+      phoneNumber: currentUserProfile?.phone_number || "",
+      fullName: currentUserProfile?.full_name || currentUserProfile?.username || "",
+      relatedPageId: selectedPage.id,
+      relatedPostId: null
+    });
+    setShowCreatorPaymentConfirm(true);
   };
 
   const handleUnlockPost = async (post: any) => {
     if (!currentUser) return;
 
-    setIsActionLoading(`unlock_${post.id}`);
-    try {
-      const price = post.unlock_price || 500;
-      const fallbackReference = `LR-POST-UNL-${post.id}-${Math.floor(10000 + Math.random() * 90000)}`;
-      let checkoutUrl = "";
-      let reference = fallbackReference;
-
-      try {
-        const response = await fetch("/api/payments/create", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            userId: currentUser.id,
-            planId: "premium_content_unlock",
-            planName: "Déblocage de publication",
-            amount: price,
-            email: currentUser.email,
-            related_post_id: post.id
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.checkoutUrl) {
-            checkoutUrl = data.checkoutUrl;
-            reference = data.reference || reference;
-          }
-        }
-      } catch (err) {
-        console.warn("Backend premium post unlock checkout failed:", err);
-      }
-
-      if (!checkoutUrl) {
-        throw new Error("Impossible d'initialiser la session de déblocage avec Money Fusion. Veuillez réessayer.");
-      }
-
-      alert("Déverrouillage en cours via Money Fusion...");
-      window.location.href = checkoutUrl;
-
-    } catch (err: any) {
-      console.error("Error during post unlock payment creation:", err);
-      alert("Erreur de connexion : " + err.message);
-    } finally {
-      setIsActionLoading(null);
-    }
+    const price = post.unlock_price || 500;
+    setCreatorPaymentForm({
+      planId: "premium_content_unlock",
+      planName: "Déblocage de publication",
+      amount: price,
+      phoneNumber: currentUserProfile?.phone_number || "",
+      fullName: currentUserProfile?.full_name || currentUserProfile?.username || "",
+      relatedPageId: null,
+      relatedPostId: post.id
+    });
+    setShowCreatorPaymentConfirm(true);
   };
 
   const handleRequestPayout = async (e: React.FormEvent) => {
@@ -2195,6 +2128,87 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
         <span>•</span>
         <a href="#contact" onClick={(e) => { e.preventDefault(); alert("Pour toute question d'écosystème créateurs, écrivez à contact@loverose.com"); }} className="hover:text-slate-600">Contact d'assistance</a>
       </div>
+
+      {/* Modern Billing Confirmation Modal for Creator Hub */}
+      {showCreatorPaymentConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl p-6 border border-slate-100 space-y-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                <CheckCircle className="text-rose-500 fill-rose-500/10" size={20} />
+                <span>Paiement Sécurisé</span>
+              </h3>
+              <button 
+                onClick={() => setShowCreatorPaymentConfirm(false)}
+                className="text-slate-400 hover:text-slate-600 transition p-1"
+              >
+                <ChevronRight className="rotate-90" size={18} />
+              </button>
+            </div>
+
+            <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 space-y-2 text-center">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Transaction</p>
+              <h4 className="text-md font-extrabold text-slate-900">{creatorPaymentForm.planName}</h4>
+              <p className="text-3xl font-black text-rose-500">{creatorPaymentForm.amount} FCFA</p>
+            </div>
+
+            <form onSubmit={handleCreatorPaymentSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Nom Complet du Client
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Jean Dupont"
+                  value={creatorPaymentForm.fullName}
+                  onChange={(e) => setCreatorPaymentForm(p => ({ ...p, fullName: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Numéro de Téléphone Mobile Money
+                </label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="Ex: 677123456"
+                  value={creatorPaymentForm.phoneNumber}
+                  onChange={(e) => setCreatorPaymentForm(p => ({ ...p, phoneNumber: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
+                />
+                <span className="text-[10px] text-slate-400 block font-medium">
+                  Entrez le numéro associé à votre compte de paiement (Orange, MTN, Moov, Wave, etc.)
+                </span>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreatorPaymentConfirm(false)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-rose-500/10 flex items-center justify-center gap-1.5 transition cursor-pointer"
+                >
+                  <span>Payer {creatorPaymentForm.amount} FCFA</span>
+                  <ArrowRight size={12} />
+                </button>
+              </div>
+            </form>
+
+            <p className="text-[9px] text-slate-400 text-center font-medium leading-relaxed">
+              En cliquant sur "Payer", vous serez redirigé vers l'interface officielle de Money Fusion pour effectuer votre transaction en toute sécurité.
+            </p>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

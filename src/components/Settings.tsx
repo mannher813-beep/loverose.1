@@ -48,9 +48,15 @@ export default function Settings({
   // Subscription states
   const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const [cancellingSub, setCancellingSub] = useState(false);
+  const [isPremiumActive, setIsPremiumActive] = useState<boolean>(isPremium);
+  const isPremiumUser = isPremium || isPremiumActive;
 
   const loadSubscription = async () => {
     try {
+      // Check premium status via official RPC
+      const { data: isPremiumRpc } = await supabase.rpc('is_user_premium', { check_user_id: currentUser.id });
+      setIsPremiumActive(!!isPremiumRpc);
+
       const { data, error } = await supabase
         .from("subscriptions")
         .select("*")
@@ -457,7 +463,7 @@ export default function Settings({
                 )}
 
                 {/* Free users 3 slots inputs */}
-                {!isPremium && [0, 1, 2].map(index => (
+                {!isPremiumUser && [0, 1, 2].map(index => (
                   <input
                     key={index}
                     type="file"
@@ -469,7 +475,7 @@ export default function Settings({
                 ))}
 
                 {/* Premium user add input */}
-                {isPremium && (
+                {isPremiumUser && (
                   <input
                     type="file"
                     id="settings-photo-premium"
@@ -480,7 +486,7 @@ export default function Settings({
                 )}
 
                 {/* Layout depending on subscription status */}
-                {!isPremium ? (
+                {!isPremiumUser ? (
                   <div className="space-y-3.5">
                     {[0, 1, 2].map(index => {
                       const photo = photos[index];
@@ -915,7 +921,7 @@ export default function Settings({
                       <p className="text-[10px] text-slate-400 mt-0.5">Vérifiez l'état et l'échéance de vos services Premium</p>
                     </div>
                     <div>
-                      {isPremium ? (
+                      {isPremiumUser ? (
                         subscriptionData?.status === "cancelled" ? (
                           <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-100 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider block text-center">
                             Résilié (Actif)
@@ -937,7 +943,7 @@ export default function Settings({
                     </div>
                   </div>
 
-                  {isPremium && subscriptionData && (
+                  {isPremiumUser && subscriptionData && (
                     <div className="bg-slate-50 border border-slate-150 p-3.5 rounded-2xl space-y-2 text-xs">
                       <div className="flex justify-between font-bold text-slate-700 text-[11px]">
                         <span>Formule :</span>
@@ -982,7 +988,7 @@ export default function Settings({
                     </div>
                   )}
 
-                  {!isPremium && (
+                  {!isPremiumUser && (
                     <div className="bg-rose-50/30 border border-rose-100/40 p-4 rounded-2xl text-center space-y-2">
                       <p className="text-[11px] text-slate-600 leading-relaxed font-semibold">
                         Débloquez les messages illimités, l'upload de 20 photos, le badge Premium et d'autres fonctionnalités exclusives.
