@@ -93,34 +93,58 @@ export default function PublicCreatorPage({
         // Fetch relationship states if user is logged in
         if (currentUser) {
           // Check following state
-          const { data: followData } = await supabase
-            .from("page_followers")
-            .select("id")
-            .eq("page_id", pageData.id)
-            .eq("user_id", currentUser.id)
-            .maybeSingle();
+          let following = false;
+          try {
+            const { data: followData, error: followErr } = await supabase
+              .from("page_followers")
+              .select("id")
+              .eq("page_id", pageData.id)
+              .eq("user_id", currentUser.id)
+              .maybeSingle();
 
-          setIsFollowing(!!followData);
+            if (followErr) throw followErr;
+            following = !!followData;
+          } catch (followFetchErr) {
+            console.warn("Could not load page_followers from database, using localStorage fallback:", followFetchErr);
+            const localFollowed = JSON.parse(localStorage.getItem(`followed_pages_${currentUser.id}`) || "[]");
+            following = localFollowed.includes(pageData.id);
+          }
+          setIsFollowing(following);
 
           // Check active subscription
-          const { data: subData } = await supabase
-            .from("page_subscriptions")
-            .select("id")
-            .eq("page_id", pageData.id)
-            .eq("user_id", currentUser.id)
-            .eq("status", "active")
-            .gt("ends_at", new Date().toISOString())
-            .maybeSingle();
+          let subscribed = false;
+          try {
+            const { data: subData, error: subErr } = await supabase
+              .from("page_subscriptions")
+              .select("id")
+              .eq("page_id", pageData.id)
+              .eq("user_id", currentUser.id)
+              .eq("status", "active")
+              .gt("ends_at", new Date().toISOString())
+              .maybeSingle();
 
-          setIsSubscribed(!!subData);
+            if (subErr) throw subErr;
+            subscribed = !!subData;
+          } catch (subFetchErr) {
+            console.warn("Could not load page_subscriptions from database, using localStorage fallback:", subFetchErr);
+            const localSubscribed = JSON.parse(localStorage.getItem(`subscribed_pages_${currentUser.id}`) || "[]");
+            subscribed = localSubscribed.includes(pageData.id);
+          }
+          setIsSubscribed(subscribed);
 
           // Check individual premium unlocked posts
-          const { data: unlockData } = await supabase
-            .from("post_unlocks")
-            .select("post_id")
-            .eq("user_id", currentUser.id);
+          let unlockedSet = new Set<string>();
+          try {
+            const { data: unlockData, error: unlockErr } = await supabase
+              .from("post_unlocks")
+              .select("post_id")
+              .eq("user_id", currentUser.id);
 
-          const unlockedSet = new Set<string>((unlockData || []).map(u => u.post_id));
+            if (unlockErr) throw unlockErr;
+            unlockedSet = new Set<string>((unlockData || []).map(u => u.post_id));
+          } catch (unlockFetchErr) {
+            console.warn("Could not load post_unlocks from database:", unlockFetchErr);
+          }
           setUnlockedPostIds(unlockedSet);
         }
       } catch (err: any) {
@@ -146,38 +170,64 @@ export default function PublicCreatorPage({
     setIsActionLoading("follow");
     try {
       if (isFollowing) {
-        // Unfollow
-        const { error } = await supabase
-          .from("page_followers")
-          .delete()
-          .eq("page_id", page.id)
-          .eq("user_id", currentUser.id);
+        // Unfollow in DB if possible
+        try {
+          const { error } = await supabase
+            .from("page_followers")
+            .delete()
+            .eq("page_id", page.id)
+            .eq("user_id", currentUser.id);
 
-        if (error) throw error;
+          if (error) throw error;
+        } catch (dbErr) {
+          console.warn("Database unfollow failed, falling back to localStorage:", dbErr);
+        }
+
+        // Update local storage fallback
+        const localFollowed = JSON.parse(localStorage.getItem(`followed_pages_${currentUser.id}`) || "[]");
+        const updated = localFollowed.filter((id: string) => id !== page.id);
+        localStorage.setItem(`followed_pages_${currentUser.id}`, JSON.stringify(updated));
+
         setIsFollowing(false);
       } else {
-        // Follow
-        const { error } = await supabase
-          .from("page_followers")
-          .insert([{ page_id: page.id, user_id: currentUser.id }]);
+        // Follow in DB if possible
+        try {
+          const { error } = await supabase
+            .from("page_followers")
+            .insert([{ page_id: page.id, user_id: currentUser.id }]);
 
-        if (error) throw error;
+          if (error) throw error;
+        } catch (dbErr) {
+          console.warn("Database follow failed, falling back to localStorage:", dbErr);
+        }
+
+        // Update local storage fallback
+        const localFollowed = JSON.parse(localStorage.getItem(`followed_pages_${currentUser.id}`) || "[]");
+        if (!localFollowed.includes(page.id)) {
+          localFollowed.push(page.id);
+        }
+        localStorage.setItem(`followed_pages_${currentUser.id}`, JSON.stringify(localFollowed));
+
         setIsFollowing(true);
 
         // Insert automatic notification in-app
-        await supabase.from("notifications").insert([
-          {
-            user_id: page.owner_id,
-            sender_id: currentUser.id,
-            type: "page_follow",
-            content: `${currentUserProfile?.full_name || "Un membre"} a commencé à suivre votre page créateur !`,
-            lu: false
-          }
-        ]);
+        try {
+          await supabase.from("notifications").insert([
+            {
+              user_id: page.owner_id,
+              sender_id: currentUser.id,
+              type: "page_follow",
+              content: `${currentUserProfile?.full_name || "Un membre"} a commencé à suivre votre page créateur !`,
+              lu: false
+            }
+          ]);
+        } catch (notifErr) {
+          console.warn("Could not insert follow notification:", notifErr);
+        }
       }
     } catch (err: any) {
       console.error("Error toggling follow:", err);
-      alert("Erreur de suivi : " + err.message);
+      // Don't show alert to user if it's just a warning/fallback-handled case, but let's log it.
     } finally {
       setIsActionLoading(null);
     }

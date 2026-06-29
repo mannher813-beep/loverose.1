@@ -266,6 +266,192 @@ CREATE POLICY "Les partages de posts sont visibles par tous" ON public.post_shar
 CREATE POLICY "Chaque utilisateur gère ses partages" ON public.post_shares FOR ALL USING (auth.uid() = user_id);
 
 
+-- 16. Table blocked_users (Utilisateurs bloqués)
+CREATE TABLE IF NOT EXISTS public.blocked_users (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    blocker_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    blocked_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (blocker_id, blocked_id)
+);
+
+ALTER TABLE public.blocked_users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Les utilisateurs peuvent voir qui ils ont bloqué" ON public.blocked_users;
+DROP POLICY IF EXISTS "Les utilisateurs peuvent bloquer et débloquer" ON public.blocked_users;
+CREATE POLICY "Les utilisateurs peuvent voir qui ils ont bloqué" ON public.blocked_users FOR SELECT USING (auth.uid() = blocker_id OR auth.uid() = blocked_id);
+CREATE POLICY "Les utilisateurs peuvent bloquer et débloquer" ON public.blocked_users FOR ALL USING (auth.uid() = blocker_id);
+
+
+-- 17. Table profile_boosts (Profils boostés)
+CREATE TABLE IF NOT EXISTS public.profile_boosts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    ends_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.profile_boosts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Tout le monde peut voir les boosts" ON public.profile_boosts;
+DROP POLICY IF EXISTS "Chaque utilisateur gère ses propres boosts" ON public.profile_boosts;
+CREATE POLICY "Tout le monde peut voir les boosts" ON public.profile_boosts FOR SELECT USING (true);
+CREATE POLICY "Chaque utilisateur gère ses propres boosts" ON public.profile_boosts FOR ALL USING (auth.uid() = user_id);
+
+
+-- 18. Table creator_pages (Pages Créateurs)
+CREATE TABLE IF NOT EXISTS public.creator_pages (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    owner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    page_name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    bio TEXT,
+    description TEXT,
+    avatar_url TEXT,
+    cover_url TEXT,
+    category TEXT,
+    location TEXT,
+    language TEXT,
+    interests TEXT[] DEFAULT '{}',
+    subscription_price INTEGER DEFAULT 0,
+    tips_enabled BOOLEAN DEFAULT true,
+    status TEXT DEFAULT 'active',
+    activation_paid BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.creator_pages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Les pages créateurs sont publiques" ON public.creator_pages;
+DROP POLICY IF EXISTS "Les créateurs gèrent leur propre page" ON public.creator_pages;
+CREATE POLICY "Les pages créateurs sont publiques" ON public.creator_pages FOR SELECT USING (true);
+CREATE POLICY "Les créateurs gèrent leur propre page" ON public.creator_pages FOR ALL USING (auth.uid() = owner_id);
+
+
+-- 19. Table page_followers (Abonnés/Followers de pages créateurs)
+CREATE TABLE IF NOT EXISTS public.page_followers (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    page_id UUID REFERENCES public.creator_pages(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (page_id, user_id)
+);
+
+ALTER TABLE public.page_followers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Les followers sont publics" ON public.page_followers;
+DROP POLICY IF EXISTS "Les utilisateurs gèrent leurs propres suivis" ON public.page_followers;
+CREATE POLICY "Les followers sont publics" ON public.page_followers FOR SELECT USING (true);
+CREATE POLICY "Les utilisateurs gèrent leurs propres suivis" ON public.page_followers FOR ALL USING (auth.uid() = user_id);
+
+
+-- 20. Table page_subscriptions (Abonnements payants aux pages créateurs)
+CREATE TABLE IF NOT EXISTS public.page_subscriptions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    page_id UUID REFERENCES public.creator_pages(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    status TEXT DEFAULT 'active',
+    ends_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (page_id, user_id)
+);
+
+ALTER TABLE public.page_subscriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Les abonnements sont visibles par les abonnés et créateurs" ON public.page_subscriptions;
+CREATE POLICY "Les abonnements sont visibles par les abonnés et créateurs" ON public.page_subscriptions FOR SELECT USING (
+    auth.uid() = user_id OR auth.uid() IN (SELECT owner_id FROM public.creator_pages WHERE id = page_id)
+);
+
+
+-- 21. Table post_unlocks (Posts payants débloqués individuellement)
+CREATE TABLE IF NOT EXISTS public.post_unlocks (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (post_id, user_id)
+);
+
+ALTER TABLE public.post_unlocks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Les déblocages sont visibles par l'utilisateur" ON public.post_unlocks;
+CREATE POLICY "Les déblocages sont visibles par l'utilisateur" ON public.post_unlocks FOR SELECT USING (auth.uid() = user_id);
+
+
+-- ==========================================
+-- FONCTIONS ET PROCEDURES STOCKÉES
+-- ==========================================
+
+-- RPC pour vérifier si un utilisateur est premium
+CREATE OR REPLACE FUNCTION public.is_user_premium(check_user_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+    is_premium BOOLEAN;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1 FROM public.subscriptions 
+        WHERE user_id = check_user_id 
+          AND (status = 'active' OR status = 'trial') 
+          AND end_date > NOW()
+    ) INTO is_premium;
+    RETURN is_premium;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- RPC pour obtenir les droits complets d'un utilisateur
+CREATE OR REPLACE FUNCTION public.get_user_entitlements(check_user_id UUID)
+RETURNS JSONB AS $$
+DECLARE
+    is_premium BOOLEAN := false;
+    sub_type TEXT := NULL;
+    sub_status TEXT := NULL;
+    expires_at TIMESTAMP WITH TIME ZONE := NULL;
+    credit_balance INTEGER := 0;
+    can_send BOOLEAN := false;
+    sub_record RECORD;
+BEGIN
+    -- 1. Fetch subscription details
+    SELECT * FROM public.subscriptions 
+    WHERE user_id = check_user_id 
+    ORDER BY created_at DESC 
+    LIMIT 1 
+    INTO sub_record;
+
+    IF sub_record IS NOT NULL THEN
+        sub_type := sub_record.type;
+        sub_status := sub_record.status;
+        expires_at := sub_record.end_date;
+        
+        -- Check if currently premium (status in 'active', 'trial' and not expired)
+        IF (sub_status = 'active' OR sub_status = 'trial') AND expires_at > NOW() THEN
+            is_premium := true;
+        END IF;
+    END IF;
+
+    -- 2. Fetch credits balance
+    SELECT balance FROM public.user_credits 
+    WHERE user_id = check_user_id 
+    INTO credit_balance;
+    
+    IF credit_balance IS NULL THEN
+        credit_balance := 0;
+    END IF;
+
+    -- 3. Can send messages if premium OR has credits
+    IF is_premium OR credit_balance > 0 THEN
+        can_send := true;
+    ELSE
+        can_send := false;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'premium', is_premium,
+        'subscription_type', sub_type,
+        'subscription_status', sub_status,
+        'expires_at', expires_at,
+        'credits', credit_balance,
+        'can_send_messages', can_send
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
 -- ==========================================
 -- TRIGGERS SQL AUTOMATIQUES (MATCH MUTUEL)
 -- ==========================================
@@ -315,10 +501,7 @@ DECLARE
     word_count INTEGER;
 BEGIN
     -- 1. Vérifie si le sender est Premium (messages illimités)
-    SELECT EXISTS (
-        SELECT 1 FROM public.subscriptions 
-        WHERE user_id = NEW.sender_id AND type = 'premium' AND status = 'active'
-    ) INTO is_premium;
+    SELECT public.is_user_premium(NEW.sender_id) INTO is_premium;
 
     IF is_premium THEN
         RETURN NEW; -- Premium a les messages gratuits illimités

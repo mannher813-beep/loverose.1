@@ -19,6 +19,7 @@ import PublicProfile from "./components/PublicProfile";
 import Creators from "./components/Creators";
 import PublicLayout from "./components/public/PublicLayout";
 import PublicCreatorPage from "./components/PublicCreatorPage";
+import { usePremiumStatus } from "./hooks/usePremiumStatus";
 
 export default function App() {
   // Simple Path Routing
@@ -28,6 +29,8 @@ export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [subscription, setSubscription] = useState<any>(null);
   const [isPremium, setIsPremium] = useState<boolean>(false);
+  const { entitlements } = usePremiumStatus(currentUser?.id);
+  const isPremiumUser = isPremium || entitlements.premium;
   const [showConversionPopup, setShowConversionPopup] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'feed' | 'shop' | 'profile' | 'settings' | 'notifications' | 'creators'>('discover');
@@ -763,7 +766,7 @@ export default function App() {
               <Discover
                 currentUser={currentUser}
                 currentUserProfile={profile}
-                isPremium={isPremium}
+                isPremium={isPremiumUser}
                 onMatchDetected={(partner) => setMatchedPartner(partner)}
               />
             )}
@@ -771,7 +774,7 @@ export default function App() {
               <Chat
                 currentUser={currentUser}
                 currentUserProfile={profile}
-                isPremium={isPremium}
+                isPremium={isPremiumUser}
                 onOpenShop={() => setActiveTab('shop')}
                 targetChatPartnerId={targetChatPartnerId}
                 onClearTargetChatPartner={() => setTargetChatPartnerId(null)}
@@ -781,7 +784,7 @@ export default function App() {
               <Feed
                 currentUser={currentUser}
                 currentUserProfile={profile}
-                isPremium={isPremium}
+                isPremium={isPremiumUser}
                 onStartChat={startChatWithUser}
               />
             )}
@@ -789,14 +792,14 @@ export default function App() {
               <Shop
                 currentUser={currentUser}
                 currentUserProfile={profile}
-                isPremium={isPremium}
+                isPremium={isPremiumUser}
               />
             )}
             {activeTab === 'profile' && (
               <ProfileSettings
                 currentUser={currentUser}
                 profile={profile}
-                isPremium={isPremium}
+                isPremium={isPremiumUser}
                 onProfileUpdated={() => loadProfile(currentUser.id)}
                 onGoToSettings={() => setActiveTab('settings')}
               />
@@ -805,7 +808,7 @@ export default function App() {
               <SettingsView
                 currentUser={currentUser}
                 profile={profile}
-                isPremium={isPremium}
+                isPremium={isPremiumUser}
                 onBackToProfile={() => setActiveTab('profile')}
                 onLogout={handleLogout}
                 onProfileUpdated={() => loadProfile(currentUser.id)}

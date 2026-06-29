@@ -347,34 +347,58 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
       if (!currentUser) return;
 
       // 2. Check follower state
-      const { data: followData } = await supabase
-        .from("page_followers")
-        .select("id")
-        .eq("page_id", page.id)
-        .eq("user_id", currentUser.id)
-        .maybeSingle();
+      let following = false;
+      try {
+        const { data: followData, error: followErr } = await supabase
+          .from("page_followers")
+          .select("id")
+          .eq("page_id", page.id)
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
 
-      setIsFollowing(!!followData);
+        if (followErr) throw followErr;
+        following = !!followData;
+      } catch (followFetchErr) {
+        console.warn("Could not load page_followers from database, using localStorage fallback:", followFetchErr);
+        const localFollowed = JSON.parse(localStorage.getItem(`followed_pages_${currentUser.id}`) || "[]");
+        following = localFollowed.includes(page.id);
+      }
+      setIsFollowing(following);
 
       // 3. Check active subscription
-      const { data: subData } = await supabase
-        .from("page_subscriptions")
-        .select("id")
-        .eq("page_id", page.id)
-        .eq("user_id", currentUser.id)
-        .eq("status", "active")
-        .gt("ends_at", new Date().toISOString())
-        .maybeSingle();
+      let subscribed = false;
+      try {
+        const { data: subData, error: subErr } = await supabase
+          .from("page_subscriptions")
+          .select("id")
+          .eq("page_id", page.id)
+          .eq("user_id", currentUser.id)
+          .eq("status", "active")
+          .gt("ends_at", new Date().toISOString())
+          .maybeSingle();
 
-      setIsSubscribed(!!subData);
+        if (subErr) throw subErr;
+        subscribed = !!subData;
+      } catch (subFetchErr) {
+        console.warn("Could not load page_subscriptions from database, using localStorage fallback:", subFetchErr);
+        const localSubscribed = JSON.parse(localStorage.getItem(`subscribed_pages_${currentUser.id}`) || "[]");
+        subscribed = localSubscribed.includes(page.id);
+      }
+      setIsSubscribed(subscribed);
 
       // 4. Check premium posts unlocked
-      const { data: unlockData } = await supabase
-        .from("post_unlocks")
-        .select("post_id")
-        .eq("user_id", currentUser.id);
+      let unlockedSet = new Set<string>();
+      try {
+        const { data: unlockData, error: unlockErr } = await supabase
+          .from("post_unlocks")
+          .select("post_id")
+          .eq("user_id", currentUser.id);
 
-      const unlockedSet = new Set<string>((unlockData || []).map(u => u.post_id));
+        if (unlockErr) throw unlockErr;
+        unlockedSet = new Set<string>((unlockData || []).map(u => u.post_id));
+      } catch (unlockFetchErr) {
+        console.warn("Could not load post_unlocks from database:", unlockFetchErr);
+      }
       setUnlockedPostIds(unlockedSet);
     } catch (err) {
       console.error("Error loading public page relations:", err);
@@ -521,27 +545,49 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
     setIsActionLoading("follow");
     try {
       if (isFollowing) {
-        // Unfollow
-        const { error } = await supabase
-          .from("page_followers")
-          .delete()
-          .eq("page_id", selectedPage.id)
-          .eq("user_id", currentUser.id);
+        // Unfollow in DB if possible
+        try {
+          const { error } = await supabase
+            .from("page_followers")
+            .delete()
+            .eq("page_id", selectedPage.id)
+            .eq("user_id", currentUser.id);
 
-        if (error) throw error;
+          if (error) throw error;
+        } catch (dbErr) {
+          console.warn("Database unfollow failed, falling back to localStorage:", dbErr);
+        }
+
+        // Update local storage fallback
+        const localFollowed = JSON.parse(localStorage.getItem(`followed_pages_${currentUser.id}`) || "[]");
+        const updated = localFollowed.filter((id: string) => id !== selectedPage.id);
+        localStorage.setItem(`followed_pages_${currentUser.id}`, JSON.stringify(updated));
+
         setIsFollowing(false);
       } else {
-        // Follow
-        const { error } = await supabase
-          .from("page_followers")
-          .insert([
-            {
-              page_id: selectedPage.id,
-              user_id: currentUser.id
-            }
-          ]);
+        // Follow in DB if possible
+        try {
+          const { error } = await supabase
+            .from("page_followers")
+            .insert([
+              {
+                page_id: selectedPage.id,
+                user_id: currentUser.id
+              }
+            ]);
 
-        if (error) throw error;
+          if (error) throw error;
+        } catch (dbErr) {
+          console.warn("Database follow failed, falling back to localStorage:", dbErr);
+        }
+
+        // Update local storage fallback
+        const localFollowed = JSON.parse(localStorage.getItem(`followed_pages_${currentUser.id}`) || "[]");
+        if (!localFollowed.includes(selectedPage.id)) {
+          localFollowed.push(selectedPage.id);
+        }
+        localStorage.setItem(`followed_pages_${currentUser.id}`, JSON.stringify(localFollowed));
+
         setIsFollowing(true);
       }
     } catch (err: any) {

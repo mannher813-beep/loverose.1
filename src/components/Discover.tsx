@@ -117,26 +117,37 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
     setIsLoading(true);
     try {
       // 1. Get already liked profiles to filter them out
-      const { data: likesData } = await supabase
-        .from("likes")
-        .select("to_uid")
-        .eq("from_uid", currentUser.id);
-      
-      const likedSet = new Set<string>((likesData || []).map(l => l.to_uid));
+      const likedSet = new Set<string>();
+      try {
+        const { data: likesData, error: likesErr } = await supabase
+          .from("likes")
+          .select("to_uid")
+          .eq("from_uid", currentUser.id);
+        
+        if (!likesErr && likesData) {
+          likesData.forEach(l => likedSet.add(l.to_uid));
+        }
+      } catch (likesCatchErr) {
+        console.warn("Could not load likes:", likesCatchErr);
+      }
       setLikedUids(likedSet);
 
       // 1.5 Get blocked users to exclude them completely
-      const { data: blockedData } = await supabase
-        .from("blocked_users")
-        .select("blocker_id, blocked_id")
-        .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`);
-
       const blockedSet = new Set<string>();
-      if (blockedData) {
-        blockedData.forEach(b => {
-          blockedSet.add(b.blocker_id);
-          blockedSet.add(b.blocked_id);
-        });
+      try {
+        const { data: blockedData, error: blockedErr } = await supabase
+          .from("blocked_users")
+          .select("blocker_id, blocked_id")
+          .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`);
+
+        if (!blockedErr && blockedData) {
+          blockedData.forEach(b => {
+            blockedSet.add(b.blocker_id);
+            blockedSet.add(b.blocked_id);
+          });
+        }
+      } catch (blockedCatchErr) {
+        console.warn("Could not load blocked_users, table may be missing:", blockedCatchErr);
       }
 
       // 2. Query profiles
@@ -164,12 +175,19 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       if (error) throw error;
 
       // Fetch active profile boosts to prioritize boosted users absolutely
-      const { data: boostsData } = await supabase
-        .from("profile_boosts")
-        .select("user_id")
-        .gt("ends_at", new Date().toISOString());
-
-      const boostedUserIds = new Set<string>((boostsData || []).map(b => b.user_id));
+      const boostedUserIds = new Set<string>();
+      try {
+        const { data: boostsData, error: boostsErr } = await supabase
+          .from("profile_boosts")
+          .select("user_id")
+          .gt("ends_at", new Date().toISOString());
+        
+        if (!boostsErr && boostsData) {
+          boostsData.forEach(b => boostedUserIds.add(b.user_id));
+        }
+      } catch (boostsCatchErr) {
+        console.warn("Could not load profile_boosts, table may be missing:", boostsCatchErr);
+      }
 
       let filteredProfiles = profilesData || [];
 

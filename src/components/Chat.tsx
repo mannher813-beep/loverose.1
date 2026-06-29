@@ -6,6 +6,7 @@ import ProfileDetailModal from "./ProfileDetailModal";
 import AdSlot from "./AdSlot";
 import { playMessageSentSound, playMessageReceivedSound } from "../lib/sounds";
 import { triggerPushNotification } from "../lib/notifications";
+import { usePremiumStatus } from "../hooks/usePremiumStatus";
 
 interface ChatProps {
   currentUser: any;
@@ -24,6 +25,9 @@ export default function Chat({
   targetChatPartnerId = null,
   onClearTargetChatPartner
 }: ChatProps) {
+  const { entitlements } = usePremiumStatus(currentUser?.id);
+  const isPremiumUser = isPremium || entitlements.premium;
+
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -205,17 +209,21 @@ export default function Chat({
     setIsLoadingMatches(true);
     try {
       // 1. Fetch blocked users involving current user
-      const { data: blockedData } = await supabase
-        .from("blocked_users")
-        .select("blocker_id, blocked_id")
-        .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`);
-
       const blockedSet = new Set<string>();
-      if (blockedData) {
-        blockedData.forEach(b => {
-          blockedSet.add(b.blocker_id);
-          blockedSet.add(b.blocked_id);
-        });
+      try {
+        const { data: blockedData, error: blockedErr } = await supabase
+          .from("blocked_users")
+          .select("blocker_id, blocked_id")
+          .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`);
+
+        if (!blockedErr && blockedData) {
+          blockedData.forEach(b => {
+            blockedSet.add(b.blocker_id);
+            blockedSet.add(b.blocked_id);
+          });
+        }
+      } catch (blockedCatchErr) {
+        console.warn("Could not load blocked_users in Chat, table may be missing:", blockedCatchErr);
       }
 
       // Query matches involving the current user
@@ -324,29 +332,31 @@ export default function Chat({
 
     if (!inputText.trim() || !selectedMatch) return;
 
-    const messagesSentCount = getSentMessagesCount();
-    const isFreeMessage = messagesSentCount < 3;
+    if (!isPremiumUser) {
+      const messagesSentCount = getSentMessagesCount();
+      const isFreeMessage = messagesSentCount < 3;
 
-    // 1. Client-Side Validation for Free Messages
-    if (isFreeMessage) {
-      // Split by whitespaces to check word count
-      const words = inputText.trim().split(/\s+/);
-      
-      if (words.length > 10) {
-        setErrorMessage("Les messages gratuits sont limités à 10 mots maximum.");
-        return;
-      }
+      // 1. Client-Side Validation for Free Messages
+      if (isFreeMessage) {
+        // Split by whitespaces to check word count
+        const words = inputText.trim().split(/\s+/);
+        
+        if (words.length > 10) {
+          setErrorMessage("Les messages gratuits sont limités à 10 mots maximum.");
+          return;
+        }
 
-      // Check for any digit [0-9]
-      if (/[0-9]/.test(inputText)) {
-        setErrorMessage("Les messages gratuits ne doivent pas contenir de chiffres.");
-        return;
-      }
-    } else {
-      // It's a paid message. Check credits before sending.
-      if (credits < 1) {
-        setShowPurchaseModal(true);
-        return;
+        // Check for any digit [0-9]
+        if (/[0-9]/.test(inputText)) {
+          setErrorMessage("Les messages gratuits ne doivent pas contenir de chiffres.");
+          return;
+        }
+      } else {
+        // It's a paid message. Check credits before sending.
+        if (credits < 1) {
+          setShowPurchaseModal(true);
+          return;
+        }
       }
     }
 
@@ -532,7 +542,12 @@ export default function Chat({
                   <ShieldAlert size={18} />
                 </button>
                 <div className="text-right flex flex-col items-end gap-1">
-                  {freeMessagesLeft > 0 ? (
+                  {isPremiumUser ? (
+                    <span className="bg-rose-50 text-rose-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-rose-100 flex items-center gap-1 shadow-sm">
+                      <Sparkles size={11} className="fill-rose-400 text-rose-500 animate-pulse" />
+                      <span>Premium Actif (Messages illimités)</span>
+                    </span>
+                  ) : freeMessagesLeft > 0 ? (
                     <span className="bg-emerald-50 text-emerald-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-100 flex items-center gap-1 shadow-sm">
                       <Sparkles size={11} className="fill-emerald-400 text-emerald-500" />
                       <span>{freeMessagesLeft} messages gratuits restants</span>
@@ -548,7 +563,7 @@ export default function Chat({
             </div>
 
             {/* Free Message Explanation Notice */}
-            {freeMessagesLeft > 0 && (
+            {!isPremiumUser && freeMessagesLeft > 0 && (
               <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-3 px-4 text-xs font-semibold flex items-center justify-between shadow-md">
                 <p className="flex items-center gap-1.5">
                   <Sparkles size={14} className="fill-white" />
@@ -620,7 +635,9 @@ export default function Chat({
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder={
-                    freeMessagesLeft > 0
+                    isPremiumUser
+                      ? "Écrivez votre message illimité..."
+                      : freeMessagesLeft > 0
                       ? "Message gratuit (max 10 mots, sans chiffres)..."
                       : "Message payant (1 crédit)..."
                   }
@@ -637,14 +654,20 @@ export default function Chat({
 
               {/* Mini Helper details */}
               <div className="mt-1.5 flex justify-between text-[10px] text-slate-400 font-medium px-1">
-                {freeMessagesLeft > 0 ? (
+                {isPremiumUser ? (
+                  <span className="text-rose-500 font-bold flex items-center gap-1">
+                    <Sparkles size={10} className="fill-rose-500" /> Messages illimités (Premium actif)
+                  </span>
+                ) : freeMessagesLeft > 0 ? (
                   <span>Contraintes : Lettres uniquement. Mots : {inputText.trim() ? inputText.trim().split(/\s+/).length : 0}/10</span>
                 ) : (
                   <span>Coût : 1 crédit. Solde : {credits} crédits</span>
                 )}
-                <span className="flex items-center gap-0.5 hover:underline cursor-pointer" onClick={() => alert("Chaque message envoyé après vos 3 messages gratuits consomme 1 crédit de votre solde.")}>
-                  <HelpCircle size={10} /> Aide sur les crédits
-                </span>
+                {!isPremiumUser && (
+                  <span className="flex items-center gap-0.5 hover:underline cursor-pointer" onClick={() => alert("Chaque message envoyé après vos 3 messages gratuits consomme 1 crédit de votre solde.")}>
+                    <HelpCircle size={10} /> Aide sur les crédits
+                  </span>
+                )}
               </div>
             </div>
           </>
