@@ -30,6 +30,7 @@ interface ProfileSettingsProps {
   isPremium?: boolean;
   onProfileUpdated: () => void;
   onGoToSettings?: () => void;
+  onAuthRequired?: () => void;
 }
 
 export default function ProfileSettings({ 
@@ -37,8 +38,30 @@ export default function ProfileSettings({
   profile, 
   isPremium = false, 
   onProfileUpdated, 
-  onGoToSettings 
+  onGoToSettings,
+  onAuthRequired
 }: ProfileSettingsProps) {
+  if (!currentUser) {
+    return (
+      <div className="max-w-md mx-auto my-12 p-8 bg-white border border-slate-200 rounded-3xl shadow-sm text-center space-y-4 font-sans">
+        <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto">
+          <User size={28} />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-xl font-black text-slate-900">Votre Profil LoveRose</h2>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Inscrivez-vous gratuitement pour créer votre profil, ajouter vos photos et définir vos critères de rencontre.
+          </p>
+        </div>
+        <button
+          onClick={onAuthRequired}
+          className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
+        >
+          Se connecter / S'inscrire
+        </button>
+      </div>
+    );
+  }
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);

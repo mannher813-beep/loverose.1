@@ -15,6 +15,7 @@ interface ChatProps {
   onOpenShop: () => void;
   targetChatPartnerId?: string | null;
   onClearTargetChatPartner?: () => void;
+  onAuthRequired?: () => void;
 }
 
 export default function Chat({ 
@@ -23,8 +24,30 @@ export default function Chat({
   isPremium = false, 
   onOpenShop,
   targetChatPartnerId = null,
-  onClearTargetChatPartner
+  onClearTargetChatPartner,
+  onAuthRequired
 }: ChatProps) {
+  if (!currentUser) {
+    return (
+      <div className="max-w-md mx-auto my-12 p-8 bg-white border border-slate-200 rounded-3xl shadow-sm text-center space-y-4 font-sans">
+        <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto">
+          <MessageSquare size={28} />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-xl font-black text-slate-900">Messagerie Privée</h2>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Accès réservé aux membres inscrits. Connectez-vous ou créez votre compte gratuitement pour échanger avec vos rencontres !
+          </p>
+        </div>
+        <button
+          onClick={onAuthRequired}
+          className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
+        >
+          Se connecter / S'inscrire
+        </button>
+      </div>
+    );
+  }
   const { entitlements } = usePremiumStatus(currentUser?.id);
   const isPremiumUser = isPremium || entitlements.premium;
 

@@ -85,7 +85,11 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
   const [shareToastMessage, setShareToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    loadPosts();
+    if (currentUser) {
+      loadPosts();
+    } else {
+      setIsLoading(false);
+    }
   }, [currentUser]);
 
   const loadInteractionsForPosts = async (loadedPosts: Post[]) => {
@@ -357,6 +361,10 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
   };
 
   const loadPosts = async () => {
+    if (!currentUser || !currentUser.id) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -394,7 +402,7 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
       // Load interactions for loaded posts
       await loadInteractionsForPosts(populatedPosts);
     } catch (err: any) {
-      console.error("Failed to load posts:", err);
+      console.warn("Could not query posts table (possibly offline or unmigrated):", err);
       setErrorMessage("Impossible de charger le fil d'actualité.");
     } finally {
       setIsLoading(false);

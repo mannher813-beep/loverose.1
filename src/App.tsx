@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import { Profile } from "./types";
-import { Heart, MessageSquare, Newspaper, ShoppingBag, Settings, Coins, Sparkles, CheckCircle2, User, LogOut, Loader2, ArrowRight, X, Bell } from "lucide-react";
+import { Heart, MessageSquare, ShoppingBag, Settings, Sparkles, User, LogOut, ArrowRight, X, Bell } from "lucide-react";
 
 // Component imports
 import SupabaseSetupBanner from "./components/SupabaseSetupBanner";
@@ -9,16 +9,13 @@ import PaymentSuccess from "./components/PaymentSuccess";
 import Auth from "./components/Auth";
 import Discover from "./components/Discover";
 import Chat from "./components/Chat";
-import Feed from "./components/Feed";
 import Shop from "./components/Shop";
 import ProfileSettings from "./components/ProfileSettings";
 import SettingsView from "./components/Settings";
 import NotificationsView from "./components/Notifications";
 import Onboarding from "./components/Onboarding";
 import PublicProfile from "./components/PublicProfile";
-import Creators from "./components/Creators";
 import PublicLayout from "./components/public/PublicLayout";
-import PublicCreatorPage from "./components/PublicCreatorPage";
 import { usePremiumStatus } from "./hooks/usePremiumStatus";
 
 export default function App() {
@@ -33,10 +30,19 @@ export default function App() {
   const isPremiumUser = isPremium || entitlements.premium;
   const [showConversionPopup, setShowConversionPopup] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'feed' | 'shop' | 'profile' | 'settings' | 'notifications' | 'creators'>('discover');
+  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'shop' | 'profile' | 'settings' | 'notifications'>('discover');
   const [targetChatPartnerId, setTargetChatPartnerId] = useState<string | null>(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   
+  // Guest mode auth modal
+  const [showGuestAuthModal, setShowGuestAuthModal] = useState<boolean>(false);
+  const [authInitialIsSignUp, setAuthInitialIsSignUp] = useState<boolean>(true);
+
+  const triggerAuthRequired = (isSignUp = true) => {
+    setAuthInitialIsSignUp(isSignUp);
+    setShowGuestAuthModal(true);
+  };
+
   // Match alerts overlay
   const [matchedPartner, setMatchedPartner] = useState<Profile | null>(null);
 
@@ -446,28 +452,6 @@ export default function App() {
     );
   }
 
-  const isPublicCreatorPageView = currentPath.startsWith("/page/");
-  const creatorSlug = currentPath.replace("/page/", "").split("?")[0].trim();
-
-  // Render Public Creator Page without requiring user to be logged in
-  if (isPublicCreatorPageView && creatorSlug) {
-    return (
-      <PublicCreatorPage 
-        slug={creatorSlug} 
-        currentUser={currentUser} 
-        currentUserProfile={profile} 
-        onGoHome={() => {
-          setCurrentPath("/");
-          setCurrentSearch("");
-          window.history.pushState(null, "", "/");
-        }} 
-        onShowAuth={(signUp) => {
-          setCurrentPath(signUp ? "/inscription" : "/connexion");
-          window.history.pushState(null, "", signUp ? "/inscription" : "/connexion");
-        }}
-      />
-    );
-  }
 
   const isPaymentSuccess = currentPath === "/payment-success" || urlParams.get("payment") === "success";
   const isPaymentCancel = currentPath === "/payment-cancel" || urlParams.get("payment") === "cancel";
@@ -526,82 +510,26 @@ export default function App() {
     );
   }
 
-  // Render Auth flow if no logged user
-  if (!currentUser) {
-    const publicPaths = ["/", "/accueil", "/a-propos", "/faq", "/contact", "/conditions-d-utilisation", "/politique-de-confidentialite"];
-    if (publicPaths.includes(currentPath)) {
+  // Check if logged in user profile is incomplete
+  if (currentUser) {
+    const isProfileIncomplete = !profile || 
+      !profile.full_name || 
+      !profile.age || 
+      !profile.location || 
+      !profile.gender || 
+      !profile.preferences || 
+      !profile.relationship_intents || 
+      profile.relationship_intents.length === 0 || 
+      !profile.avatar_url;
+
+    if (isProfileIncomplete) {
       return (
-        <PublicLayout 
-          currentPath={currentPath} 
-          onNavigate={(path) => {
-            setCurrentPath(path);
-            window.history.pushState(null, "", path);
-          }} 
-          onShowAuth={(signUp) => {
-            setCurrentPath(signUp ? "/inscription" : "/connexion");
-            window.history.pushState(null, "", signUp ? "/inscription" : "/connexion");
-          }} 
+        <Onboarding
+          currentUser={currentUser}
+          onComplete={() => loadProfile(currentUser.id)}
         />
       );
     }
-
-    // For any other path, or specific auth paths (/connexion or /inscription), render Auth
-    return (
-      <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
-        <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-          <div 
-            onClick={() => {
-              setCurrentPath("/");
-              window.history.pushState(null, "", "/");
-            }}
-            className="flex items-center space-x-2 cursor-pointer group"
-          >
-            <div className="bg-rose-500 p-2 rounded-xl text-white group-hover:scale-105 transition-all">
-              <Heart size={20} fill="currentColor" />
-            </div>
-            <div>
-              <span className="font-black text-xl tracking-tight text-slate-900">Love</span>
-              <span className="font-black text-xl tracking-tight text-rose-500">Rose</span>
-            </div>
-          </div>
-          <button 
-            onClick={() => {
-              setCurrentPath("/");
-              window.history.pushState(null, "", "/");
-            }}
-            className="text-xs font-bold text-slate-500 hover:text-rose-500 transition cursor-pointer"
-          >
-            Retour à l'accueil
-          </button>
-        </header>
-        <main className="flex-1 flex items-center justify-center py-10 px-4 bg-slate-50">
-          <Auth 
-            onSuccess={() => setIsLoading(true)} 
-            initialIsSignUp={currentPath === "/inscription"} 
-          />
-        </main>
-      </div>
-    );
-  }
-
-  // Check if profile is incomplete
-  const isProfileIncomplete = !profile || 
-    !profile.full_name || 
-    !profile.age || 
-    !profile.location || 
-    !profile.gender || 
-    !profile.preferences || 
-    !profile.relationship_intents || 
-    profile.relationship_intents.length === 0 || 
-    !profile.avatar_url;
-
-  if (isProfileIncomplete) {
-    return (
-      <Onboarding
-        currentUser={currentUser}
-        onComplete={() => loadProfile(currentUser.id)}
-      />
-    );
   }
 
   const getRemainingDays = () => {
@@ -615,7 +543,10 @@ export default function App() {
       
       {/* Desktop Header */}
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30 flex-shrink-0">
-        <div className="flex items-center space-x-2">
+        <div 
+          onClick={() => setActiveTab('discover')}
+          className="flex items-center space-x-2 cursor-pointer"
+        >
           <div className="bg-rose-500 p-2 rounded-xl text-white">
             <Heart size={20} fill="currentColor" />
           </div>
@@ -642,25 +573,11 @@ export default function App() {
             <span>Messagerie</span>
           </button>
           <button
-            onClick={() => setActiveTab('feed')}
-            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'feed' ? 'text-rose-500 font-extrabold' : ''}`}
-          >
-            <Newspaper size={16} />
-            <span>Actualités</span>
-          </button>
-          <button
             onClick={() => setActiveTab('shop')}
             className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'shop' ? 'text-rose-500 font-extrabold' : ''}`}
           >
             <ShoppingBag size={16} />
             <span>Boutique</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('creators')}
-            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'creators' ? 'text-rose-500 font-extrabold' : ''}`}
-          >
-            <Sparkles size={16} className="text-amber-500 fill-amber-400" />
-            <span>Créateurs</span>
           </button>
           <button
             onClick={() => setActiveTab('notifications')}
@@ -690,32 +607,67 @@ export default function App() {
           </button>
         </div>
 
-        {/* Quick User details */}
-        <div className="flex items-center space-x-4">
-          <div className="text-right hidden sm:block">
-            <p className="text-xs font-bold text-slate-800">{profile?.full_name || currentUser.email.split("@")[0]}</p>
-            <p className="text-[10px] text-slate-400 font-medium">Bénéficiaire</p>
-          </div>
-          <img
-            onClick={() => setActiveTab('profile')}
-            src={profile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${profile?.full_name || currentUser.id}`}
-            alt="Moi"
-            referrerPolicy="no-referrer"
-            className="w-10 h-10 rounded-full object-cover bg-slate-50 border border-slate-200 cursor-pointer hover:border-rose-500 transition"
-          />
-          <button
-            onClick={handleLogout}
-            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition cursor-pointer"
-            title="Se déconnecter"
-          >
-            <LogOut size={16} />
-          </button>
+        {/* Quick User details or Auth Buttons for Guest */}
+        <div className="flex items-center space-x-3">
+          {currentUser ? (
+            <>
+              <div className="text-right hidden sm:block">
+                <p className="text-xs font-bold text-slate-800">{profile?.full_name || currentUser.email.split("@")[0]}</p>
+                <p className="text-[10px] text-slate-400 font-medium">Membre LoveRose</p>
+              </div>
+              <img
+                onClick={() => setActiveTab('profile')}
+                src={profile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${profile?.full_name || currentUser.id}`}
+                alt="Moi"
+                referrerPolicy="no-referrer"
+                className="w-10 h-10 rounded-full object-cover bg-slate-50 border border-slate-200 cursor-pointer hover:border-rose-500 transition"
+              />
+              <button
+                onClick={handleLogout}
+                className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition cursor-pointer"
+                title="Se déconnecter"
+              >
+                <LogOut size={16} />
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => triggerAuthRequired(false)}
+                className="text-xs font-bold text-slate-700 hover:text-rose-500 transition px-3 py-1.5 cursor-pointer"
+              >
+                Se connecter
+              </button>
+              <button
+                onClick={() => triggerAuthRequired(true)}
+                className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-black px-4 py-2 rounded-xl shadow-md transition cursor-pointer"
+              >
+                S'inscrire
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
       {/* Main Content Workspace viewport */}
       <main className="flex-1 overflow-hidden flex flex-col bg-slate-50 relative min-h-0">
         
+        {/* Guest Banner if not logged in */}
+        {!currentUser && (
+          <div className="bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold shadow-inner relative flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <Heart size={14} className="fill-white animate-pulse" />
+              <span>👀 Mode aperçu : Vous découvrez LoveRose sans être inscrit. Inscrivez-vous gratuitement pour liker et discuter !</span>
+            </div>
+            <button
+              onClick={() => triggerAuthRequired(true)}
+              className="bg-white text-rose-600 px-3.5 py-1.5 rounded-full font-black text-[10px] tracking-wide uppercase transition hover:bg-rose-50 cursor-pointer shadow-sm ml-2 flex-shrink-0"
+            >
+              S'inscrire gratuitement
+            </button>
+          </div>
+        )}
+
         {showInstallBanner && (
           <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold shadow-inner relative flex-shrink-0">
             <div className="flex items-center gap-2">
@@ -739,101 +691,66 @@ export default function App() {
           </div>
         )}
 
-        {false ? (
-          // Force Onboarding Flow for Completing intents
-          <div className="flex-1 flex items-center justify-center p-4">
-            <div className="max-w-md w-full bg-white rounded-3xl p-6 md:p-8 shadow-lg border border-slate-150 space-y-6">
-              <div className="text-center space-y-2">
-                <div className="mx-auto w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-500">
-                  <Sparkles size={24} className="animate-bounce" />
-                </div>
-                <h2 className="text-lg font-black text-slate-900 tracking-tight">Choix de vos intentions requis</h2>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Veuillez spécifier vos <strong>intentions de rencontres recherchées</strong> dans vos paramètres afin que nous puissions vous proposer des profils compatibles.
-                </p>
-              </div>
-
-              <button
-                onClick={() => setActiveTab('profile')}
-                className="w-full py-3.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-rose-500/10 flex items-center justify-center gap-1.5 transition cursor-pointer"
-              >
-                <span>Configurer mes intentions</span>
-                <ArrowRight size={14} />
-              </button>
-            </div>
+        {/* Core Application Tabs switcher */}
+        <>
+          <div className={activeTab === 'discover' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
+            <Discover
+              currentUser={currentUser}
+              currentUserProfile={profile}
+              isPremium={isPremiumUser}
+              onMatchDetected={(partner) => setMatchedPartner(partner)}
+              onAuthRequired={() => triggerAuthRequired(true)}
+            />
           </div>
-        ) : (
-          // Core Application Tabs switcher
-          <>
-            <div className={activeTab === 'discover' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
-              <Discover
-                currentUser={currentUser}
-                currentUserProfile={profile}
-                isPremium={isPremiumUser}
-                onMatchDetected={(partner) => setMatchedPartner(partner)}
-              />
-            </div>
-            <div className={activeTab === 'chat' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
-              <Chat
-                currentUser={currentUser}
-                currentUserProfile={profile}
-                isPremium={isPremiumUser}
-                onOpenShop={() => setActiveTab('shop')}
-                targetChatPartnerId={targetChatPartnerId}
-                onClearTargetChatPartner={() => setTargetChatPartnerId(null)}
-              />
-            </div>
-            <div className={activeTab === 'feed' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
-              <Feed
-                currentUser={currentUser}
-                currentUserProfile={profile}
-                isPremium={isPremiumUser}
-                onStartChat={startChatWithUser}
-              />
-            </div>
-            <div className={activeTab === 'shop' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
-              <Shop
-                currentUser={currentUser}
-                currentUserProfile={profile}
-                isPremium={isPremiumUser}
-              />
-            </div>
-            <div className={activeTab === 'profile' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
-              <ProfileSettings
-                currentUser={currentUser}
-                profile={profile}
-                isPremium={isPremiumUser}
-                onProfileUpdated={() => loadProfile(currentUser.id)}
-                onGoToSettings={() => setActiveTab('settings')}
-              />
-            </div>
-            <div className={activeTab === 'settings' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
-              <SettingsView
-                currentUser={currentUser}
-                profile={profile}
-                isPremium={isPremiumUser}
-                onBackToProfile={() => setActiveTab('profile')}
-                onLogout={handleLogout}
-                onProfileUpdated={() => loadProfile(currentUser.id)}
-              />
-            </div>
-            <div className={activeTab === 'notifications' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
-              <NotificationsView
-                currentUser={currentUser}
-                onNavigateToTab={(tab) => setActiveTab(tab)}
-                onStartChat={startChatWithUser}
-              />
-            </div>
-            <div className={activeTab === 'creators' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
-              <Creators
-                currentUser={currentUser}
-                currentUserProfile={profile}
-                onOpenShop={() => setActiveTab('shop')}
-                onNavigateToTab={(tab) => setActiveTab(tab)}
-              />
-            </div>
-          </>
-        )}
+          <div className={activeTab === 'chat' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
+            <Chat
+              currentUser={currentUser}
+              currentUserProfile={profile}
+              isPremium={isPremiumUser}
+              onOpenShop={() => setActiveTab('shop')}
+              targetChatPartnerId={targetChatPartnerId}
+              onClearTargetChatPartner={() => setTargetChatPartnerId(null)}
+              onAuthRequired={() => triggerAuthRequired(true)}
+            />
+          </div>
+          <div className={activeTab === 'shop' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
+            <Shop
+              currentUser={currentUser}
+              currentUserProfile={profile}
+              isPremium={isPremiumUser}
+              onAuthRequired={() => triggerAuthRequired(true)}
+            />
+          </div>
+          <div className={activeTab === 'profile' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
+            <ProfileSettings
+              currentUser={currentUser}
+              profile={profile}
+              isPremium={isPremiumUser}
+              onProfileUpdated={() => loadProfile(currentUser.id)}
+              onGoToSettings={() => setActiveTab('settings')}
+              onAuthRequired={() => triggerAuthRequired(true)}
+            />
+          </div>
+          <div className={activeTab === 'settings' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
+            <SettingsView
+              currentUser={currentUser}
+              profile={profile}
+              isPremium={isPremiumUser}
+              onBackToProfile={() => setActiveTab('profile')}
+              onLogout={handleLogout}
+              onProfileUpdated={() => loadProfile(currentUser.id)}
+              onAuthRequired={() => triggerAuthRequired(true)}
+            />
+          </div>
+          <div className={activeTab === 'notifications' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
+            <NotificationsView
+              currentUser={currentUser}
+              onNavigateToTab={(tab) => setActiveTab(tab)}
+              onStartChat={startChatWithUser}
+              onAuthRequired={() => triggerAuthRequired(true)}
+            />
+          </div>
+        </>
       </main>
 
       {/* Mobile Tab Navbar */}
@@ -853,25 +770,11 @@ export default function App() {
           <span className="text-[10px]">Messagerie</span>
         </button>
         <button
-          onClick={() => setActiveTab('feed')}
-          className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'feed' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
-        >
-          <Newspaper size={18} />
-          <span className="text-[10px]">Actualités</span>
-        </button>
-        <button
           onClick={() => setActiveTab('shop')}
           className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'shop' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
         >
           <ShoppingBag size={18} />
           <span className="text-[10px]">Boutique</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('creators')}
-          className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'creators' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
-        >
-          <Sparkles size={18} className={activeTab === 'creators' ? "text-amber-500 fill-amber-400 animate-pulse" : ""} />
-          <span className="text-[10px]">Créateurs</span>
         </button>
         <button
           onClick={() => setActiveTab('notifications')}
@@ -893,6 +796,38 @@ export default function App() {
           <span className="text-[10px]">Profil</span>
         </button>
       </footer>
+
+      {/* Guest Auth Dialog Popup Modal */}
+      {(showGuestAuthModal || currentPath === "/connexion" || currentPath === "/inscription") && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in font-sans">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => {
+                setShowGuestAuthModal(false);
+                if (currentPath === "/connexion" || currentPath === "/inscription") {
+                  setCurrentPath("/");
+                  window.history.pushState(null, "", "/");
+                }
+              }}
+              className="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-full transition cursor-pointer z-10"
+              title="Fermer"
+            >
+              <X size={18} />
+            </button>
+            <Auth
+              onSuccess={() => {
+                setShowGuestAuthModal(false);
+                setIsLoading(true);
+                if (currentPath === "/connexion" || currentPath === "/inscription") {
+                  setCurrentPath("/");
+                  window.history.pushState(null, "", "/");
+                }
+              }}
+              initialIsSignUp={authInitialIsSignUp || currentPath === "/inscription"}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Floating Push Toast Banner Overlay */}
       {toastNotification && (

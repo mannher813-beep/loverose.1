@@ -8,9 +8,10 @@ interface ShopProps {
   currentUserProfile: Profile | null;
   onPaymentSuccess?: () => void;
   isPremium?: boolean;
+  onAuthRequired?: () => void;
 }
 
-export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess, isPremium = false }: ShopProps) {
+export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess, isPremium = false, onAuthRequired }: ShopProps) {
   const [credits, setCredits] = useState<number>(0);
   const [isSubscribed, setIsSubscribed] = useState<boolean>(isPremium);
   const [expiryDate, setExpiryDate] = useState<string | null>(null);
@@ -157,6 +158,10 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
   };
 
   const handlePurchaseBoost = async () => {
+    if (!currentUser) {
+      if (onAuthRequired) onAuthRequired();
+      return;
+    }
     if (credits < 10) {
       alert("Vous avez besoin de 10 crédits pour activer un Boost d'une heure. Veuillez recharger votre solde de crédits !");
       return;
@@ -201,6 +206,10 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
   };
 
   const handlePurchase = async (planId: string, planName: string, amount: number) => {
+    if (!currentUser) {
+      if (onAuthRequired) onAuthRequired();
+      return;
+    }
     setPaymentForm({
       planId,
       planName,
@@ -288,27 +297,11 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
   const packages = [
     {
       id: "pack_bronze",
-      name: "Pack Bronze",
+      name: "Pack 10 Crédits",
       credits: 10,
       amount: 500,
-      badge: "Idéal pour débuter",
-      description: "Permet d'envoyer 10 messages supplémentaires après épuisement de vos messages gratuits."
-    },
-    {
-      id: "pack_argent",
-      name: "Pack Argent",
-      credits: 50,
-      amount: 2000,
-      badge: "Recommandé",
-      description: "Économisez 20% ! Envoyez 50 messages payants pour maintenir le contact avec tous vos matchs."
-    },
-    {
-      id: "pack_or",
-      name: "Pack Or",
-      credits: 100,
-      amount: 3500,
-      badge: "Meilleure valeur",
-      description: "Économisez 30% ! Recharge de 100 messages pour les dragueurs confirmés de la communauté."
+      badge: "Pack Standard",
+      description: "Permet d'envoyer 10 messages supplémentaires ou d'activer un boost de profil d'une heure."
     }
   ];
 
@@ -403,13 +396,13 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
 
           <div className="flex flex-col items-center justify-center p-4 bg-rose-50/50 border border-rose-100 rounded-2xl md:min-w-56 text-center space-y-3">
             <div>
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Abonnement Mensuel</p>
-              <p className="text-2xl font-black text-rose-500">5 000 FCFA</p>
-              <p className="text-[10px] text-slate-400">Sans engagement, résiliable à tout moment</p>
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Pass Premium LoveRose</p>
+              <p className="text-2xl font-black text-rose-500">500 FCFA</p>
+              <p className="text-[10px] text-slate-400">Accès illimité / Sans engagement</p>
             </div>
             
             <button
-              onClick={() => handlePurchase("premium_sub", "Abonnement Premium", 5000)}
+              onClick={() => handlePurchase("premium_sub", "Pass Premium LoveRose", 500)}
               disabled={isLoading !== null || isSubscribed}
               className="w-full py-3.5 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-rose-500/10 flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
             >
@@ -419,7 +412,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                 <span>Déjà Abonné</span>
               ) : (
                 <>
-                  <span>S'abonner maintenant</span>
+                  <span>S'abonner (500 FCFA)</span>
                   <ArrowRight size={12} />
                 </>
               )}
@@ -478,7 +471,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
             <span>Packs de crédits d'échange</span>
           </h3>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 max-w-xl gap-6">
             {packages.map(p => (
               <div key={p.id} className="bg-white border border-slate-150 rounded-3xl p-5 flex flex-col justify-between space-y-5 hover:shadow-md transition">
                 <div className="space-y-3">

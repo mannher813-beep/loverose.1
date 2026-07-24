@@ -11,6 +11,7 @@ interface DiscoverProps {
   currentUserProfile: Profile | null;
   isPremium?: boolean;
   onMatchDetected: (partner: Profile) => void;
+  onAuthRequired?: () => void;
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -65,7 +66,7 @@ function renderOnlineStatus(profile: Profile) {
   return null;
 }
 
-export default function Discover({ currentUser, currentUserProfile, isPremium = false, onMatchDetected }: DiscoverProps) {
+export default function Discover({ currentUser, currentUserProfile, isPremium = false, onMatchDetected, onAuthRequired }: DiscoverProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedIntentsFilter, setSelectedIntentsFilter] = useState<string[]>([]);
@@ -86,7 +87,6 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
 
   // Fetch profiles and liked profiles
   useEffect(() => {
-    if (!currentUser) return;
     loadProfiles();
   }, [currentUser, selectedIntentsFilter, currentUserProfile?.preferences]);
 
@@ -115,52 +115,55 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
   }, []);
 
   const loadProfiles = async () => {
-    if (!currentUser || !currentUser.id) {
-      setIsLoading(false);
-      return;
-    }
     setIsLoading(true);
     try {
       // 1. Get already liked profiles to filter them out
       const likedSet = new Set<string>();
-      try {
-        const { data: likesData, error: likesErr } = await supabase
-          .from("likes")
-          .select("to_uid")
-          .eq("from_uid", currentUser.id);
-        
-        if (!likesErr && likesData) {
-          likesData.forEach(l => likedSet.add(l.to_uid));
+      if (currentUser?.id) {
+        try {
+          const { data: likesData, error: likesErr } = await supabase
+            .from("likes")
+            .select("to_uid")
+            .eq("from_uid", currentUser.id);
+          
+          if (!likesErr && likesData) {
+            likesData.forEach(l => likedSet.add(l.to_uid));
+          }
+        } catch (likesCatchErr) {
+          console.warn("Could not load likes:", likesCatchErr);
         }
-      } catch (likesCatchErr) {
-        console.warn("Could not load likes:", likesCatchErr);
       }
       setLikedUids(likedSet);
 
       // 1.5 Get blocked users to exclude them completely
       const blockedSet = new Set<string>();
-      try {
-        const { data: blockedData, error: blockedErr } = await supabase
-          .from("blocked_users")
-          .select("blocker_id, blocked_id")
-          .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`);
+      if (currentUser?.id) {
+        try {
+          const { data: blockedData, error: blockedErr } = await supabase
+            .from("blocked_users")
+            .select("blocker_id, blocked_id")
+            .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`);
 
-        if (!blockedErr && blockedData) {
-          blockedData.forEach(b => {
-            blockedSet.add(b.blocker_id);
-            blockedSet.add(b.blocked_id);
-          });
+          if (!blockedErr && blockedData) {
+            blockedData.forEach(b => {
+              blockedSet.add(b.blocker_id);
+              blockedSet.add(b.blocked_id);
+            });
+          }
+        } catch (blockedCatchErr) {
+          console.warn("Could not load blocked_users, table may be missing:", blockedCatchErr);
         }
-      } catch (blockedCatchErr) {
-        console.warn("Could not load blocked_users, table may be missing:", blockedCatchErr);
       }
 
       // 2. Query profiles
       let query = supabase
         .from("profiles")
-        .select("*")
-        .neq("uid", currentUser.id) // Exclude self
-        .limit(30); // Paginate profiles limit for lightning-fast network execution
+        .select("*");
+
+      if (currentUser?.id) {
+        query = query.neq("uid", currentUser.id); // Exclude self
+      }
+      query = query.limit(30); // Paginate profiles limit for lightning-fast network execution
 
       // Filtre par genre recherché (preferences de l'utilisateur courant)
       const myPreferences = currentUserProfile?.preferences || "tous";
@@ -228,7 +231,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       setProfiles(scored);
       setCurrentIndex(0);
     } catch (err) {
-      console.error("Error loading profiles:", err);
+      console.warn("Could not load profiles from database (possibly offline or unmigrated):", err);
     } finally {
       setIsLoading(false);
     }
@@ -257,6 +260,10 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
   };
 
   const handleSwipe = async (liked: boolean) => {
+    if (!currentUser) {
+      if (onAuthRequired) onAuthRequired();
+      return;
+    }
     if (profiles.length === 0 || currentIndex >= profiles.length) return;
     
     const candidate = profiles[currentIndex];
@@ -281,10 +288,6 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
         if (reciprocalLike) {
           // It's a match! Inform parent component to show match popup
           onMatchDetected(candidate);
-
-          // We can also double check that a match row is inserted.
-          // Since we have a trigger, it will auto-insert into matches.
-          // Let's make sure we alert the user of this gorgeous match!
         }
       } catch (err) {
         console.error("Error swiping like:", err);
@@ -296,6 +299,10 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
   };
 
   const handleSuperLike = async () => {
+    if (!currentUser) {
+      if (onAuthRequired) onAuthRequired();
+      return;
+    }
     if (profiles.length === 0 || currentIndex >= profiles.length) return;
     const candidate = profiles[currentIndex];
 
