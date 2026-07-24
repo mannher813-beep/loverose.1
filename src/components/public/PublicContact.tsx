@@ -1,25 +1,81 @@
-import React, { useState } from "react";
-import { Mail, Phone, MapPin, Send, CheckCircle2, MessageSquare, AlertCircle } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Mail, MapPin, Send, CheckCircle2, MessageSquare, AlertCircle } from "lucide-react";
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: string | HTMLElement, options: Record<string, any>) => string;
+      reset: (widgetId?: string) => void;
+      getResponse: (widgetId?: string) => string | undefined;
+    };
+    __ENV__?: { VITE_TURNSTILE_SITE_KEY?: string; [key: string]: any };
+  }
+}
 
 export default function PublicContact() {
   const [formData, setFormData] = useState({ name: "", email: "", subject: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | undefined>(undefined);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Render the Turnstile widget once the script is loaded
+  useEffect(() => {
+    const siteKey = window.__ENV__?.VITE_TURNSTILE_SITE_KEY;
+    if (!siteKey || !turnstileRef.current) return;
+
+    let attempts = 0;
+    const tryRender = () => {
+      if (window.turnstile && turnstileRef.current && !widgetIdRef.current) {
+        widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+          sitekey: siteKey,
+          theme: "light",
+        });
+      } else if (attempts < 20) {
+        attempts += 1;
+        setTimeout(tryRender, 250);
+      }
+    };
+    tryRender();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg("");
+
     if (!formData.email || !formData.message) {
       alert("Veuillez remplir les champs requis (Adresse Email et Message).");
       return;
     }
 
+    const turnstileToken = window.turnstile?.getResponse(widgetIdRef.current);
+    if (!turnstileToken) {
+      setErrorMsg("Veuillez valider la vérification anti-robot avant d'envoyer.");
+      return;
+    }
+
     setIsSubmitting(true);
-    // Simulate API delay, then set success statics
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, turnstileToken }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Une erreur est survenue. Veuillez réessayer.");
+      }
+
       setIsSuccess(true);
       setFormData({ name: "", email: "", subject: "", message: "" });
-    }, 1200);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Impossible d'envoyer le message. Veuillez réessayer.");
+      if (window.turnstile) window.turnstile.reset(widgetIdRef.current);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -51,8 +107,8 @@ export default function PublicContact() {
               <Mail size={16} className="text-rose-400 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold text-slate-200">Email d'assistance</p>
-                <a href="mailto:support@loverose.com" className="text-slate-400 hover:text-rose-300 transition break-all">
-                  support@loverose.com
+                <a href="mailto:techsen237@gmail.com" className="text-slate-400 hover:text-rose-300 transition break-all">
+                  techsen237@gmail.com
                 </a>
               </div>
             </div>
@@ -62,18 +118,8 @@ export default function PublicContact() {
               <div>
                 <p className="font-bold text-slate-200">Siège social</p>
                 <p className="text-slate-400 leading-relaxed">
-                  LoveRose International SAS<br />
-                  Rue des Jardins, Cocody<br />
-                  Abidjan, Côte d'Ivoire
+                  Yaoundé, Cameroun
                 </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <Phone size={16} className="text-emerald-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-slate-200">Support téléphonique</p>
-                <p className="text-slate-400">+225 07 00 00 00 00</p>
               </div>
             </div>
           </div>

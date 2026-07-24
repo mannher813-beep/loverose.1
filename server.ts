@@ -40,7 +40,8 @@ async function startServer() {
     res.send(`
       window.__ENV__ = {
         VITE_SUPABASE_URL: ${JSON.stringify(process.env.VITE_SUPABASE_URL || "")},
-        VITE_SUPABASE_ANON_KEY: ${JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || "")}
+        VITE_SUPABASE_ANON_KEY: ${JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || "")},
+        VITE_TURNSTILE_SITE_KEY: ${JSON.stringify(process.env.VITE_TURNSTILE_SITE_KEY || "")}
       };
     `);
   });
@@ -90,6 +91,51 @@ async function startServer() {
     }
 
     res.json(status);
+  });
+
+  // Contact form submission, protected by Cloudflare Turnstile
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const { name, email, subject, message, turnstileToken } = req.body;
+
+      if (!email || !message) {
+        return res.status(400).json({ success: false, error: "Email et message requis." });
+      }
+      if (!turnstileToken) {
+        return res.status(400).json({ success: false, error: "Vérification anti-robot manquante." });
+      }
+
+      const secretKey = process.env.TURNSTILE_SECRET_KEY || "";
+      if (!secretKey) {
+        console.error("TURNSTILE_SECRET_KEY is not configured on the server.");
+        return res.status(500).json({ success: false, error: "Configuration serveur incomplète." });
+      }
+
+      const verifyRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: secretKey,
+          response: turnstileToken,
+          remoteip: req.ip,
+        }),
+      });
+      const verifyData: any = await verifyRes.json();
+
+      if (!verifyData.success) {
+        console.warn("Turnstile verification failed:", verifyData["error-codes"]);
+        return res.status(400).json({ success: false, error: "Vérification anti-robot échouée." });
+      }
+
+      // At this point the request is verified as human.
+      // TODO: plug in real delivery (e.g. Supabase insert, Resend email, etc.)
+      console.log("Contact form submission:", { name, email, subject, message });
+
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error("Error handling /api/contact:", err);
+      return res.status(500).json({ success: false, error: "Erreur interne du serveur." });
+    }
   });
 
   // Create a Money Fusion payment checkout url
