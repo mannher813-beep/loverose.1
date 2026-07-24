@@ -310,6 +310,7 @@ export default function App() {
         setCurrentUser(null);
         setProfile(null);
         setIsLoading(false);
+        setActiveTab('discover');
       }
     });
 

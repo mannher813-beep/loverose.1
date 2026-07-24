@@ -45,27 +45,6 @@ export default function Settings({
   isPremium = false,
   onAuthRequired
 }: SettingsProps) {
-  if (!currentUser) {
-    return (
-      <div className="max-w-md mx-auto my-12 p-8 bg-white border border-slate-200 rounded-3xl shadow-sm text-center space-y-4 font-sans">
-        <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto">
-          <Key size={28} />
-        </div>
-        <div className="space-y-1">
-          <h2 className="text-xl font-black text-slate-900">Paramètres du Compte</h2>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Connectez-vous pour gérer votre compte, vos préférences de confidentialité et la sécurité de vos données.
-          </p>
-        </div>
-        <button
-          onClick={onAuthRequired}
-          className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
-        >
-          Se connecter / S'inscrire
-        </button>
-      </div>
-    );
-  }
   // Navigation tabs within settings
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'security' | 'cgu' | 'privacy'>('profile');
 
@@ -169,10 +148,32 @@ export default function Settings({
       setPreferredLanguage(profile.preferred_language || "fr");
       setMaxDistanceKm(profile.max_distance_km || 50);
       
-      const loadedPhotos = profile.photos || JSON.parse(localStorage.getItem(`profile_photos_${currentUser.id}`) || "[]");
+      const loadedPhotos = profile.photos || JSON.parse(localStorage.getItem(`profile_photos_${currentUser?.id}`) || "[]");
       setPhotos(loadedPhotos);
     }
-  }, [profile, currentUser.id]);
+  }, [profile, currentUser?.id]);
+
+  if (!currentUser) {
+    return (
+      <div className="max-w-md mx-auto my-12 p-8 bg-white border border-slate-200 rounded-3xl shadow-sm text-center space-y-4 font-sans">
+        <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto">
+          <Key size={28} />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-xl font-black text-slate-900">Paramètres du Compte</h2>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Connectez-vous pour gérer votre compte, vos préférences de confidentialité et la sécurité de vos données.
+          </p>
+        </div>
+        <button
+          onClick={onAuthRequired}
+          className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
+        >
+          Se connecter / S'inscrire
+        </button>
+      </div>
+    );
+  }
 
   // Profile photo methods
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
