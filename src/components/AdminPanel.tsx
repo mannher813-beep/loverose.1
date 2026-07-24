@@ -31,7 +31,10 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const [users, setUsers] = useState<Profile[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [search, setSearch] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [reportsLoading, setReportsLoading] = useState(true);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [reportsError, setReportsError] = useState<string | null>(null);
   const [actionTarget, setActionTarget] = useState<Profile | null>(null);
   const [warningMessage, setWarningMessage] = useState("");
   const [toast, setToast] = useState<string | null>(null);
@@ -41,28 +44,75 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const loadUsers = async () => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("is_online", { ascending: false })
-      .order("last_seen", { ascending: false })
-      .limit(200);
-    if (!error && data) setUsers(data as Profile[]);
+  // Slow/unstable connections can leave a request hanging with no response
+  // and no error, freezing the spinner forever. This races the request
+  // against a timeout so the UI always settles one way or another.
+  const withTimeout = <T,>(promise: PromiseLike<T>, ms = 12000): Promise<T> =>
+    Promise.race([
+      Promise.resolve(promise),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), ms)),
+    ]);
+
+  const loadUsers = async (retryAttempt: number = 0) => {
+    setUsersLoading(true);
+    setUsersError(null);
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from("profiles")
+          .select("*")
+          .order("is_online", { ascending: false })
+          .order("last_seen", { ascending: false })
+          .limit(200)
+      );
+      if (error) throw error;
+      setUsers((data as Profile[]) || []);
+      setUsersLoading(false);
+    } catch (err: any) {
+      if (err?.message === "TIMEOUT" && retryAttempt < 1) {
+        loadUsers(retryAttempt + 1);
+        return;
+      }
+      setUsersError(
+        err?.message === "TIMEOUT"
+          ? "Connexion trop lente pour charger les utilisateurs."
+          : "Impossible de charger les utilisateurs."
+      );
+      setUsersLoading(false);
+    }
   };
 
-  const loadReports = async () => {
-    const { data, error } = await supabase
-      .from("reports")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200);
-    if (!error && data) setReports(data as Report[]);
+  const loadReports = async (retryAttempt: number = 0) => {
+    setReportsLoading(true);
+    setReportsError(null);
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from("reports")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(200)
+      );
+      if (error) throw error;
+      setReports((data as Report[]) || []);
+      setReportsLoading(false);
+    } catch (err: any) {
+      if (err?.message === "TIMEOUT" && retryAttempt < 1) {
+        loadReports(retryAttempt + 1);
+        return;
+      }
+      setReportsError(
+        err?.message === "TIMEOUT"
+          ? "Connexion trop lente pour charger les signalements."
+          : "Impossible de charger les signalements."
+      );
+      setReportsLoading(false);
+    }
   };
 
   useEffect(() => {
-    setIsLoading(true);
-    Promise.all([loadUsers(), loadReports()]).finally(() => setIsLoading(false));
+    loadUsers();
+    loadReports();
 
     // Live updates: any profile change (new signup, online status, etc.)
     const profileChannel = supabase
@@ -178,9 +228,35 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       )}
 
       <div className="flex-1 overflow-y-auto p-4">
-        {isLoading ? (
-          <div className="flex justify-center pt-10">
+        {tab === "users" && usersLoading ? (
+          <div className="flex flex-col items-center justify-center pt-10 gap-2">
             <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-slate-400 text-xs font-medium">Chargement des utilisateurs...</p>
+          </div>
+        ) : tab === "users" && usersError ? (
+          <div className="flex flex-col items-center justify-center pt-10 gap-3 text-center px-6">
+            <p className="text-slate-500 text-sm font-medium">{usersError}</p>
+            <button
+              onClick={() => loadUsers()}
+              className="bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold px-5 py-2 rounded-full transition cursor-pointer"
+            >
+              Réessayer
+            </button>
+          </div>
+        ) : tab === "reports" && reportsLoading ? (
+          <div className="flex flex-col items-center justify-center pt-10 gap-2">
+            <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-slate-400 text-xs font-medium">Chargement des signalements...</p>
+          </div>
+        ) : tab === "reports" && reportsError ? (
+          <div className="flex flex-col items-center justify-center pt-10 gap-3 text-center px-6">
+            <p className="text-slate-500 text-sm font-medium">{reportsError}</p>
+            <button
+              onClick={() => loadReports()}
+              className="bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold px-5 py-2 rounded-full transition cursor-pointer"
+            >
+              Réessayer
+            </button>
           </div>
         ) : tab === "users" ? (
           <div className="space-y-3">
