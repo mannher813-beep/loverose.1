@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
+import ProfileDetailModal from "./ProfileDetailModal";
 import {
   ShieldAlert,
   Users,
@@ -11,6 +12,7 @@ import {
   Send,
   X,
   Circle,
+  Eye,
 } from "lucide-react";
 
 interface Report {
@@ -30,6 +32,8 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const [tab, setTab] = useState<"users" | "reports">("users");
   const [users, setUsers] = useState<Profile[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [reportProfiles, setReportProfiles] = useState<Record<string, Profile>>({});
+  const [viewProfile, setViewProfile] = useState<Profile | null>(null);
   const [search, setSearch] = useState("");
   const [usersLoading, setUsersLoading] = useState(true);
   const [reportsLoading, setReportsLoading] = useState(true);
@@ -94,8 +98,31 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           .limit(200)
       );
       if (error) throw error;
-      setReports((data as Report[]) || []);
+      const reportRows = (data as Report[]) || [];
+      setReports(reportRows);
       setReportsLoading(false);
+
+      // Fetch the reporter/reported profiles directly by id, instead of relying
+      // on whatever subset of users happens to already be loaded (limit 200).
+      // This guarantees real names show up even for users outside that window.
+      const ids = Array.from(
+        new Set(
+          reportRows.flatMap((r) => [r.reporter_id, r.reported_id]).filter(Boolean)
+        )
+      );
+      if (ids.length > 0) {
+        const { data: profileRows, error: profileError } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("uid", ids);
+        if (!profileError && profileRows) {
+          const map: Record<string, Profile> = {};
+          (profileRows as Profile[]).forEach((p) => {
+            map[p.uid] = p;
+          });
+          setReportProfiles(map);
+        }
+      }
     } catch (err: any) {
       if (err?.message === "TIMEOUT" && retryAttempt < 1) {
         loadReports(retryAttempt + 1);
@@ -323,30 +350,56 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
         ) : (
           <div className="space-y-3">
             {reports.map((r) => {
-              const reporter = users.find((u) => u.uid === r.reporter_id);
-              const reported = users.find((u) => u.uid === r.reported_id);
+              const reporter = reportProfiles[r.reporter_id] || users.find((u) => u.uid === r.reporter_id);
+              const reported = reportProfiles[r.reported_id] || users.find((u) => u.uid === r.reported_id);
               return (
                 <div key={r.id} className="bg-white rounded-2xl p-3 shadow-sm">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-800">
-                        {reporter?.full_name || "Utilisateur"} → {reported?.full_name || "Utilisateur"}
+                      <p className="text-sm font-bold text-slate-800 flex items-center gap-1 flex-wrap">
+                        <span
+                          onClick={() => reporter && setViewProfile(reporter)}
+                          className={reporter ? "cursor-pointer hover:text-rose-500 hover:underline" : ""}
+                          title={reporter ? "Voir le profil complet" : undefined}
+                        >
+                          {reporter?.full_name || "Utilisateur inconnu"}
+                        </span>
+                        <span className="text-slate-400">→</span>
+                        <span
+                          onClick={() => reported && setViewProfile(reported)}
+                          className={reported ? "cursor-pointer hover:text-rose-500 hover:underline" : ""}
+                          title={reported ? "Voir le profil complet" : undefined}
+                        >
+                          {reported?.full_name || "Utilisateur inconnu"}
+                        </span>
                       </p>
                       <p className="text-xs text-slate-500 mt-0.5">{r.motif}</p>
                       <p className="text-[10px] text-slate-400 mt-1">
                         {new Date(r.created_at).toLocaleString("fr-FR")}
+                        {r.status && r.status !== "pending" && (
+                          <span className="ml-2 uppercase font-bold text-emerald-500">{r.status}</span>
+                        )}
                       </p>
                     </div>
                     {reported && (
                       <div className="flex gap-1.5 flex-shrink-0">
                         <button
+                          onClick={() => setViewProfile(reported)}
+                          title="Voir le profil complet"
+                          className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-600 rounded-full cursor-pointer hover:bg-slate-200"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
                           onClick={() => setActionTarget(reported)}
+                          title="Envoyer un avertissement"
                           className="w-8 h-8 flex items-center justify-center bg-amber-100 text-amber-600 rounded-full cursor-pointer hover:bg-amber-200"
                         >
                           <Send size={14} />
                         </button>
                         <button
                           onClick={() => deleteUser(reported)}
+                          title="Supprimer ce profil"
                           className="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full cursor-pointer hover:bg-red-200"
                         >
                           <Trash2 size={14} />
@@ -390,6 +443,16 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
             </button>
           </div>
         </div>
+      )}
+      {/* Full profile view - opened from a report (reporter or reported party) */}
+      {viewProfile && (
+        <ProfileDetailModal
+          profile={viewProfile}
+          currentUserProfile={null}
+          currentUser={currentUser}
+          isPremium={true}
+          onClose={() => setViewProfile(null)}
+        />
       )}
     </div>
   );
