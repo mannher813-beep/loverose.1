@@ -117,45 +117,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
   const loadProfiles = async () => {
     setIsLoading(true);
     try {
-      // 1. Get already liked profiles to filter them out
-      const likedSet = new Set<string>();
-      if (currentUser?.id) {
-        try {
-          const { data: likesData, error: likesErr } = await supabase
-            .from("likes")
-            .select("to_uid")
-            .eq("from_uid", currentUser.id);
-          
-          if (!likesErr && likesData) {
-            likesData.forEach(l => likedSet.add(l.to_uid));
-          }
-        } catch (likesCatchErr) {
-          console.warn("Could not load likes:", likesCatchErr);
-        }
-      }
-      setLikedUids(likedSet);
-
-      // 1.5 Get blocked users to exclude them completely
-      const blockedSet = new Set<string>();
-      if (currentUser?.id) {
-        try {
-          const { data: blockedData, error: blockedErr } = await supabase
-            .from("blocked_users")
-            .select("blocker_id, blocked_id")
-            .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`);
-
-          if (!blockedErr && blockedData) {
-            blockedData.forEach(b => {
-              blockedSet.add(b.blocker_id);
-              blockedSet.add(b.blocked_id);
-            });
-          }
-        } catch (blockedCatchErr) {
-          console.warn("Could not load blocked_users, table may be missing:", blockedCatchErr);
-        }
-      }
-
-      // 2. Query profiles
+      // Build the profiles query (not executed yet)
       let query = supabase
         .from("profiles")
         .select("*");
@@ -179,22 +141,70 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
         query = query.overlaps('relationship_intents', selectedIntentsFilter);
       }
 
-      const { data: profilesData, error } = await query;
-      if (error) throw error;
+      // Run all independent queries in parallel instead of one after another,
+      // to cut total loading time down to the slowest single request instead
+      // of the sum of all four.
+      const safe = (p: PromiseLike<any>) =>
+        Promise.resolve(p).catch((e) => ({ data: null, error: e }));
 
-      // Fetch active profile boosts to prioritize boosted users absolutely
-      const boostedUserIds = new Set<string>();
-      try {
-        const { data: boostsData, error: boostsErr } = await supabase
+      const likesPromise = currentUser?.id
+        ? safe(supabase.from("likes").select("to_uid").eq("from_uid", currentUser.id))
+        : Promise.resolve({ data: null, error: null });
+
+      const blockedPromise = currentUser?.id
+        ? safe(
+            supabase
+              .from("blocked_users")
+              .select("blocker_id, blocked_id")
+              .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`)
+          )
+        : Promise.resolve({ data: null, error: null });
+
+      const profilesPromise = query;
+
+      const boostsPromise = safe(
+        supabase
           .from("profile_boosts")
           .select("user_id")
-          .gt("ends_at", new Date().toISOString());
-        
-        if (!boostsErr && boostsData) {
-          boostsData.forEach(b => boostedUserIds.add(b.user_id));
-        }
-      } catch (boostsCatchErr) {
-        console.warn("Could not load profile_boosts, table may be missing:", boostsCatchErr);
+          .gt("ends_at", new Date().toISOString())
+      );
+
+      const [
+        { data: likesData, error: likesErr },
+        { data: blockedData, error: blockedErr },
+        { data: profilesData, error },
+        { data: boostsData, error: boostsErr },
+      ] = await Promise.all([likesPromise, blockedPromise, profilesPromise, boostsPromise]);
+
+      // 1. Already liked profiles, to filter them out
+      const likedSet = new Set<string>();
+      if (!likesErr && likesData) {
+        likesData.forEach((l: any) => likedSet.add(l.to_uid));
+      } else if (likesErr) {
+        console.warn("Could not load likes:", likesErr);
+      }
+      setLikedUids(likedSet);
+
+      // 1.5 Blocked users, to exclude them completely
+      const blockedSet = new Set<string>();
+      if (!blockedErr && blockedData) {
+        blockedData.forEach((b: any) => {
+          blockedSet.add(b.blocker_id);
+          blockedSet.add(b.blocked_id);
+        });
+      } else if (blockedErr) {
+        console.warn("Could not load blocked_users, table may be missing:", blockedErr);
+      }
+
+      // 2. Profiles themselves
+      if (error) throw error;
+
+      // Active profile boosts, to prioritize boosted users absolutely
+      const boostedUserIds = new Set<string>();
+      if (!boostsErr && boostsData) {
+        boostsData.forEach((b: any) => boostedUserIds.add(b.user_id));
+      } else if (boostsErr) {
+        console.warn("Could not load profile_boosts, table may be missing:", boostsErr);
       }
 
       let filteredProfiles = profilesData || [];
