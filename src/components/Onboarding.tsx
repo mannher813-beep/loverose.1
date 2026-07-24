@@ -270,7 +270,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       const finalBio = bio.trim() ? `${bio.trim()}\n\n${formattedHobbies}` : formattedHobbies;
 
       // 4. Try to update phone in Auth metadata
-      const formattedAuthPhone = selectedCountry ? `+${selectedCountry.dial_code}${phoneLocal.trim().replace(/\D/g, '')}` : phoneLocal.trim();
+      const formattedAuthPhone = selectedCountry ? `${selectedCountry.dial_code}${phoneLocal.trim().replace(/\D/g, '')}` : phoneLocal.trim();
       try {
         await supabase.auth.updateUser({
           phone: formattedAuthPhone,
@@ -369,7 +369,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                       >
                         {countryCodes.map((c) => (
                           <option key={c.iso_code} value={c.iso_code}>
-                            {c.flag_emoji} +{c.dial_code}
+                            {c.flag_emoji} {c.dial_code}
                           </option>
                         ))}
                       </select>
