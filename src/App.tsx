@@ -511,6 +511,43 @@ export default function App() {
     );
   }
 
+  // Block access for accounts an admin has suspended.
+  // profiles is readable by its own owner (RLS), so we can gate here directly;
+  // the real enforcement against write actions lives in the database policies.
+  if (currentUser && profile) {
+    const suspendedUntil = profile.suspended_until ? new Date(profile.suspended_until) : null;
+    const isCurrentlySuspended = !!profile.is_suspended && (!suspendedUntil || suspendedUntil > new Date());
+
+    if (isCurrentlySuspended) {
+      return (
+        <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center font-sans px-6 text-center">
+          <div className="max-w-sm space-y-4">
+            <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto">
+              <ShieldAlert size={28} />
+            </div>
+            <h1 className="font-extrabold text-lg text-slate-800">Compte suspendu</h1>
+            <p className="text-sm text-slate-500">
+              {profile.suspension_reason
+                ? profile.suspension_reason
+                : "Votre compte a été suspendu par l'équipe LoveRose pour non-respect des règles de la communauté."}
+            </p>
+            {suspendedUntil && (
+              <p className="text-xs text-slate-400">
+                Suspension valable jusqu'au {suspendedUntil.toLocaleString("fr-FR")}.
+              </p>
+            )}
+            <button
+              onClick={handleLogout}
+              className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl cursor-pointer transition"
+            >
+              Se déconnecter
+            </button>
+          </div>
+        </div>
+      );
+    }
+  }
+
   // Check if logged in user profile is incomplete
   if (currentUser) {
     const isProfileIncomplete = !profile || 

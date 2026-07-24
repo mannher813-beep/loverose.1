@@ -22,6 +22,10 @@ export interface Profile {
   max_distance_km?: number;
   phone_country_code?: string;
   phone_number?: string;
+  is_suspended?: boolean;
+  suspended_until?: string | null;
+  suspension_reason?: string | null;
+  suspended_at?: string | null;
 }
 
 export interface Like {

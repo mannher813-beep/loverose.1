@@ -13,6 +13,9 @@ import {
   X,
   Circle,
   Eye,
+  Clock,
+  ShieldOff,
+  ShieldCheck,
 } from "lucide-react";
 
 interface Report {
@@ -41,6 +44,9 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const [reportsError, setReportsError] = useState<string | null>(null);
   const [actionTarget, setActionTarget] = useState<Profile | null>(null);
   const [warningMessage, setWarningMessage] = useState("");
+  const [suspendTarget, setSuspendTarget] = useState<Profile | null>(null);
+  const [suspendDuration, setSuspendDuration] = useState<"24h" | "7d" | "30d" | "perm">("7d");
+  const [suspendReason, setSuspendReason] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -218,6 +224,57 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       showToast(`Boost de ${days} jour(s) offert à ${user.full_name}`);
     }
   };
+  const durationToUntil = (duration: "24h" | "7d" | "30d" | "perm"): string | null => {
+    if (duration === "perm") return null;
+    const hours = duration === "24h" ? 24 : duration === "7d" ? 24 * 7 : 24 * 30;
+    return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+  };
+
+  const confirmSuspend = async () => {
+    if (!suspendTarget) return;
+    const until = durationToUntil(suspendDuration);
+    const { error } = await supabase.rpc("admin_set_suspension", {
+      target_uid: suspendTarget.uid,
+      suspend: true,
+      until,
+      reason: suspendReason.trim() || null,
+    });
+    if (error) {
+      showToast("Erreur : " + error.message);
+    } else {
+      showToast(`Compte de ${suspendTarget.full_name} suspendu`);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.uid === suspendTarget.uid
+            ? { ...u, is_suspended: true, suspended_until: until, suspension_reason: suspendReason.trim() || null }
+            : u
+        )
+      );
+      setSuspendTarget(null);
+      setSuspendReason("");
+      setSuspendDuration("7d");
+    }
+  };
+
+  const reactivateUser = async (user: Profile) => {
+    const { error } = await supabase.rpc("admin_set_suspension", {
+      target_uid: user.uid,
+      suspend: false,
+      until: null,
+      reason: null,
+    });
+    if (error) {
+      showToast("Erreur : " + error.message);
+    } else {
+      showToast(`Compte de ${user.full_name} réactivé`);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.uid === user.uid ? { ...u, is_suspended: false, suspended_until: null, suspension_reason: null } : u
+        )
+      );
+    }
+  };
+
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50">
@@ -244,6 +301,19 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           >
             <Flag size={15} /> Signalements ({reports.length})
           </button>
+        </div>
+        <div className="flex items-center gap-3 mt-2.5 text-[11px] font-semibold text-slate-500">
+          <span className="flex items-center gap-1">
+            <Circle size={8} className="text-emerald-500 fill-emerald-500" />
+            {users.filter((u) => u.is_online).length} connecté(s)
+          </span>
+          <span className="text-slate-300">·</span>
+          <span>{users.length} inscrit(s)</span>
+          <span className="text-slate-300">·</span>
+          <span className="flex items-center gap-1 text-red-500">
+            <ShieldOff size={11} />
+            {users.filter((u) => u.is_suspended).length} suspendu(s)
+          </span>
         </div>
       </div>
 
@@ -309,8 +379,13 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-slate-800 truncate">
+                  <p className="font-bold text-sm text-slate-800 truncate flex items-center gap-1.5">
                     {u.full_name} {u.role === "admin" && <span className="text-rose-500">★</span>}
+                    {u.is_suspended && (
+                      <span className="text-[9px] font-bold uppercase bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">
+                        Suspendu
+                      </span>
+                    )}
                   </p>
                   <p className="text-xs text-slate-400 truncate">
                     {u.age ? `${u.age} ans · ` : ""}{u.gender} · {u.is_online ? "En ligne" : "Hors ligne"}
@@ -332,13 +407,32 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                     <Gift size={14} />
                   </button>
                   {u.uid !== currentUser?.id && (
-                    <button
-                      onClick={() => deleteUser(u)}
-                      title="Supprimer ce profil"
-                      className="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full cursor-pointer hover:bg-red-200"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <>
+                      {u.is_suspended ? (
+                        <button
+                          onClick={() => reactivateUser(u)}
+                          title="Réactiver ce compte"
+                          className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full cursor-pointer hover:bg-blue-200"
+                        >
+                          <ShieldCheck size={14} />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setSuspendTarget(u)}
+                          title="Suspendre ce compte"
+                          className="w-8 h-8 flex items-center justify-center bg-orange-100 text-orange-600 rounded-full cursor-pointer hover:bg-orange-200"
+                        >
+                          <Clock size={14} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => deleteUser(u)}
+                        title="Supprimer ce profil"
+                        className="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full cursor-pointer hover:bg-red-200"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -397,6 +491,23 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                         >
                           <Send size={14} />
                         </button>
+                        {reported.is_suspended ? (
+                          <button
+                            onClick={() => reactivateUser(reported)}
+                            title="Réactiver ce compte"
+                            className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full cursor-pointer hover:bg-blue-200"
+                          >
+                            <ShieldCheck size={14} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setSuspendTarget(reported)}
+                            title="Suspendre ce compte"
+                            className="w-8 h-8 flex items-center justify-center bg-orange-100 text-orange-600 rounded-full cursor-pointer hover:bg-orange-200"
+                          >
+                            <Clock size={14} />
+                          </button>
+                        )}
                         <button
                           onClick={() => deleteUser(reported)}
                           title="Supprimer ce profil"
@@ -440,6 +551,51 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
               className="w-full mt-3 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl cursor-pointer transition"
             >
               Envoyer l'avertissement
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Suspension modal */}
+      {suspendTarget && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-slate-800">Suspendre {suspendTarget.full_name}</h2>
+              <button onClick={() => setSuspendTarget(null)} className="cursor-pointer">
+                <X size={18} className="text-slate-400" />
+              </button>
+            </div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Durée</p>
+            <div className="grid grid-cols-4 gap-1.5 mb-3">
+              {([
+                { key: "24h", label: "24h" },
+                { key: "7d", label: "7 j" },
+                { key: "30d", label: "30 j" },
+                { key: "perm", label: "Permanent" },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setSuspendDuration(opt.key)}
+                  className={`py-2 rounded-xl text-xs font-bold cursor-pointer transition ${
+                    suspendDuration === opt.key ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={suspendReason}
+              onChange={(e) => setSuspendReason(e.target.value)}
+              placeholder="Motif de la suspension (visible par l'utilisateur)..."
+              rows={3}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-orange-400 resize-none"
+            />
+            <button
+              onClick={confirmSuspend}
+              className="w-full mt-3 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl cursor-pointer transition"
+            >
+              Confirmer la suspension
             </button>
           </div>
         </div>
