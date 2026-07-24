@@ -114,6 +114,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
         const { data, error } = await supabase
           .from("country_codes")
           .select("*")
+          .eq("is_allowed_signup", true)
           .order("name_fr");
         if (!error && data) {
           setCountryCodes(data);
