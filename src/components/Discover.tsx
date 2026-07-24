@@ -124,9 +124,10 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
     };
   }, []);
 
-  const loadProfiles = async () => {
+  const loadProfiles = async (retryAttempt: number = 0) => {
     setIsLoading(true);
     setLoadError(null);
+    let isRetrying = false;
     try {
       // Safety net: on a slow/unstable connection, Supabase calls can hang
       // indefinitely with no error and no response, leaving the spinner stuck.
@@ -282,13 +283,21 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       setCurrentIndex(0);
     } catch (err: any) {
       console.warn("Could not load profiles from database (possibly offline or unmigrated):", err);
+      if (err?.message === "TIMEOUT" && retryAttempt < 1) {
+        // Slow/cold connection on first try — give it one silent second chance
+        // before bothering the user with an error message. Skip clearing
+        // isLoading here so the spinner doesn't flicker off mid-retry.
+        isRetrying = true;
+        loadProfiles(retryAttempt + 1);
+        return;
+      }
       if (err?.message === "TIMEOUT") {
         setLoadError("Connexion trop lente. Vérifiez votre réseau et réessayez.");
       } else {
         setLoadError("Impossible de charger les profils. Réessayez.");
       }
     } finally {
-      setIsLoading(false);
+      if (!isRetrying) setIsLoading(false);
     }
   };
 
