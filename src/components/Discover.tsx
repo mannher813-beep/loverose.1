@@ -423,22 +423,6 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50 relative">
-      {/* Guest Mode Banner */}
-      {!currentUser && (
-        <div className="bg-gradient-to-r from-rose-500 to-pink-600 text-white px-4 py-2.5 text-xs font-bold flex items-center justify-between shadow-sm z-20">
-          <div className="flex items-center gap-2">
-            <Sparkles size={15} className="animate-pulse" />
-            <span>Mode Découverte : Parcourez les profils librement. Connectez-vous pour liker & discuter !</span>
-          </div>
-          <button
-            onClick={() => onAuthRequired && onAuthRequired()}
-            className="bg-white text-rose-600 hover:bg-rose-50 px-3 py-1 rounded-full text-[11px] font-black transition cursor-pointer shadow-xs whitespace-nowrap ml-2"
-          >
-            Se connecter avec Google
-          </button>
-        </div>
-      )}
-
       {/* Filter Header */}
       <div className="bg-white border-b border-slate-100 p-4 sticky top-0 z-20 flex flex-wrap gap-2 items-center justify-between">
         <div className="flex items-center gap-2">
@@ -480,7 +464,9 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center space-y-3">
             <div className="w-10 h-10 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-slate-400 text-xs font-medium">Recherche des profils compatibles...</p>
+            <p className="text-slate-400 text-xs font-medium">
+              {currentUser ? "Recherche des profils compatibles..." : "Recherche des profils disponibles..."}
+            </p>
           </div>
         ) : activeProfile ? (
           <div className="w-full max-w-md h-full flex flex-col items-center justify-between gap-3 mx-auto min-h-0">
@@ -521,12 +507,14 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-1"></div>
 
                 {/* Compatibility Badge */}
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur shadow-sm px-3 py-1 rounded-full flex items-center space-x-1 z-10 border border-rose-500/10">
-                  <Sparkles size={11} className="text-rose-500 animate-pulse fill-rose-500" />
-                  <span className="text-[10px] font-black text-slate-800">
-                    {compatibilityScore}% Compatibilité
-                  </span>
-                </div>
+                {currentUser && currentUserProfile && (
+                  <div className="absolute top-4 left-4 bg-white/95 backdrop-blur shadow-sm px-3 py-1 rounded-full flex items-center space-x-1 z-10 border border-rose-500/10">
+                    <Sparkles size={11} className="text-rose-500 animate-pulse fill-rose-500" />
+                    <span className="text-[10px] font-black text-slate-800">
+                      {compatibilityScore}% Compatibilité
+                    </span>
+                  </div>
+                )}
 
                 {/* Verification Status Badge */}
                 {activeProfile.verification_status === "verified" && (
