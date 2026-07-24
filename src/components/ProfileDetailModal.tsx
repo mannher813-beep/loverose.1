@@ -5,13 +5,25 @@ import { Profile } from "../types";
 interface ProfileDetailModalProps {
   profile: Profile;
   currentUserProfile: Profile | null;
+  currentUser?: any;
   isPremium?: boolean;
   onClose: () => void;
-  onStartChat?: () => void; // Optional CTA to start chat from feed/discover
+  onStartChat?: () => void;
+  onAuthRequired?: () => void;
 }
 
-export default function ProfileDetailModal({ profile, currentUserProfile, isPremium = false, onClose, onStartChat }: ProfileDetailModalProps) {
+export default function ProfileDetailModal({ profile, currentUserProfile, currentUser, isPremium = false, onClose, onStartChat, onAuthRequired }: ProfileDetailModalProps) {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+
+  const handleChatClick = () => {
+    if (!currentUser) {
+      if (onAuthRequired) onAuthRequired();
+      return;
+    }
+    if (onStartChat) {
+      onStartChat();
+    }
+  };
 
   // Calculate mutual compatibility score
   const calculateCompatibility = (): number => {
@@ -199,11 +211,11 @@ export default function ProfileDetailModal({ profile, currentUserProfile, isPrem
         {onStartChat && (
           <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center gap-3">
             <button
-              onClick={onStartChat}
+              onClick={handleChatClick}
               className="w-full py-3 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
               <MessageCircle size={14} />
-              <span>Ouvrir la Discussion</span>
+              <span>{currentUser ? "Ouvrir la Discussion" : "Se connecter avec Google pour discuter"}</span>
             </button>
           </div>
         )}

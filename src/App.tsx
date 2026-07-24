@@ -823,7 +823,6 @@ export default function App() {
                   window.history.pushState(null, "", "/");
                 }
               }}
-              initialIsSignUp={authInitialIsSignUp || currentPath === "/inscription"}
             />
           </div>
         </div>

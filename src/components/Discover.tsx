@@ -260,11 +260,18 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
   };
 
   const handleSwipe = async (liked: boolean) => {
-    if (!currentUser) {
-      if (onAuthRequired) onAuthRequired();
-      return;
-    }
     if (profiles.length === 0 || currentIndex >= profiles.length) return;
+
+    if (!currentUser) {
+      if (liked) {
+        if (onAuthRequired) onAuthRequired();
+        return;
+      } else {
+        // Dislike / Next profile: allow unauthenticated browsing
+        setCurrentIndex(prev => prev + 1);
+        return;
+      }
+    }
     
     const candidate = profiles[currentIndex];
     
@@ -406,6 +413,22 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50 relative">
+      {/* Guest Mode Banner */}
+      {!currentUser && (
+        <div className="bg-gradient-to-r from-rose-500 to-pink-600 text-white px-4 py-2.5 text-xs font-bold flex items-center justify-between shadow-sm z-20">
+          <div className="flex items-center gap-2">
+            <Sparkles size={15} className="animate-pulse" />
+            <span>Mode Découverte : Parcourez les profils librement. Connectez-vous pour liker & discuter !</span>
+          </div>
+          <button
+            onClick={() => onAuthRequired && onAuthRequired()}
+            className="bg-white text-rose-600 hover:bg-rose-50 px-3 py-1 rounded-full text-[11px] font-black transition cursor-pointer shadow-xs whitespace-nowrap ml-2"
+          >
+            Se connecter avec Google
+          </button>
+        </div>
+      )}
+
       {/* Filter Header */}
       <div className="bg-white border-b border-slate-100 p-4 sticky top-0 z-20 flex flex-wrap gap-2 items-center justify-between">
         <div className="flex items-center gap-2">
@@ -565,7 +588,13 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                       <span>Détails & Photos</span>
                     </button>
                     <button
-                      onClick={() => setIsReportOpen(true)}
+                      onClick={() => {
+                        if (!currentUser) {
+                          if (onAuthRequired) onAuthRequired();
+                          return;
+                        }
+                        setIsReportOpen(true);
+                      }}
                       className="text-white/60 hover:text-red-400 text-[10px] flex items-center gap-1 transition cursor-pointer font-bold"
                     >
                       <ShieldAlert size={12} />
@@ -690,10 +719,15 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
         <ProfileDetailModal
           profile={selectedViewProfile}
           currentUserProfile={currentUserProfile}
+          currentUser={currentUser}
           isPremium={isPremium}
           onClose={() => setSelectedViewProfile(null)}
+          onAuthRequired={onAuthRequired}
           onStartChat={() => {
-            // Start discussion by swiping like to create the match row, and close modal
+            if (!currentUser) {
+              if (onAuthRequired) onAuthRequired();
+              return;
+            }
             handleSwipe(true);
             setSelectedViewProfile(null);
           }}
