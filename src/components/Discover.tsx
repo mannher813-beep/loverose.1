@@ -476,14 +476,14 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       </div>
 
       {/* Profile Card Stage */}
-      <div className="flex-1 overflow-y-auto flex flex-col justify-start md:justify-center items-center p-4 min-h-0 relative w-full">
+      <div className="flex-1 overflow-hidden flex flex-col justify-start md:justify-center items-center p-4 min-h-0 relative w-full">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center space-y-3">
             <div className="w-10 h-10 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
             <p className="text-slate-400 text-xs font-medium">Recherche des profils compatibles...</p>
           </div>
         ) : activeProfile ? (
-          <div className="w-full max-w-md flex flex-col items-center justify-between space-y-4 mx-auto">
+          <div className="w-full max-w-md h-full flex flex-col items-center justify-between gap-3 mx-auto min-h-0">
             
             {/* The Main Swing Card */}
             <AnimatePresence mode="wait">
@@ -494,14 +494,13 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                 exit={{ scale: 0.95, opacity: 0, y: -15 }}
                 transition={{ duration: 0.3 }}
                 style={{
-                  aspectRatio: '9/16',
                   width: '100%',
                   maxWidth: '380px',
                   borderRadius: '24px',
                   overflow: 'hidden',
                   position: 'relative',
                 }}
-                className="bg-white border border-slate-150 shadow-xl flex flex-col relative"
+                className="bg-white border border-slate-150 shadow-xl flex flex-col relative flex-1 min-h-0"
               >
                 {/* Photo underlay */}
                 <img
@@ -616,7 +615,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
             </AnimatePresence>
 
             {/* Swipe Action Buttons */}
-            <div className="flex justify-center items-center gap-6 pb-2">
+            <div className="flex justify-center items-center gap-6 pb-2 flex-shrink-0">
               <button
                 id="swipe-dislike-btn"
                 onClick={() => handleSwipe(false)}
@@ -646,7 +645,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
             </div>
 
             {/* AdSlot when active suggestions are shown */}
-            <div className="w-full max-w-md mx-auto pt-1 pb-2">
+            <div className="w-full max-w-md mx-auto pt-1 pb-2 hidden sm:block flex-shrink-0">
               <AdSlot slot="discovery_feed_1" userId={currentUser?.id} />
             </div>
           </div>
