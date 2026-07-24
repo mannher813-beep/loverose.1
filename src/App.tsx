@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import { Profile } from "./types";
-import { Heart, MessageSquare, ShoppingBag, Settings, Sparkles, User, LogOut, ArrowRight, X, Bell } from "lucide-react";
+import { Heart, MessageSquare, ShoppingBag, Settings, Sparkles, User, LogOut, ArrowRight, X, Bell, ShieldAlert } from "lucide-react";
 
 // Component imports
 import SupabaseSetupBanner from "./components/SupabaseSetupBanner";
@@ -16,6 +16,7 @@ import NotificationsView from "./components/Notifications";
 import Onboarding from "./components/Onboarding";
 import PublicProfile from "./components/PublicProfile";
 import PublicLayout from "./components/public/PublicLayout";
+import AdminPanel from "./components/AdminPanel";
 import { usePremiumStatus } from "./hooks/usePremiumStatus";
 
 export default function App() {
@@ -30,7 +31,7 @@ export default function App() {
   const isPremiumUser = isPremium || entitlements.premium;
   const [showConversionPopup, setShowConversionPopup] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'shop' | 'profile' | 'settings' | 'notifications'>('discover');
+  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'shop' | 'profile' | 'settings' | 'notifications' | 'admin'>('discover');
   const [targetChatPartnerId, setTargetChatPartnerId] = useState<string | null>(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   
@@ -310,7 +311,6 @@ export default function App() {
         setCurrentUser(null);
         setProfile(null);
         setIsLoading(false);
-        setActiveTab('discover');
       }
     });
 
@@ -606,6 +606,15 @@ export default function App() {
             <Settings size={16} />
             <span>Paramètres</span>
           </button>
+          {profile?.role === 'admin' && (
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'admin' ? 'text-rose-500 font-extrabold' : ''}`}
+            >
+              <ShieldAlert size={16} />
+              <span>Admin</span>
+            </button>
+          )}
         </div>
 
         {/* Quick User details or Auth Buttons for Guest */}
@@ -751,6 +760,11 @@ export default function App() {
               onAuthRequired={() => triggerAuthRequired(true)}
             />
           </div>
+          {profile?.role === 'admin' && (
+            <div className={activeTab === 'admin' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
+              <AdminPanel currentUser={currentUser} />
+            </div>
+          )}
         </>
       </main>
 
@@ -796,6 +810,15 @@ export default function App() {
           <User size={18} />
           <span className="text-[10px]">Profil</span>
         </button>
+        {profile?.role === 'admin' && (
+          <button
+            onClick={() => setActiveTab('admin')}
+            className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'admin' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
+          >
+            <ShieldAlert size={18} />
+            <span className="text-[10px]">Admin</span>
+          </button>
+        )}
       </footer>
 
       {/* Guest Auth Dialog Popup Modal */}
