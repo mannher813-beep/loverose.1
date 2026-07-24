@@ -454,10 +454,24 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                     <input
                       type="number"
                       min={18}
-                      value={age}
-                      onChange={(e) => setAge(parseInt(e.target.value) || 18)}
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
+                      max={99}
+                      value={age === 0 ? '' : age}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === '') {
+                          setAge(0);
+                          return;
+                        }
+                        const parsed = parseInt(raw, 10);
+                        if (!isNaN(parsed)) setAge(parsed);
+                      }}
+                      className={`w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500 ${
+                        age > 0 && age < 18 ? "border-red-400" : "border-slate-200"
+                      }`}
                     />
+                    {age > 0 && age < 18 && (
+                      <p className="text-[10px] text-red-500 font-semibold">Vous devez avoir au moins 18 ans.</p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pays & Ville</label>
