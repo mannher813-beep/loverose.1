@@ -76,6 +76,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
   const [reportReason, setReportReason] = useState("");
   const [reportSuccess, setReportSuccess] = useState(false);
   const [selectedViewProfile, setSelectedViewProfile] = useState<Profile | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const intentsList = [
     "Amitié",
@@ -116,7 +117,15 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
 
   const loadProfiles = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
+      // Safety net: on a slow/unstable connection, Supabase calls can hang
+      // indefinitely with no error and no response, leaving the spinner stuck.
+      // This forces the load to fail gracefully after 12s instead of hanging forever.
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("TIMEOUT")), 12000)
+      );
+
       // Build the profiles query (not executed yet)
       let query = supabase
         .from("profiles")
@@ -174,7 +183,10 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
         { data: blockedData, error: blockedErr },
         { data: profilesData, error },
         { data: boostsData, error: boostsErr },
-      ] = await Promise.all([likesPromise, blockedPromise, profilesPromise, boostsPromise]);
+      ] = await Promise.race([
+        Promise.all([likesPromise, blockedPromise, profilesPromise, boostsPromise]),
+        timeout,
+      ]);
 
       // 1. Already liked profiles, to filter them out
       const likedSet = new Set<string>();
@@ -240,8 +252,13 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
 
       setProfiles(scored);
       setCurrentIndex(0);
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Could not load profiles from database (possibly offline or unmigrated):", err);
+      if (err?.message === "TIMEOUT") {
+        setLoadError("Connexion trop lente. Vérifiez votre réseau et réessayez.");
+      } else {
+        setLoadError("Impossible de charger les profils. Réessayez.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -423,22 +440,6 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50 relative">
-      {/* Guest Mode Banner */}
-      {!currentUser && (
-        <div className="bg-gradient-to-r from-rose-500 to-pink-600 text-white px-4 py-2.5 text-xs font-bold flex items-center justify-between shadow-sm z-20">
-          <div className="flex items-center gap-2">
-            <Sparkles size={15} className="animate-pulse" />
-            <span>Mode Découverte : Parcourez les profils librement. Connectez-vous pour liker & discuter !</span>
-          </div>
-          <button
-            onClick={() => onAuthRequired && onAuthRequired()}
-            className="bg-white text-rose-600 hover:bg-rose-50 px-3 py-1 rounded-full text-[11px] font-black transition cursor-pointer shadow-xs whitespace-nowrap ml-2"
-          >
-            Se connecter avec Google
-          </button>
-        </div>
-      )}
-
       {/* Filter Header */}
       <div className="bg-white border-b border-slate-100 p-4 sticky top-0 z-20 flex flex-wrap gap-2 items-center justify-between">
         <div className="flex items-center gap-2">
@@ -476,14 +477,26 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       </div>
 
       {/* Profile Card Stage */}
-      <div className="flex-1 overflow-y-auto flex flex-col justify-start md:justify-center items-center p-3 min-h-0 relative w-full">
+      <div className="flex-1 overflow-hidden flex flex-col justify-start md:justify-center items-center p-4 min-h-0 relative w-full">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center space-y-3">
             <div className="w-10 h-10 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-slate-400 text-xs font-medium">Recherche des profils compatibles...</p>
+            <p className="text-slate-400 text-xs font-medium">
+              {currentUser ? "Recherche des profils compatibles..." : "Recherche des profils disponibles..."}
+            </p>
+          </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center justify-center space-y-3 text-center px-6">
+            <p className="text-slate-500 text-sm font-medium">{loadError}</p>
+            <button
+              onClick={() => loadProfiles()}
+              className="bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold px-5 py-2 rounded-full transition"
+            >
+              Réessayer
+            </button>
           </div>
         ) : activeProfile ? (
-          <div className="w-full max-w-md h-full flex flex-col items-center gap-3 mx-auto min-h-0">
+          <div className="w-full max-w-md h-full flex flex-col items-center justify-between gap-3 mx-auto min-h-0">
             
             {/* The Main Swing Card */}
             <AnimatePresence mode="wait">
@@ -494,16 +507,13 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                 exit={{ scale: 0.95, opacity: 0, y: -15 }}
                 transition={{ duration: 0.3 }}
                 style={{
-                  aspectRatio: '9/16',
-                  width: 'auto',
+                  width: '100%',
                   maxWidth: '380px',
-                  maxHeight: '100%',
-                  minHeight: '240px',
                   borderRadius: '24px',
                   overflow: 'hidden',
                   position: 'relative',
                 }}
-                className="flex-1 bg-white border border-slate-150 shadow-xl flex flex-col relative"
+                className="bg-white border border-slate-150 shadow-xl flex flex-col relative flex-1 min-h-0"
               >
                 {/* Photo underlay */}
                 <img
@@ -524,12 +534,14 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-1"></div>
 
                 {/* Compatibility Badge */}
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur shadow-sm px-3 py-1 rounded-full flex items-center space-x-1 z-10 border border-rose-500/10">
-                  <Sparkles size={11} className="text-rose-500 animate-pulse fill-rose-500" />
-                  <span className="text-[10px] font-black text-slate-800">
-                    {compatibilityScore}% Compatibilité
-                  </span>
-                </div>
+                {currentUser && currentUserProfile && (
+                  <div className="absolute top-4 left-4 bg-white/95 backdrop-blur shadow-sm px-3 py-1 rounded-full flex items-center space-x-1 z-10 border border-rose-500/10">
+                    <Sparkles size={11} className="text-rose-500 animate-pulse fill-rose-500" />
+                    <span className="text-[10px] font-black text-slate-800">
+                      {compatibilityScore}% Compatibilité
+                    </span>
+                  </div>
+                )}
 
                 {/* Verification Status Badge */}
                 {activeProfile.verification_status === "verified" && (
@@ -648,7 +660,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
             </div>
 
             {/* AdSlot when active suggestions are shown */}
-            <div className="w-full max-w-md mx-auto pt-1 pb-2 flex-shrink-0">
+            <div className="w-full max-w-md mx-auto pt-1 pb-2 hidden sm:block flex-shrink-0">
               <AdSlot slot="discovery_feed_1" userId={currentUser?.id} />
             </div>
           </div>
