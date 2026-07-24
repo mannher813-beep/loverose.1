@@ -77,6 +77,13 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
   const [reportSuccess, setReportSuccess] = useState(false);
   const [selectedViewProfile, setSelectedViewProfile] = useState<Profile | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [guestGenderPref, setGuestGenderPref] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("loverose_guest_gender_pref");
+    } catch {
+      return null;
+    }
+  });
 
   const intentsList = [
     "Amitié",
@@ -88,8 +95,10 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
 
   // Fetch profiles and liked profiles
   useEffect(() => {
+    // Guests must pick a gender preference first; wait until they do.
+    if (!currentUser && !guestGenderPref) return;
     loadProfiles();
-  }, [currentUser, selectedIntentsFilter, currentUserProfile?.preferences]);
+  }, [currentUser, selectedIntentsFilter, currentUserProfile?.preferences, guestGenderPref]);
 
   // Real-time subscription to update profile cards instantly when people go online/offline or change info
   useEffect(() => {
@@ -136,8 +145,8 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       }
       query = query.limit(30); // Paginate profiles limit for lightning-fast network execution
 
-      // Filtre par genre recherché (preferences de l'utilisateur courant)
-      const myPreferences = currentUserProfile?.preferences || "tous";
+      // Filtre par genre recherché (preferences de l'utilisateur courant, ou choix de l'invité)
+      const myPreferences = currentUserProfile?.preferences || guestGenderPref || "tous";
       if (myPreferences === 'homme') {
         query = query.eq('gender', 'homme');
       } else if (myPreferences === 'femme') {
@@ -145,8 +154,9 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       }
       // si myPreferences === 'tous', ne filtre pas sur le genre
 
-      // Filtre par type(s) de rencontre recherché(s) — overlaps
-      if (selectedIntentsFilter && selectedIntentsFilter.length > 0) {
+      // Pour un invité (pas encore de compte), on ne filtre pas par centre d'intérêt :
+      // cette donnée n'existe que pour un profil créé.
+      if (currentUser && selectedIntentsFilter && selectedIntentsFilter.length > 0) {
         query = query.overlaps('relationship_intents', selectedIntentsFilter);
       }
 
@@ -239,16 +249,34 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
         return true;
       });
       
-      // Sort with boosted users at the absolute top, then by compatibility score
-      const scored = unswiped.map(p => {
-        const isBoosted = boostedUserIds.has(p.uid);
-        const score = calculateCompatibility(currentUserProfile, p);
-        return { profile: p, score, isBoosted };
-      }).sort((a, b) => {
-        if (a.isBoosted && !b.isBoosted) return -1;
-        if (!a.isBoosted && b.isBoosted) return 1;
-        return b.score - a.score;
-      }).map(x => x.profile);
+      // Sort with boosted users at the absolute top.
+      // Logged-in users: rank the rest by compatibility score.
+      // Guests: no real profile to compare against, so shuffle randomly instead.
+      const shuffle = <T,>(arr: T[]): T[] => {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      };
+
+      let scored: Profile[];
+      if (currentUser) {
+        scored = unswiped.map(p => {
+          const isBoosted = boostedUserIds.has(p.uid);
+          const score = calculateCompatibility(currentUserProfile, p);
+          return { profile: p, score, isBoosted };
+        }).sort((a, b) => {
+          if (a.isBoosted && !b.isBoosted) return -1;
+          if (!a.isBoosted && b.isBoosted) return 1;
+          return b.score - a.score;
+        }).map(x => x.profile);
+      } else {
+        const boosted = unswiped.filter(p => boostedUserIds.has(p.uid));
+        const rest = shuffle(unswiped.filter(p => !boostedUserIds.has(p.uid)));
+        scored = [...boosted, ...rest];
+      }
 
       setProfiles(scored);
       setCurrentIndex(0);
@@ -442,43 +470,91 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
     <div className="flex-1 flex flex-col h-full bg-slate-50 relative">
       {/* Filter Header */}
       <div className="bg-white border-b border-slate-100 p-4 sticky top-0 z-20 flex flex-wrap gap-2 items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Filter size={16} className="text-rose-500" />
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Filtres (Multi-sélection) :</span>
-        </div>
-        <div className="flex gap-1.5 overflow-x-auto max-w-full pb-1 md:pb-0 scrollbar-none">
-          <button
-            onClick={() => setSelectedIntentsFilter([])}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-full transition whitespace-nowrap cursor-pointer ${
-              selectedIntentsFilter.length === 0
-                ? "bg-rose-500 text-white shadow-sm font-extrabold"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            Tous les profils
-          </button>
-          {intentsList.map(intent => {
-            const isActive = selectedIntentsFilter.includes(intent);
-            return (
+        {currentUser ? (
+          <>
+            <div className="flex items-center gap-2">
+              <Filter size={16} className="text-rose-500" />
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Filtres (Multi-sélection) :</span>
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto max-w-full pb-1 md:pb-0 scrollbar-none">
               <button
-                key={intent}
-                onClick={() => toggleIntentFilter(intent)}
+                onClick={() => setSelectedIntentsFilter([])}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-full transition whitespace-nowrap cursor-pointer ${
-                  isActive
+                  selectedIntentsFilter.length === 0
                     ? "bg-rose-500 text-white shadow-sm font-extrabold"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                {intent}
+                Tous les profils
               </button>
-            );
-          })}
-        </div>
+              {intentsList.map(intent => {
+                const isActive = selectedIntentsFilter.includes(intent);
+                return (
+                  <button
+                    key={intent}
+                    onClick={() => toggleIntentFilter(intent)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-full transition whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? "bg-rose-500 text-white shadow-sm font-extrabold"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {intent}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+            <Filter size={16} className="text-rose-500" />
+            <span>
+              Vous recherchez : <span className="text-rose-600 font-extrabold">{guestGenderPref === 'homme' ? 'des hommes' : guestGenderPref === 'femme' ? 'des femmes' : '...'}</span>
+            </span>
+            <button
+              onClick={() => {
+                try { localStorage.removeItem("loverose_guest_gender_pref"); } catch {}
+                setGuestGenderPref(null);
+              }}
+              className="text-rose-500 underline font-bold cursor-pointer"
+            >
+              Changer
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Profile Card Stage */}
       <div className="flex-1 overflow-hidden flex flex-col justify-start md:justify-center items-center p-4 min-h-0 relative w-full">
-        {isLoading ? (
+        {!currentUser && !guestGenderPref ? (
+          <div className="flex flex-col items-center justify-center space-y-5 text-center px-6 max-w-sm">
+            <Heart size={40} className="text-rose-500 fill-rose-500" />
+            <div>
+              <p className="text-slate-800 font-extrabold text-lg mb-1">Vous recherchez qui ?</p>
+              <p className="text-slate-400 text-xs font-medium">Dites-nous qui vous voulez rencontrer pour vous montrer les bons profils.</p>
+            </div>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => {
+                  try { localStorage.setItem("loverose_guest_gender_pref", "homme"); } catch {}
+                  setGuestGenderPref("homme");
+                }}
+                className="flex-1 bg-white border-2 border-rose-500 text-rose-600 font-bold py-3 rounded-2xl hover:bg-rose-50 transition cursor-pointer"
+              >
+                Des hommes
+              </button>
+              <button
+                onClick={() => {
+                  try { localStorage.setItem("loverose_guest_gender_pref", "femme"); } catch {}
+                  setGuestGenderPref("femme");
+                }}
+                className="flex-1 bg-white border-2 border-rose-500 text-rose-600 font-bold py-3 rounded-2xl hover:bg-rose-50 transition cursor-pointer"
+              >
+                Des femmes
+              </button>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="flex flex-col items-center justify-center space-y-3">
             <div className="w-10 h-10 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
             <p className="text-slate-400 text-xs font-medium">
