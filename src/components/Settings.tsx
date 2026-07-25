@@ -236,6 +236,9 @@ export default function Settings({
       reader.readAsDataURL(optimizedFile);
     } catch (err) {
       console.error("Error processing photo upload in settings:", err);
+      alert("Impossible de traiter cette photo. Réessayez avec une autre image ou une meilleure connexion.");
+    } finally {
+      e.target.value = ""; // Allow re-selecting the same file if retried
     }
   };
 
@@ -266,6 +269,9 @@ export default function Settings({
       reader.readAsDataURL(optimizedFile);
     } catch (err) {
       console.error("Error processing premium photo upload in settings:", err);
+      alert("Impossible de traiter cette photo. Réessayez avec une autre image ou une meilleure connexion.");
+    } finally {
+      e.target.value = "";
     }
   };
 

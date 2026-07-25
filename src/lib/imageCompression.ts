@@ -20,7 +20,15 @@ export async function compressImageIfNeeded(file: File): Promise<File> {
       initialQuality: 0.82, // High initial visual quality, virtually indistinguishable from source
     };
 
-    const compressedFile = await imageCompression(file, options);
+    // Safety net: on a slow/weak connection or low-end device, the Web Worker
+    // used for compression can stall indefinitely with no error and no result,
+    // leaving the upload silently stuck forever. Force a fallback to the
+    // original (uncompressed) file after 8s instead of hanging forever.
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("COMPRESSION_TIMEOUT")), 8000)
+    );
+
+    const compressedFile = await Promise.race([imageCompression(file, options), timeout]);
     
     // Safety check: only use the compressed version if it is indeed smaller
     if (compressedFile.size < file.size) {
