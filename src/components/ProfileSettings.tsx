@@ -160,7 +160,7 @@ export default function ProfileSettings({
     };
 
     loadUserPosts();
-  }, [currentUser, profile]);
+  }, [currentUser?.id]);
 
   if (!currentUser) {
     return (
@@ -323,10 +323,10 @@ export default function ProfileSettings({
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-8">
+      <div className="grid gap-8">
         
-        {/* Left column: Bio, Gallery, Intentions */}
-        <div className="md:col-span-1 space-y-6">
+        {/* Bio, Gallery, Intentions */}
+        <div className="max-w-2xl space-y-6">
           
           {/* Bio block */}
           <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-sm space-y-3">
@@ -400,62 +400,6 @@ export default function ProfileSettings({
           </div>
 
         </div>
-
-        {/* Right column: Own Posts */}
-        <div className="md:col-span-2 space-y-6">
-          <div className="bg-white border border-slate-150 rounded-3xl p-6 shadow-sm space-y-5">
-            <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5 border-b border-slate-100 pb-3">
-              <Newspaper size={16} className="text-rose-500" />
-              <span>Mes Publications ({userPosts.length})</span>
-            </h3>
-
-            {loadingPosts ? (
-              <div className="py-8 text-center space-y-2">
-                <Loader2 className="animate-spin text-rose-500 mx-auto" size={20} />
-                <p className="text-slate-400 text-xs">Chargement de vos publications...</p>
-              </div>
-            ) : userPosts.length > 0 ? (
-              <div className="space-y-4">
-                {userPosts.map(post => (
-                  <div key={post.id} className="border border-slate-100 rounded-2xl p-4 space-y-3 bg-slate-50 relative group">
-                    <button
-                      onClick={() => handleDeletePost(post.id)}
-                      className="absolute top-4 right-4 text-slate-400 hover:text-red-500 transition cursor-pointer"
-                      title="Supprimer la publication"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-
-                    <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap pr-6">
-                      {post.contenu}
-                    </p>
-
-                    {/* Media attachments */}
-                    {Array.isArray(post.medias) && post.medias.length > 0 && (
-                      <div className="grid grid-cols-2 gap-1.5 mt-2 max-h-48 overflow-hidden rounded-xl">
-                        {post.medias.map((med: string, i: number) => (
-                          <img key={i} src={med} alt="" className="w-full h-24 object-cover" />
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px] text-slate-400 font-bold">
-                      <span>Posté le {new Date(post.created_at).toLocaleDateString()} à {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 space-y-3">
-                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-400">
-                  <Newspaper size={20} />
-                </div>
-                <p className="text-xs text-slate-400 italic">Vous n'avez écrit aucune publication pour le moment.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
       </div>
 
       {/* Interactive Share Modal Popup Overlay */}
