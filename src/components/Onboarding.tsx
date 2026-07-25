@@ -190,13 +190,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       alert("Veuillez choisir ou uploader une photo de profil.");
       return;
     }
-    if (step === 7) {
-      const validPreviews = galleryPreviews.filter(Boolean);
-      if (validPreviews.length < 3) {
-        alert("Vous devez uploader au minimum trois (3) photos réelles pour votre galerie.");
-        return;
-      }
-    }
+    // Step 7 (gallery photos) is optional — no minimum enforced anymore.
 
     if (step < totalSteps) {
       setStep(prev => prev + 1);
@@ -719,7 +713,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                     <Camera size={18} className="text-rose-500" /> Vos Photos de Galerie
                   </h2>
                   <p className="text-slate-500 text-xs leading-relaxed">
-                    Uploadez au minimum <strong>trois (3) photos réelles</strong> pour compléter votre galerie LoveRose. Les profils complets reçoivent 5x plus d'intérêt !
+                    Ajoutez jusqu'à trois photos réelles pour compléter votre galerie LoveRose (optionnel). Les profils complets reçoivent 5x plus d'intérêt !
                   </p>
                 </div>
 
@@ -755,7 +749,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                   ))}
                 </div>
                 <div className="bg-rose-50/50 border border-rose-100 p-2.5 rounded-2xl text-[10px] text-rose-600 font-semibold text-center mt-2">
-                  {galleryPreviews.filter(Boolean).length}/3 photos de galerie ajoutées
+                  {galleryPreviews.filter(Boolean).length}/3 photos de galerie ajoutées (facultatif)
                 </div>
               </motion.div>
             )}
