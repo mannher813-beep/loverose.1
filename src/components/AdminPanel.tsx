@@ -190,17 +190,40 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     loadUsers();
     loadReports();
 
-    // Live updates: any profile change (new signup, online status, etc.)
+    // Live updates: any profile change (new signup, online status, GPS ping...).
+    // We used to call loadUsers() on every single event here, but with several
+    // users online at once (each heartbeating every 60s, plus GPS pings every
+    // few minutes) there's almost always a pending change, so a full reload
+    // kept re-triggering before the previous one could even render — the list
+    // looked permanently stuck on "Chargement...". Patching the affected row
+    // directly from the realtime payload is both cheaper and never flickers.
     const profileChannel = supabase
       .channel(`admin-profiles-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "profiles" },
-        () => loadUsers()
+        (payload: any) => {
+          const sortUsers = (list: Profile[]) =>
+            [...list].sort((a, b) => {
+              if (!!a.is_online !== !!b.is_online) return a.is_online ? -1 : 1;
+              return (b.last_seen || "").localeCompare(a.last_seen || "");
+            });
+          if (payload.eventType === "INSERT") {
+            setUsers((prev) =>
+              prev.some((u) => u.uid === payload.new.uid) ? prev : sortUsers([payload.new as Profile, ...prev])
+            );
+          } else if (payload.eventType === "UPDATE") {
+            setUsers((prev) =>
+              sortUsers(prev.map((u) => (u.uid === payload.new.uid ? { ...u, ...payload.new } : u)))
+            );
+          } else if (payload.eventType === "DELETE") {
+            setUsers((prev) => prev.filter((u) => u.uid !== payload.old.uid));
+          }
+        }
       )
       .subscribe();
 
-    // Live updates: incoming reports
+    // Live updates: incoming reports (rare enough that a full reload is fine)
     const reportChannel = supabase
       .channel(`admin-reports-${Math.random().toString(36).slice(2)}`)
       .on(
