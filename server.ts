@@ -157,7 +157,7 @@ async function startServer() {
 
       // Generate merchant reference
       const fallbackReference = `LR-${Date.now()}-${userId.substring(0, 8)}`;
-      const moneyFusionApiUrl = "https://pay.moneyfusion.net/LoveRose/5e63aa25ec22c9fa/pay/";
+      const moneyFusionApiUrl = process.env.MONEY_FUSION_API_URL || "https://pay.moneyfusion.net/LoveRose/e9880132f97c71c6/pay/";
       
       const appUrl = process.env.APP_URL || `https://${req.get('host')}` || `http://localhost:3000`;
       const returnUrl = `${appUrl}/payment-success`;
