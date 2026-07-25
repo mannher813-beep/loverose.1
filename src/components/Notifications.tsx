@@ -235,7 +235,7 @@ export default function Notifications({ currentUser, onNavigateToTab, onStartCha
       ) : notifications.length > 0 ? (
         <div className="bg-white border border-slate-150 rounded-3xl overflow-hidden shadow-xs divide-y divide-slate-100">
           {notifications.map((notif) => {
-            const senderName = notif.sender_profile?.full_name || "Membre LoveRose";
+            const senderName = notif.sender_profile?.full_name || "LoveRose";
             const senderAvatar = notif.sender_profile?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${senderName}`;
             
             return (

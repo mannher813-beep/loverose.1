@@ -317,7 +317,7 @@ export default function Chat({
 
           return {
             ...m,
-            other_profile: otherProfile || { uid: otherUserId || "", full_name: "Membre LoveRose" },
+            other_profile: otherProfile || { uid: otherUserId || "", full_name: "LoveRose" },
             last_message: hasLastMsg ? lastMsg[0].contenu : "Nouvelle affinité ! Dites bonjour 👋",
             last_message_time: lastMsgTime
           } as Match;
@@ -510,7 +510,7 @@ export default function Chat({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-0.5">
-                      <span className="font-bold text-slate-800 truncate text-sm">{other?.full_name || "Membre LoveRose"}</span>
+                      <span className="font-bold text-slate-800 truncate text-sm">{other?.full_name || "LoveRose"}</span>
                       <span className="text-[10px] text-slate-400">{m.last_message_time}</span>
                     </div>
                     <p className="text-xs text-slate-500 truncate">{m.last_message}</p>
