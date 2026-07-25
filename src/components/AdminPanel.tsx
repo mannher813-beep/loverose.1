@@ -106,9 +106,15 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), ms)),
     ]);
 
-  const loadUsers = async (retryAttempt: number = 0) => {
-    setUsersLoading(true);
-    setUsersError(null);
+  const USERS_PAGE_SIZE = 15;
+  const [usersHasMore, setUsersHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Loads users a small page at a time instead of one big 200-row request.
+  // The first page shows up fast (much less likely to time out on a slow
+  // connection), and the rest streams in quietly in the background — instead
+  // of the whole list living or dying on a single slow request.
+  const loadUsersPage = async (offset: number, retryAttempt: number = 0): Promise<Profile[] | null> => {
     try {
       const { data, error } = await withTimeout(
         supabase
@@ -116,22 +122,64 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           .select("*")
           .order("is_online", { ascending: false })
           .order("last_seen", { ascending: false })
-          .limit(200)
+          .range(offset, offset + USERS_PAGE_SIZE - 1)
       );
       if (error) throw error;
-      setUsers((data as Profile[]) || []);
-      setUsersLoading(false);
+      return (data as Profile[]) || [];
     } catch (err: any) {
-      if (err?.message === "TIMEOUT" && retryAttempt < 1) {
-        loadUsers(retryAttempt + 1);
+      if (retryAttempt < 2) {
+        // Short backoff, then retry just this page (not the whole list).
+        await new Promise((r) => setTimeout(r, 1000));
+        return loadUsersPage(offset, retryAttempt + 1);
+      }
+      throw err;
+    }
+  };
+
+  const loadUsers = async () => {
+    setUsersLoading(true);
+    setUsersError(null);
+    setUsersHasMore(true);
+    try {
+      const first = await loadUsersPage(0);
+      setUsers(first || []);
+      setUsersLoading(false);
+      if (!first || first.length < USERS_PAGE_SIZE) {
+        setUsersHasMore(false);
         return;
       }
+      // Keep streaming the rest in quietly — failures here don't wipe out
+      // what's already showing, they just stop the background stream.
+      loadMoreUsers(first.length);
+    } catch (err: any) {
       setUsersError(
         err?.message === "TIMEOUT"
           ? "Connexion trop lente pour charger les utilisateurs."
           : "Impossible de charger les utilisateurs."
       );
       setUsersLoading(false);
+    }
+  };
+
+  const loadMoreUsers = async (offset: number) => {
+    setLoadingMore(true);
+    try {
+      const next = await loadUsersPage(offset);
+      setUsers((prev) => {
+        const existingIds = new Set(prev.map((u) => u.uid));
+        return [...prev, ...(next || []).filter((u) => !existingIds.has(u.uid))];
+      });
+      if (!next || next.length < USERS_PAGE_SIZE) {
+        setUsersHasMore(false);
+        setLoadingMore(false);
+      } else {
+        loadMoreUsers(offset + next.length);
+      }
+    } catch {
+      // Background page failed after its own retries: stop silently, what's
+      // already loaded stays visible. The user can pull-to-refresh (Réessayer)
+      // to try again from the top.
+      setLoadingMore(false);
     }
   };
 
@@ -665,8 +713,25 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                 </div>
               </div>
             ))}
-            {filteredUsers.length === 0 && (
+            {filteredUsers.length === 0 && !loadingMore && (
               <p className="text-center text-slate-400 text-sm pt-10">Aucun utilisateur trouvé.</p>
+            )}
+            {filteredUsers.length === 0 && loadingMore && (
+              <p className="text-center text-slate-400 text-sm pt-10">Recherche parmi les utilisateurs restants...</p>
+            )}
+            {loadingMore && (
+              <div className="flex items-center justify-center gap-2 py-3 text-slate-400 text-xs font-medium">
+                <Loader2 size={14} className="animate-spin" />
+                Chargement des utilisateurs suivants...
+              </div>
+            )}
+            {!loadingMore && usersHasMore && filteredUsers.length > 0 && (
+              <button
+                onClick={() => loadMoreUsers(users.length)}
+                className="w-full text-center text-rose-500 text-xs font-bold py-3 cursor-pointer"
+              >
+                Charger plus d'utilisateurs
+              </button>
             )}
           </div>
         ) : tab === "reports" ? (
