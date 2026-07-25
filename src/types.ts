@@ -10,9 +10,7 @@ export interface Profile {
   preferences?: 'homme' | 'femme' | 'tous';
   relationship_intents?: string[]; // Amitié, Relation amoureuse, Rencontre d'un soir, Relation libertine, Business / networking
   role?: string;
-  verification_status?: 'none' | 'pending_payment' | 'pending' | 'verified' | 'rejected';
-  id_document_url?: string;
-  selfie_url?: string;
+  verification_status?: 'none' | 'pending' | 'verified';
   photos?: string[];
   created_at?: string;
   is_online?: boolean;
@@ -101,7 +99,13 @@ export interface VerificationRequest {
   id: string;
   user_id: string;
   status: 'pending' | 'approved' | 'rejected';
-  documents: string[]; // URLs of ID and Selfie
+  documents: string[]; // Storage paths (private bucket) of ID and Selfie
+  payment_status?: 'unpaid' | 'paid';
+  payment_id?: string;
+  reviewer_id?: string;
+  reviewer_note?: string;
+  rejection_reason?: string;
+  reviewed_at?: string;
   created_at: string;
 }
 

@@ -62,19 +62,37 @@ export async function fulfillPayment(
   }
   // C0. TRUST / IDENTITY VERIFICATION BADGE FEE (500 FCFA unique)
   else if (planId === "verification_badge") {
-    // The user already uploaded their ID + selfie and the profile was set to
-    // "pending_payment" client-side. Now that Money Fusion confirms payment,
-    // move it to "pending" so an administrator can review and approve/reject it.
-    const { error: verifErr } = await supabaseAdmin
-      .from("profiles")
-      .update({ verification_status: "pending" })
-      .eq("uid", userId)
-      .eq("verification_status", "pending_payment");
+    // The user already uploaded their ID + selfie into a "verification_requests"
+    // row (payment_status "unpaid"). Now that Money Fusion confirms payment,
+    // mark that request "paid" and move the profile to "pending" so an
+    // administrator can review and approve/reject it.
+    const { data: pendingRequest, error: findErr } = await supabaseAdmin
+      .from("verification_requests")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("payment_status", "unpaid")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (verifErr) {
-      console.error("[Fulfill] Error moving verification_status to pending after badge payment:", verifErr);
+    if (findErr || !pendingRequest) {
+      console.error(`[Fulfill] No unpaid verification_requests row found for user ${userId}:`, findErr);
     } else {
-      console.log(`[Fulfill] Badge verification fee paid by user ${userId}, request now pending admin review`);
+      const { error: reqErr } = await supabaseAdmin
+        .from("verification_requests")
+        .update({ payment_status: "paid" })
+        .eq("id", pendingRequest.id);
+
+      const { error: verifErr } = await supabaseAdmin
+        .from("profiles")
+        .update({ verification_status: "pending" })
+        .eq("uid", userId);
+
+      if (reqErr || verifErr) {
+        console.error("[Fulfill] Error finalizing badge verification payment:", reqErr || verifErr);
+      } else {
+        console.log(`[Fulfill] Badge verification fee paid by user ${userId}, request ${pendingRequest.id} now pending admin review`);
+      }
     }
   }
   // C. CREATOR PAGE ACTIVATION FEE (1,000 FCFA unique)

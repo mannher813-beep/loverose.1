@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { compressImageIfNeeded } from "../lib/imageCompression";
-import { Profile } from "../types";
+import { Profile, VerificationRequest } from "../types";
 
 interface SettingsProps {
   currentUser: any;
@@ -133,6 +133,29 @@ export default function Settings({
   const [showBadgePaymentConfirm, setShowBadgePaymentConfirm] = useState(false);
   const [badgePaymentForm, setBadgePaymentForm] = useState({ phoneNumber: "", fullName: "" });
   const [isLaunchingBadgePayment, setIsLaunchingBadgePayment] = useState(false);
+  // Tracks the user's latest verification_requests row (documents + fee payment status).
+  // Kept separate from profiles.verification_status, which only allows none/pending/verified.
+  const [latestVerificationRequest, setLatestVerificationRequest] = useState<VerificationRequest | null>(null);
+
+  const loadLatestVerificationRequest = async () => {
+    if (!currentUser) return;
+    const { data, error } = await supabase
+      .from("verification_requests")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!error) {
+      setLatestVerificationRequest(data as VerificationRequest | null);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      loadLatestVerificationRequest();
+    }
+  }, [currentUser]);
 
   const intentsList = [
     "Amitié",
@@ -355,8 +378,10 @@ export default function Settings({
     reader.readAsDataURL(file);
   };
 
-  // Step 1: upload ID + selfie to Storage, mark profile "pending_payment",
-  // then open the 500 FCFA badge payment modal (separate from Premium).
+  // Step 1: upload ID + selfie to the private "loverose-private" bucket, create a
+  // verification_requests row (payment_status "unpaid"), then open the 500 FCFA
+  // badge payment modal. profiles.verification_status is left untouched here —
+  // it only supports none/pending/verified and moves to "pending" once paid.
   const handleVerifyRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!idFile || !selfieFile) {
@@ -366,31 +391,32 @@ export default function Settings({
 
     setVerificationLoading(true);
     try {
-      const idPath = `verifications/${currentUser.id}/id_${Date.now()}_${idFile.name}`;
+      // RLS on the "loverose-private" bucket requires the first path segment to be the user's own uid.
+      const idPath = `${currentUser.id}/id_${Date.now()}_${idFile.name}`;
       const optimizedIdFile = await compressImageIfNeeded(idFile);
-      const { error: idUploadError } = await supabase.storage.from("loverose").upload(idPath, optimizedIdFile);
+      const { error: idUploadError } = await supabase.storage.from("loverose-private").upload(idPath, optimizedIdFile);
       if (idUploadError) throw idUploadError;
-      const { data: idUrlData } = supabase.storage.from("loverose").getPublicUrl(idPath);
 
-      const selfiePath = `verifications/${currentUser.id}/selfie_${Date.now()}_${selfieFile.name}`;
+      const selfiePath = `${currentUser.id}/selfie_${Date.now()}_${selfieFile.name}`;
       const optimizedSelfieFile = await compressImageIfNeeded(selfieFile);
-      const { error: selfieUploadError } = await supabase.storage.from("loverose").upload(selfiePath, optimizedSelfieFile);
+      const { error: selfieUploadError } = await supabase.storage.from("loverose-private").upload(selfiePath, optimizedSelfieFile);
       if (selfieUploadError) throw selfieUploadError;
-      const { data: selfieUrlData } = supabase.storage.from("loverose").getPublicUrl(selfiePath);
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          verification_status: "pending_payment",
-          id_document_url: idUrlData.publicUrl,
-          selfie_url: selfieUrlData.publicUrl
-        })
-        .eq("uid", currentUser.id);
+      const { data: insertedRequest, error } = await supabase
+        .from("verification_requests")
+        .insert([
+          {
+            user_id: currentUser.id,
+            documents: [idPath, selfiePath],
+            payment_status: "unpaid"
+          }
+        ])
+        .select("*")
+        .single();
 
       if (error) throw error;
 
-      setVerificationStatus("pending_payment");
-      onProfileUpdated();
+      setLatestVerificationRequest(insertedRequest as VerificationRequest);
       // Documents are saved — now ask for the 500 FCFA badge fee before it goes to admin review.
       setShowBadgePaymentConfirm(true);
     } catch (err: any) {
@@ -403,7 +429,7 @@ export default function Settings({
 
   // Step 2: launch the Money Fusion payment for the verification badge fee.
   // Reusable both right after upload and later if the user closed the modal
-  // before paying (profile stays "pending_payment" until this succeeds).
+  // before paying (the request stays payment_status "unpaid" until this succeeds).
   const handleConfirmBadgePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!badgePaymentForm.phoneNumber.trim()) {
@@ -871,7 +897,7 @@ export default function Settings({
                       Notre équipe de modération étudie vos justificatifs. Délai moyen : 12 heures.
                     </p>
                   </div>
-                ) : verificationStatus === "pending_payment" ? (
+                ) : latestVerificationRequest?.payment_status === "unpaid" && latestVerificationRequest?.status !== "rejected" ? (
                   <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl text-center space-y-3 text-xs font-semibold text-rose-800">
                     <ShieldAlert className="mx-auto text-rose-500" size={24} />
                     <p>Vos documents sont enregistrés</p>
@@ -888,11 +914,11 @@ export default function Settings({
                   </div>
                 ) : (
                   <form onSubmit={handleVerifyRequest} className="space-y-4">
-                    {verificationStatus === "rejected" && (
+                    {latestVerificationRequest?.status === "rejected" && (
                       <div className="bg-red-50 border border-red-100 p-3 rounded-2xl flex items-start gap-2">
                         <XCircle className="text-red-500 flex-shrink-0 mt-0.5" size={14} />
                         <p className="text-red-700 text-[10px] leading-relaxed text-left">
-                          Votre précédente demande a été refusée. Vérifiez que vos photos sont nettes et lisibles, puis soumettez un nouveau dossier.
+                          Votre précédente demande a été refusée{latestVerificationRequest.rejection_reason ? ` : ${latestVerificationRequest.rejection_reason}` : ""}. Vérifiez que vos photos sont nettes et lisibles, puis soumettez un nouveau dossier.
                         </p>
                       </div>
                     )}
