@@ -271,20 +271,21 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
   const handleVerifyPayment = async (ref: string) => {
     setIsVerifyingRef(ref);
     try {
-      const res = await fetch(`/api/payments/verify?reference=${ref}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === "success") {
-          alert("Félicitations ! Votre paiement a été confirmé et votre compte a été crédité !");
-          await loadAccountStatus();
-          if (onPaymentSuccess) {
-            onPaymentSuccess();
-          }
-        } else {
-          alert("Le paiement est toujours indiqué en attente chez Money Fusion. Si vous avez déjà effectué le paiement, veuillez patienter une minute puis cliquer à nouveau sur 'Vérifier'.");
+      // Force une re-vérification réelle auprès de Money Fusion via la fonction edge Supabase
+      // (le serveur Express n'existe pas en prod sur Cloudflare Pages)
+      const { data, error } = await supabase.functions.invoke("moneyfusion-webhook", {
+        body: { tokenPay: ref },
+      });
+      if (error) throw error;
+
+      if (data?.statut === "success" || data?.already) {
+        alert("Félicitations ! Votre paiement a été confirmé et votre compte a été crédité !");
+        await loadAccountStatus();
+        if (onPaymentSuccess) {
+          onPaymentSuccess();
         }
       } else {
-        alert("Une erreur est survenue lors de la vérification. Veuillez réessayer.");
+        alert("Le paiement est toujours indiqué en attente chez Money Fusion. Si vous avez déjà effectué le paiement, veuillez patienter une minute puis cliquer à nouveau sur 'Vérifier'.");
       }
     } catch (err) {
       console.error("Error verifying payment:", err);
