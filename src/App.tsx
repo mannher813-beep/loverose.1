@@ -154,22 +154,57 @@ export default function App() {
   useEffect(() => {
     if (!currentUser) return;
 
-    // 1. Initial location sync if permission is granted
+    // 1. Continuous location tracking while the app is open, so "nearby"
+    // suggestions stay accurate as the person actually moves — not just a
+    // one-off read at login. The browser's geolocation permission prompt
+    // still applies: nothing is tracked unless the person allows it, and
+    // they can revoke it at any time from their browser/OS settings.
+    let lastSentAt = 0;
+    let lastSentCoords: { lat: number; lng: number } | null = null;
+    let geoWatchId: number | null = null;
+
+    // Small local haversine calc (km) so we don't need to import from Discover.tsx.
+    const distanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * (Math.PI / 180);
+      const dLon = (lon2 - lon1) * (Math.PI / 180);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    const MIN_INTERVAL_MS = 3 * 60 * 1000; // don't write more than once every 3 min
+    const MIN_MOVE_KM = 0.3; // ...unless they've moved at least ~300m
+
+    const pushLocation = async (lat: number, lng: number, force = false) => {
+      const now = Date.now();
+      const movedEnough =
+        !lastSentCoords || distanceKm(lastSentCoords.lat, lastSentCoords.lng, lat, lng) >= MIN_MOVE_KM;
+      const enoughTimePassed = now - lastSentAt >= MIN_INTERVAL_MS;
+      if (!force && !movedEnough && !enoughTimePassed) return;
+
+      try {
+        await supabase.rpc('update_my_location', { lat, lng });
+        lastSentAt = now;
+        lastSentCoords = { lat, lng };
+      } catch (e) {
+        console.warn("Failed to update location in Supabase:", e);
+      }
+    };
+
     if (navigator.geolocation) {
+      // Immediate fix on load (force=true so the very first one always writes).
       navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          try {
-            await supabase.rpc('update_my_location', {
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-            });
-          } catch (e) {
-            console.warn("Failed to update location in Supabase:", e);
-          }
-        },
-        (err) => {
-          console.log("Geolocation permission not active or rejected:", err);
-        }
+        (pos) => pushLocation(pos.coords.latitude, pos.coords.longitude, true),
+        (err) => console.log("Geolocation permission not active or rejected:", err)
+      );
+
+      // Then keep watching in the background for as long as the tab is open.
+      geoWatchId = navigator.geolocation.watchPosition(
+        (pos) => pushLocation(pos.coords.latitude, pos.coords.longitude),
+        (err) => console.log("Geolocation watch error:", err),
+        { enableHighAccuracy: false, maximumAge: 60000, timeout: 20000 }
       );
     }
 
@@ -202,6 +237,14 @@ export default function App() {
         setOffline();
       } else {
         setOnline();
+        // watchPosition can be throttled/paused by the browser while the tab
+        // is in the background, so grab a fresh fix as soon as it's back.
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => pushLocation(pos.coords.latitude, pos.coords.longitude, true),
+            (err) => console.log("Geolocation permission not active or rejected:", err)
+          );
+        }
       }
     };
 
@@ -252,6 +295,9 @@ export default function App() {
       clearInterval(presenceHeartbeat);
       window.removeEventListener("beforeunload", setOffline);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (geoWatchId !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(geoWatchId);
+      }
       supabase.removeChannel(subChannel);
       supabase.removeChannel(profileChannel);
       setOffline();
