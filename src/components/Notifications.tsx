@@ -37,28 +37,6 @@ export default function Notifications({ currentUser, onNavigateToTab, onStartCha
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  if (!currentUser) {
-    return (
-      <div className="max-w-md mx-auto my-12 p-8 bg-white border border-slate-200 rounded-3xl shadow-sm text-center space-y-4">
-        <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto">
-          <Bell size={28} />
-        </div>
-        <div className="space-y-1">
-          <h2 className="text-xl font-black text-slate-900">Centre de Notifications</h2>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Connectez-vous pour recevoir vos alertes de nouveaux matchs, de super likes et de messages en temps réel.
-          </p>
-        </div>
-        <button
-          onClick={onAuthRequired}
-          className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
-        >
-          Se connecter / S'inscrire
-        </button>
-      </div>
-    );
-  }
-
   const loadNotifications = async () => {
     if (!currentUser) return;
     setLoading(true);
@@ -98,6 +76,8 @@ export default function Notifications({ currentUser, onNavigateToTab, onStartCha
   };
 
   useEffect(() => {
+    if (!currentUser) return;
+
     loadNotifications();
 
     // Subscribe to real-time notification additions/deletions/updates
@@ -122,6 +102,28 @@ export default function Notifications({ currentUser, onNavigateToTab, onStartCha
       supabase.removeChannel(channel);
     };
   }, [currentUser]);
+
+  if (!currentUser) {
+    return (
+      <div className="max-w-md mx-auto my-12 p-8 bg-white border border-slate-200 rounded-3xl shadow-sm text-center space-y-4">
+        <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto">
+          <Bell size={28} />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-xl font-black text-slate-900">Centre de Notifications</h2>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Connectez-vous pour recevoir vos alertes de nouveaux matchs, de super likes et de messages en temps réel.
+          </p>
+        </div>
+        <button
+          onClick={onAuthRequired}
+          className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
+        >
+          Se connecter / S'inscrire
+        </button>
+      </div>
+    );
+  }
 
   const handleMarkAsRead = async (id: string, senderId?: string, type?: string) => {
     try {
