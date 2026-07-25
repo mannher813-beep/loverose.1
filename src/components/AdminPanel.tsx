@@ -236,7 +236,13 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   };
 
   useEffect(() => {
-    supabase.rpc("sync_stale_presence").catch(() => {});
+    (async () => {
+      try {
+        await supabase.rpc("sync_stale_presence");
+      } catch {
+        // Non-critical: ignore failures silently, as before.
+      }
+    })();
     loadUsers();
     loadReports();
 
