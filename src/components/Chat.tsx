@@ -7,6 +7,7 @@ import AdSlot from "./AdSlot";
 import { playMessageSentSound, playMessageReceivedSound } from "../lib/sounds";
 import { triggerPushNotification } from "../lib/notifications";
 import { usePremiumStatus } from "../hooks/usePremiumStatus";
+import { isActuallyOnline } from "../lib/presence";
 
 interface ChatProps {
   currentUser: any;
@@ -503,7 +504,7 @@ export default function Chat({
                       referrerPolicy="no-referrer"
                       className="w-12 h-12 rounded-full object-cover bg-slate-100 border border-slate-100"
                     />
-                    {other?.is_online && (
+                    {isActuallyOnline(other) && (
                       <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white animate-pulse" />
                     )}
                   </div>
@@ -563,7 +564,7 @@ export default function Chat({
                     )}
                   </h3>
                   <div className="flex items-center gap-1.5">
-                    {selectedMatch.other_profile?.is_online ? (
+                    {isActuallyOnline(selectedMatch.other_profile) ? (
                       <>
                         <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
                         <span className="text-[10px] text-emerald-600 font-bold">En ligne</span>

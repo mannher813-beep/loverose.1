@@ -5,6 +5,7 @@ import AdSlot from "./AdSlot";
 import { Heart, X, Sparkles, MapPin, CheckCircle, ShieldAlert, Filter, Send, MessageCircle, Eye, Star } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ProfileDetailModal from "./ProfileDetailModal";
+import { isActuallyOnline } from "../lib/presence";
 
 interface DiscoverProps {
   currentUser: any;
@@ -27,7 +28,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 function renderOnlineStatus(profile: Profile) {
-  if (profile.is_online) {
+  if (isActuallyOnline(profile)) {
     return (
       <div className="flex items-center space-x-1 text-emerald-400 font-extrabold text-[10px] uppercase tracking-wider animate-pulse bg-emerald-950/40 border border-emerald-500/20 px-2 py-0.5 rounded-full">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>

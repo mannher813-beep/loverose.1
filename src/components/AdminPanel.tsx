@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
 import ProfileDetailModal from "./ProfileDetailModal";
+import { isActuallyOnline } from "../lib/presence";
 import {
   ShieldAlert,
   Users,
@@ -235,6 +236,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   };
 
   useEffect(() => {
+    supabase.rpc("sync_stale_presence").catch(() => {});
     loadUsers();
     loadReports();
 
@@ -553,7 +555,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
         <div className="flex items-center gap-3 mt-2.5 text-[11px] font-semibold text-slate-500">
           <span className="flex items-center gap-1">
             <Circle size={8} className="text-emerald-500 fill-emerald-500" />
-            {users.filter((u) => u.is_online).length} connecté(s)
+            {users.filter((u) => isActuallyOnline(u)).length} connecté(s)
           </span>
           <span className="text-slate-300">·</span>
           <span>{users.length} inscrit(s)</span>
@@ -622,7 +624,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                     alt={u.full_name}
                     className="w-12 h-12 rounded-full object-cover"
                   />
-                  {u.is_online && (
+                  {isActuallyOnline(u) && (
                     <Circle size={10} className="absolute bottom-0 right-0 text-emerald-500 fill-emerald-500" />
                   )}
                 </div>
@@ -639,7 +641,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                     )}
                   </p>
                   <p className="text-xs text-slate-400 truncate">
-                    {u.age ? `${u.age} ans · ` : ""}{u.gender} · {u.is_online ? "En ligne" : "Hors ligne"}
+                    {u.age ? `${u.age} ans · ` : ""}{u.gender} · {isActuallyOnline(u) ? "En ligne" : "Hors ligne"}
                   </p>
                 </div>
                 <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end max-w-[160px]">

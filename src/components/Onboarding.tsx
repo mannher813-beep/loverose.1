@@ -13,6 +13,16 @@ interface OnboardingProps {
 export default function Onboarding({ currentUser, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [saveProgress, setSaveProgress] = useState("");
+
+  // Slow/unstable mobile connections can leave a storage upload hanging
+  // indefinitely with no error and no progress — this wraps any promise so
+  // it always settles one way or another within `ms`.
+  const withTimeout = <T,>(promise: Promise<T>, ms = 20000): Promise<T> =>
+    Promise.race([
+      promise,
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), ms)),
+    ]);
 
   // Form states
   interface CountryCode {
@@ -211,25 +221,27 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
 
       // 1. Upload avatar to Supabase Storage if a real file is chosen
       if (avatarFile) {
+        setSaveProgress("Envoi de votre photo de profil...");
         const optimizedAvatar = await compressImageIfNeeded(avatarFile);
         const fileExt = optimizedAvatar.name.split('.').pop();
         const fileName = `avatar_${Date.now()}.${fileExt}`;
         const filePath = `avatars/${currentUser.id}/${fileName}`;
 
-        const { data: uploadData, error: uploadErr } = await supabase.storage
-          .from("loverose")
-          .upload(filePath, optimizedAvatar, {
-            cacheControl: "3600",
-            upsert: true
-          });
+        try {
+          const { error: uploadErr } = await withTimeout(
+            supabase.storage.from("loverose").upload(filePath, optimizedAvatar, {
+              cacheControl: "3600",
+              upsert: true,
+            })
+          );
 
-        if (uploadErr) {
-          console.warn("Storage upload error, using local base64 fallback:", uploadErr);
-        } else {
-          const { data: { publicUrl } } = supabase.storage
-            .from("loverose")
-            .getPublicUrl(filePath);
+          if (uploadErr) throw uploadErr;
+          const { data: { publicUrl } } = supabase.storage.from("loverose").getPublicUrl(filePath);
           finalAvatarUrl = publicUrl;
+        } catch (uploadErr: any) {
+          // Network too slow/unstable to upload right now: fall back to the
+          // local preview instead of blocking the whole signup on it.
+          console.warn("Avatar upload failed or timed out, using local base64 fallback:", uploadErr);
         }
       }
 
@@ -238,33 +250,35 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       for (let i = 0; i < galleryFiles.length; i++) {
         const file = galleryFiles[i];
         if (file) {
+          setSaveProgress(`Envoi de la photo ${i + 1}/${galleryFiles.length}...`);
           const optimizedFile = await compressImageIfNeeded(file);
           const fileExt = optimizedFile.name.split('.').pop();
           const fileName = `photo_${i + 1}_${Date.now()}.${fileExt}`;
           const filePath = `gallery/${currentUser.id}/${fileName}`;
 
-          const { error: uploadErr } = await supabase.storage
-            .from("loverose")
-            .upload(filePath, optimizedFile, {
-              cacheControl: "3600",
-              upsert: true
-            });
+          try {
+            const { error: uploadErr } = await withTimeout(
+              supabase.storage.from("loverose").upload(filePath, optimizedFile, {
+                cacheControl: "3600",
+                upsert: true,
+              })
+            );
 
-          if (uploadErr) {
-            console.warn(`Gallery upload error for slot ${i + 1}, fallback to base64:`, uploadErr);
+            if (uploadErr) throw uploadErr;
+            const { data: { publicUrl } } = supabase.storage.from("loverose").getPublicUrl(filePath);
+            galleryUrls.push(publicUrl);
+          } catch (uploadErr: any) {
+            console.warn(`Gallery upload ${i + 1} failed or timed out, falling back to base64:`, uploadErr);
             if (galleryPreviews[i]) {
               galleryUrls.push(galleryPreviews[i] as string);
             }
-          } else {
-            const { data: { publicUrl } } = supabase.storage
-              .from("loverose")
-              .getPublicUrl(filePath);
-            galleryUrls.push(publicUrl);
           }
         } else if (galleryPreviews[i]) {
           galleryUrls.push(galleryPreviews[i] as string);
         }
       }
+
+      setSaveProgress("Finalisation de votre profil...");
 
       // 3. Format centers of interest nicely to be saved in bio since hobbies column is not yet in profiles table
       const formattedHobbies = `Centres d'intérêt : ${selectedHobbies.join(", ")}`;
@@ -273,34 +287,40 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       // 4. Try to update phone in Auth metadata
       const formattedAuthPhone = selectedCountry ? `${selectedCountry.dial_code}${phoneLocal.trim().replace(/\D/g, '')}` : phoneLocal.trim();
       try {
-        await supabase.auth.updateUser({
-          phone: formattedAuthPhone,
-          data: { phone_number: formattedAuthPhone }
-        });
+        await withTimeout(
+          supabase.auth.updateUser({
+            phone: formattedAuthPhone,
+            data: { phone_number: formattedAuthPhone }
+          }),
+          10000
+        );
       } catch (phoneErr) {
         console.warn("Could not save phone to Auth service, saving to profile metadata:", phoneErr);
       }
 
       // 5. Update the profiles table row
-      const { error: profileErr } = await supabase
-        .from("profiles")
-        .upsert({
-          uid: currentUser.id,
-          username: username.toLowerCase().trim(),
-          full_name: fullName.trim(),
-          age: parseInt(age.toString()),
-          location: location.trim(),
-          gender,
-          preferences,
-          relationship_intents: selectedIntents,
-          bio: finalBio,
-          avatar_url: finalAvatarUrl,
-          photos: galleryUrls,
-          verification_status: "none",
-          phone_country_code: selectedCountry?.iso_code || "",
-          phone_number: phoneLocal.trim(),
-          updated_at: new Date().toISOString()
-        });
+      const { error: profileErr } = await withTimeout(
+        supabase
+          .from("profiles")
+          .upsert({
+            uid: currentUser.id,
+            username: username.toLowerCase().trim(),
+            full_name: fullName.trim(),
+            age: parseInt(age.toString()),
+            location: location.trim(),
+            gender,
+            preferences,
+            relationship_intents: selectedIntents,
+            bio: finalBio,
+            avatar_url: finalAvatarUrl,
+            photos: galleryUrls,
+            verification_status: "none",
+            phone_country_code: selectedCountry?.iso_code || "",
+            phone_number: phoneLocal.trim(),
+            updated_at: new Date().toISOString()
+          }),
+        15000
+      );
 
       if (profileErr) throw profileErr;
 
@@ -308,9 +328,15 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       onComplete();
     } catch (err: any) {
       console.error("Onboarding submission error:", err);
-      alert("Une erreur s'est produite lors de la finalisation de votre profil : " + (err.message || err));
+      const timedOut = err?.message === "TIMEOUT";
+      alert(
+        timedOut
+          ? "Votre connexion est trop lente ou instable pour terminer l'enregistrement. Vérifiez votre connexion et réessayez."
+          : "Une erreur s'est produite lors de la finalisation de votre profil : " + (err.message || err)
+      );
     } finally {
       setLoading(false);
+      setSaveProgress("");
     }
   };
 
@@ -756,7 +782,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
             {loading ? (
               <>
                 <Loader2 className="animate-spin" size={14} />
-                <span>Enregistrement...</span>
+                <span>{saveProgress || "Enregistrement..."}</span>
               </>
             ) : (
               <>
