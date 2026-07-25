@@ -17,6 +17,7 @@ import Onboarding from "./components/Onboarding";
 import PublicProfile from "./components/PublicProfile";
 import PublicLayout from "./components/public/PublicLayout";
 import AdminPanel from "./components/AdminPanel";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { usePremiumStatus } from "./hooks/usePremiumStatus";
 
 export default function App() {
@@ -843,9 +844,11 @@ export default function App() {
               onAuthRequired={() => triggerAuthRequired(true)}
             />
           </div>
-          {profile?.role === 'admin' && (
-            <div className={activeTab === 'admin' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
-              <AdminPanel currentUser={currentUser} />
+          {profile?.role === 'admin' && activeTab === 'admin' && (
+            <div className="flex flex-col flex-1 min-h-0">
+              <ErrorBoundary>
+                <AdminPanel currentUser={currentUser} />
+              </ErrorBoundary>
             </div>
           )}
         </>
