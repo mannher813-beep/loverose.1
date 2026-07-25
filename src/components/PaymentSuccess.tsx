@@ -21,29 +21,24 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
     if (!reference) return;
     setIsValidating(true);
     try {
-      // PROPRE ET SÉCURISÉ : On demande au serveur de vérifier le paiement auprès de Money Fusion
-      const res = await fetch(`/api/payments/verify?reference=${reference}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.payment) {
-          setPlanName(data.payment.plan_name);
-          setAmount(data.payment.montant);
-        }
-        if (data.status === "success") {
-          setStatus("success");
-          localStorage.removeItem("last_payment_reference");
-          if (userId && loadProfile) {
-            await loadProfile(userId);
-          }
-        } else {
-          alert("La passerelle Money Fusion n'a pas encore validé ce paiement. Veuillez patienter ou réessayer dans un instant.");
+      // Force une re-vérification réelle auprès de Money Fusion via la fonction edge Supabase
+      // (le serveur Express n'existe pas en prod sur Cloudflare Pages, on ne l'appelle donc plus)
+      const { data, error } = await supabase.functions.invoke("moneyfusion-webhook", {
+        body: { tokenPay: reference },
+      });
+      if (error) throw error;
+
+      if (data?.statut === "success" || data?.already) {
+        setStatus("success");
+        localStorage.removeItem("last_payment_reference");
+        if (userId && loadProfile) {
+          await loadProfile(userId);
         }
       } else {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "Erreur de validation serveur.");
+        alert("La passerelle Money Fusion n'a pas encore validé ce paiement. Veuillez patienter ou réessayer dans un instant.");
       }
     } catch (err: any) {
-      console.error("Manual server validation error:", err);
+      console.error("Manual validation error:", err);
       alert("Erreur lors de la vérification : " + (err.message || "Veuillez réessayer plus tard."));
     } finally {
       setIsValidating(false);
@@ -68,53 +63,29 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
     const maxAttempts = 10; // Poll for up to 20 seconds (2s interval)
 
     const checkPaymentStatus = async () => {
-      let verified = false;
       try {
-        const res = await fetch(`/api/payments/verify?reference=${activeRef}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.payment) {
-            setPlanName(data.payment.plan_name);
-            setAmount(data.payment.montant);
-          }
-          if (data.status === "success") {
+        const { data: dbPayment, error } = await supabase
+          .from("payments")
+          .select("*")
+          .eq("reference", activeRef)
+          .single();
+
+        if (error) throw error;
+
+        if (dbPayment) {
+          setPlanName(dbPayment.plan_name);
+          setAmount(dbPayment.montant);
+          if (dbPayment.statut === "success") {
             setStatus("success");
             clearInterval(pollInterval);
             localStorage.removeItem("last_payment_reference");
             if (userId && loadProfile) {
               await loadProfile(userId);
             }
-            verified = true;
           }
         }
-      } catch (err) {
-        console.warn("Express payment verification failed, trying client-side fallback:", err);
-      }
-
-      if (!verified) {
-        try {
-          const { data: dbPayment, error } = await supabase
-            .from("payments")
-            .select("*")
-            .eq("reference", activeRef)
-            .single();
-
-          if (dbPayment) {
-            setPlanName(dbPayment.plan_name);
-            setAmount(dbPayment.montant);
-            if (dbPayment.statut === "success") {
-              setStatus("success");
-              clearInterval(pollInterval);
-              localStorage.removeItem("last_payment_reference");
-              if (userId && loadProfile) {
-                await loadProfile(userId);
-              }
-              verified = true;
-            }
-          }
-        } catch (dbErr) {
-          console.error("Direct Supabase verification fallback error:", dbErr);
-        }
+      } catch (dbErr) {
+        console.error("Supabase payment verification error:", dbErr);
       }
     };
 
