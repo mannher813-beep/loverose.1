@@ -16,6 +16,14 @@ import {
   Clock,
   ShieldOff,
   ShieldCheck,
+  BadgeCheck,
+  Pencil,
+  MessageSquare,
+  Megaphone,
+  BarChart3,
+  CheckCircle2,
+  XCircle,
+  Loader2,
 } from "lucide-react";
 
 interface Report {
@@ -25,6 +33,30 @@ interface Report {
   motif: string;
   created_at: string;
   status?: string;
+  reviewed_at?: string | null;
+}
+
+interface Message {
+  id: string;
+  match_id: string;
+  sender_id: string;
+  contenu: string;
+  created_at: string;
+  message_type?: string;
+}
+
+interface AdminStats {
+  total_users: number;
+  online_now: number;
+  new_users_7d: number;
+  suspended: number;
+  verified: number;
+  pending_verification: number;
+  premium_active: number;
+  total_matches: number;
+  messages_24h: number;
+  reports_pending: number;
+  reports_total: number;
 }
 
 interface AdminPanelProps {
@@ -32,7 +64,7 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ currentUser }: AdminPanelProps) {
-  const [tab, setTab] = useState<"users" | "reports">("users");
+  const [tab, setTab] = useState<"users" | "reports" | "stats">("users");
   const [users, setUsers] = useState<Profile[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [reportProfiles, setReportProfiles] = useState<Record<string, Profile>>({});
@@ -48,6 +80,17 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const [suspendDuration, setSuspendDuration] = useState<"24h" | "7d" | "30d" | "perm">("7d");
   const [suspendReason, setSuspendReason] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<Profile | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Profile>>({});
+  const [convoTarget, setConvoTarget] = useState<Profile | null>(null);
+  const [convoMessages, setConvoMessages] = useState<(Message & { senderName?: string })[]>([]);
+  const [convoLoading, setConvoLoading] = useState(false);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [broadcastSending, setBroadcastSending] = useState(false);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -185,11 +228,9 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
 
   const sendWarning = async () => {
     if (!actionTarget || !warningMessage.trim()) return;
-    const { error } = await supabase.from("admin_messages").insert({
-      recipient_id: actionTarget.uid,
-      title: "Avertissement de l'équipe LoveRose",
-      content: warningMessage.trim(),
-      sender_badge: "admin",
+    const { error } = await supabase.rpc("admin_send_notification", {
+      content: `⚠️ Avertissement de l'équipe LoveRose : ${warningMessage.trim()}`,
+      target_uid: actionTarget.uid,
     });
     if (error) {
       showToast("Erreur : " + error.message);
@@ -276,6 +317,124 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   };
 
 
+  const toggleVerification = async (user: Profile) => {
+    const next = user.verification_status === "verified" ? "none" : "verified";
+    const { error } = await supabase.from("profiles").update({ verification_status: next }).eq("uid", user.uid);
+    if (error) {
+      showToast("Erreur : " + error.message);
+    } else {
+      showToast(
+        next === "verified" ? `${user.full_name} est maintenant vérifié(e) ✓` : `Badge vérifié retiré à ${user.full_name}`
+      );
+      setUsers((prev) => prev.map((u) => (u.uid === user.uid ? { ...u, verification_status: next } : u)));
+    }
+  };
+
+  const openEdit = (user: Profile) => {
+    setEditTarget(user);
+    setEditForm({
+      full_name: user.full_name,
+      bio: user.bio,
+      age: user.age,
+      location: user.location,
+      gender: user.gender,
+    });
+  };
+
+  const saveProfileEdit = async () => {
+    if (!editTarget) return;
+    const { error } = await supabase.from("profiles").update(editForm).eq("uid", editTarget.uid);
+    if (error) {
+      showToast("Erreur : " + error.message);
+    } else {
+      showToast(`Profil de ${editTarget.full_name} mis à jour`);
+      setUsers((prev) => prev.map((u) => (u.uid === editTarget.uid ? { ...u, ...editForm } : u)));
+      setEditTarget(null);
+    }
+  };
+
+  const resolveReport = async (report: Report, status: "reviewed" | "dismissed") => {
+    const { error } = await supabase
+      .from("reports")
+      .update({ status, reviewed_at: new Date().toISOString(), reviewed_by: currentUser?.id })
+      .eq("id", report.id);
+    if (error) {
+      showToast("Erreur : " + error.message);
+    } else {
+      showToast(status === "reviewed" ? "Signalement marqué comme traité" : "Signalement classé sans suite");
+      setReports((prev) => prev.map((r) => (r.id === report.id ? { ...r, status } : r)));
+    }
+  };
+
+  const openConversations = async (user: Profile) => {
+    setConvoTarget(user);
+    setConvoLoading(true);
+    setConvoMessages([]);
+    try {
+      const { data: matches, error: matchError } = await supabase
+        .from("matches")
+        .select("id")
+        .contains("users", [user.uid]);
+      if (matchError) throw matchError;
+      const matchIds = (matches || []).map((m: any) => m.id);
+      if (matchIds.length === 0) {
+        setConvoLoading(false);
+        return;
+      }
+      const { data: msgs, error: msgError } = await supabase
+        .from("messages")
+        .select("*")
+        .in("match_id", matchIds)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (msgError) throw msgError;
+      const senderIds = Array.from(new Set((msgs || []).map((m: any) => m.sender_id)));
+      const namesById: Record<string, string> = {};
+      if (senderIds.length > 0) {
+        const { data: senders } = await supabase.from("profiles").select("uid, full_name").in("uid", senderIds);
+        (senders || []).forEach((s: any) => (namesById[s.uid] = s.full_name));
+      }
+      setConvoMessages(
+        ((msgs || []) as Message[]).map((m) => ({ ...m, senderName: namesById[m.sender_id] || "Utilisateur" }))
+      );
+    } catch (err: any) {
+      showToast("Erreur : " + (err?.message || "impossible de charger les conversations"));
+    } finally {
+      setConvoLoading(false);
+    }
+  };
+
+  const sendBroadcast = async () => {
+    if (!broadcastMessage.trim()) return;
+    setBroadcastSending(true);
+    const { data, error } = await supabase.rpc("admin_send_notification", {
+      content: broadcastMessage.trim(),
+      target_uid: null,
+    });
+    setBroadcastSending(false);
+    if (error) {
+      showToast("Erreur : " + error.message);
+    } else {
+      showToast(`Annonce envoyée à ${data ?? "tous les"} utilisateur(s)`);
+      setBroadcastMessage("");
+      setBroadcastOpen(false);
+    }
+  };
+
+  const loadStats = async () => {
+    setStatsLoading(true);
+    setStatsError(null);
+    try {
+      const { data, error } = await supabase.rpc("admin_get_stats");
+      if (error) throw error;
+      setStats(data as AdminStats);
+    } catch (err: any) {
+      setStatsError(err?.message || "Impossible de charger les statistiques.");
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50">
       {/* Header */}
@@ -287,7 +446,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
         <div className="flex gap-2">
           <button
             onClick={() => setTab("users")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-bold transition cursor-pointer ${
+            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
               tab === "users" ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600"
             }`}
           >
@@ -295,11 +454,29 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           </button>
           <button
             onClick={() => setTab("reports")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-bold transition cursor-pointer relative ${
+            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer relative ${
               tab === "reports" ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600"
             }`}
           >
             <Flag size={15} /> Signalements ({reports.length})
+          </button>
+          <button
+            onClick={() => {
+              setTab("stats");
+              if (!stats) loadStats();
+            }}
+            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+              tab === "stats" ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            <BarChart3 size={15} /> Stats
+          </button>
+          <button
+            onClick={() => setBroadcastOpen(true)}
+            title="Envoyer une annonce à tous les utilisateurs"
+            className="flex items-center justify-center px-3 rounded-xl bg-indigo-100 text-indigo-600 hover:bg-indigo-200 cursor-pointer"
+          >
+            <Megaphone size={16} />
           </button>
         </div>
         <div className="flex items-center gap-3 mt-2.5 text-[11px] font-semibold text-slate-500">
@@ -381,6 +558,9 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-sm text-slate-800 truncate flex items-center gap-1.5">
                     {u.full_name} {u.role === "admin" && <span className="text-rose-500">★</span>}
+                    {u.verification_status === "verified" && (
+                      <BadgeCheck size={13} className="text-sky-500 flex-shrink-0" />
+                    )}
                     {u.is_suspended && (
                       <span className="text-[9px] font-bold uppercase bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">
                         Suspendu
@@ -391,7 +571,32 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                     {u.age ? `${u.age} ans · ` : ""}{u.gender} · {u.is_online ? "En ligne" : "Hors ligne"}
                   </p>
                 </div>
-                <div className="flex gap-1.5 flex-shrink-0">
+                <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end max-w-[160px]">
+                  <button
+                    onClick={() => toggleVerification(u)}
+                    title={u.verification_status === "verified" ? "Retirer le badge vérifié" : "Vérifier ce profil"}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full cursor-pointer ${
+                      u.verification_status === "verified"
+                        ? "bg-sky-500 text-white hover:bg-sky-600"
+                        : "bg-sky-100 text-sky-600 hover:bg-sky-200"
+                    }`}
+                  >
+                    <BadgeCheck size={14} />
+                  </button>
+                  <button
+                    onClick={() => openEdit(u)}
+                    title="Modifier ce profil"
+                    className="w-8 h-8 flex items-center justify-center bg-violet-100 text-violet-600 rounded-full cursor-pointer hover:bg-violet-200"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    onClick={() => openConversations(u)}
+                    title="Voir ses conversations"
+                    className="w-8 h-8 flex items-center justify-center bg-cyan-100 text-cyan-600 rounded-full cursor-pointer hover:bg-cyan-200"
+                  >
+                    <MessageSquare size={14} />
+                  </button>
                   <button
                     onClick={() => setActionTarget(u)}
                     title="Envoyer un avertissement"
@@ -441,7 +646,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
               <p className="text-center text-slate-400 text-sm pt-10">Aucun utilisateur trouvé.</p>
             )}
           </div>
-        ) : (
+        ) : tab === "reports" ? (
           <div className="space-y-3">
             {reports.map((r) => {
               const reporter = reportProfiles[r.reporter_id] || users.find((u) => u.uid === r.reporter_id);
@@ -471,9 +676,31 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                       <p className="text-[10px] text-slate-400 mt-1">
                         {new Date(r.created_at).toLocaleString("fr-FR")}
                         {r.status && r.status !== "pending" && (
-                          <span className="ml-2 uppercase font-bold text-emerald-500">{r.status}</span>
+                          <span
+                            className={`ml-2 uppercase font-bold ${
+                              r.status === "reviewed" ? "text-emerald-500" : "text-slate-400"
+                            }`}
+                          >
+                            {r.status === "reviewed" ? "Traité" : "Classé sans suite"}
+                          </span>
                         )}
                       </p>
+                      {(!r.status || r.status === "pending") && (
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={() => resolveReport(r, "reviewed")}
+                            className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-full cursor-pointer"
+                          >
+                            <CheckCircle2 size={12} /> Marquer traité
+                          </button>
+                          <button
+                            onClick={() => resolveReport(r, "dismissed")}
+                            className="flex items-center gap-1 text-[11px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full cursor-pointer"
+                          >
+                            <XCircle size={12} /> Classer sans suite
+                          </button>
+                        </div>
+                      )}
                     </div>
                     {reported && (
                       <div className="flex gap-1.5 flex-shrink-0">
@@ -483,6 +710,13 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                           className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-600 rounded-full cursor-pointer hover:bg-slate-200"
                         >
                           <Eye size={14} />
+                        </button>
+                        <button
+                          onClick={() => openConversations(reported)}
+                          title="Voir ses conversations"
+                          className="w-8 h-8 flex items-center justify-center bg-cyan-100 text-cyan-600 rounded-full cursor-pointer hover:bg-cyan-200"
+                        >
+                          <MessageSquare size={14} />
                         </button>
                         <button
                           onClick={() => setActionTarget(reported)}
@@ -525,7 +759,43 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
               <p className="text-center text-slate-400 text-sm pt-10">Aucun signalement pour l'instant.</p>
             )}
           </div>
-        )}
+        ) : statsLoading ? (
+          <div className="flex flex-col items-center justify-center pt-10 gap-2">
+            <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-slate-400 text-xs font-medium">Chargement des statistiques...</p>
+          </div>
+        ) : statsError ? (
+          <div className="flex flex-col items-center justify-center pt-10 gap-3 text-center px-6">
+            <p className="text-slate-500 text-sm font-medium">{statsError}</p>
+            <button
+              onClick={loadStats}
+              className="bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold px-5 py-2 rounded-full transition cursor-pointer"
+            >
+              Réessayer
+            </button>
+          </div>
+        ) : stats ? (
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "Inscrits", value: stats.total_users, color: "text-slate-800" },
+              { label: "Connectés maintenant", value: stats.online_now, color: "text-emerald-500" },
+              { label: "Nouveaux (7 j)", value: stats.new_users_7d, color: "text-indigo-500" },
+              { label: "Suspendus", value: stats.suspended, color: "text-red-500" },
+              { label: "Vérifiés ✓", value: stats.verified, color: "text-sky-500" },
+              { label: "Vérif. en attente", value: stats.pending_verification, color: "text-amber-500" },
+              { label: "Premium actifs", value: stats.premium_active, color: "text-fuchsia-500" },
+              { label: "Matches créés", value: stats.total_matches, color: "text-rose-500" },
+              { label: "Messages (24h)", value: stats.messages_24h, color: "text-cyan-500" },
+              { label: "Signalements en attente", value: stats.reports_pending, color: "text-orange-500" },
+              { label: "Signalements (total)", value: stats.reports_total, color: "text-slate-500" },
+            ].map((card) => (
+              <div key={card.label} className="bg-white rounded-2xl p-4 shadow-sm">
+                <p className={`text-2xl font-extrabold ${card.color}`}>{card.value}</p>
+                <p className="text-[11px] font-semibold text-slate-400 mt-0.5">{card.label}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {/* Warning modal */}
@@ -600,6 +870,149 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           </div>
         </div>
       )}
+      {/* Edit profile modal */}
+      {editTarget && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-slate-800">Modifier {editTarget.full_name}</h2>
+              <button onClick={() => setEditTarget(null)} className="cursor-pointer">
+                <X size={18} className="text-slate-400" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nom complet</label>
+                <input
+                  value={editForm.full_name || ""}
+                  onChange={(e) => setEditForm((f) => ({ ...f, full_name: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-violet-400 mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bio</label>
+                <textarea
+                  value={editForm.bio || ""}
+                  onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
+                  rows={3}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-violet-400 mt-1 resize-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Âge</label>
+                  <input
+                    type="number"
+                    value={editForm.age ?? ""}
+                    onChange={(e) => setEditForm((f) => ({ ...f, age: e.target.value ? Number(e.target.value) : undefined }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-violet-400 mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Genre</label>
+                  <select
+                    value={editForm.gender || ""}
+                    onChange={(e) => setEditForm((f) => ({ ...f, gender: e.target.value as any }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-violet-400 mt-1"
+                  >
+                    <option value="">—</option>
+                    <option value="homme">Homme</option>
+                    <option value="femme">Femme</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ville</label>
+                <input
+                  value={editForm.location || ""}
+                  onChange={(e) => setEditForm((f) => ({ ...f, location: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-violet-400 mt-1"
+                />
+              </div>
+            </div>
+            <button
+              onClick={saveProfileEdit}
+              className="w-full mt-4 bg-violet-500 hover:bg-violet-600 text-white font-bold py-2.5 rounded-xl cursor-pointer transition"
+            >
+              Enregistrer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Conversations modal (moderation) */}
+      {convoTarget && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between mb-3 flex-shrink-0">
+              <h2 className="font-bold text-slate-800">Conversations de {convoTarget.full_name}</h2>
+              <button onClick={() => setConvoTarget(null)} className="cursor-pointer">
+                <X size={18} className="text-slate-400" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {convoLoading ? (
+                <div className="flex flex-col items-center justify-center pt-8 gap-2">
+                  <Loader2 size={24} className="text-cyan-500 animate-spin" />
+                  <p className="text-slate-400 text-xs">Chargement...</p>
+                </div>
+              ) : convoMessages.length === 0 ? (
+                <p className="text-center text-slate-400 text-sm pt-8">Aucun message trouvé.</p>
+              ) : (
+                convoMessages.map((m) => (
+                  <div
+                    key={m.id}
+                    className={`p-2.5 rounded-xl text-sm ${
+                      m.sender_id === convoTarget.uid ? "bg-cyan-50 text-slate-700" : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    <p className="text-[10px] font-bold text-slate-400 mb-0.5">
+                      {m.senderName} · {new Date(m.created_at).toLocaleString("fr-FR")}
+                    </p>
+                    <p>{m.contenu || (m.message_type ? `[${m.message_type}]` : "")}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Broadcast modal */}
+      {broadcastOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-slate-800 flex items-center gap-1.5">
+                <Megaphone size={16} className="text-indigo-500" /> Annonce à tous les utilisateurs
+              </h2>
+              <button onClick={() => setBroadcastOpen(false)} className="cursor-pointer">
+                <X size={18} className="text-slate-400" />
+              </button>
+            </div>
+            <textarea
+              value={broadcastMessage}
+              onChange={(e) => setBroadcastMessage(e.target.value)}
+              placeholder="Ex: Nouvelle fonctionnalité disponible, maintenance prévue..."
+              rows={4}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-indigo-400 resize-none"
+            />
+            <p className="text-[10px] text-slate-400 mt-1.5">
+              Sera envoyé à {users.length} utilisateur(s) inscrit(s), sous forme de notification.
+            </p>
+            <button
+              onClick={sendBroadcast}
+              disabled={!broadcastMessage.trim() || broadcastSending}
+              className="w-full mt-3 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl cursor-pointer transition flex items-center justify-center gap-2"
+            >
+              {broadcastSending && <Loader2 size={14} className="animate-spin" />}
+              {broadcastSending ? "Envoi en cours..." : "Envoyer à tous"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Full profile view - opened from a report (reporter or reported party) */}
       {viewProfile && (
         <ProfileDetailModal
