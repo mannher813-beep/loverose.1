@@ -20,7 +20,9 @@ import {
   X, 
   BookOpen, 
   Lock, 
-  Smartphone 
+  Smartphone,
+  ArrowRight,
+  XCircle
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { compressImageIfNeeded } from "../lib/imageCompression";
@@ -121,8 +123,16 @@ export default function Settings({
   const [verificationStatus, setVerificationStatus] = useState<string>("none");
   const [idFileUrl, setIdFileUrl] = useState("");
   const [selfieFileUrl, setSelfieFileUrl] = useState("");
+  const [idFile, setIdFile] = useState<File | null>(null);
+  const [selfieFile, setSelfieFile] = useState<File | null>(null);
   const [verificationLoading, setVerificationLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Verification badge payment (500 FCFA, separate from Premium subscription)
+  const VERIFICATION_BADGE_FEE = 500;
+  const [showBadgePaymentConfirm, setShowBadgePaymentConfirm] = useState(false);
+  const [badgePaymentForm, setBadgePaymentForm] = useState({ phoneNumber: "", fullName: "" });
+  const [isLaunchingBadgePayment, setIsLaunchingBadgePayment] = useState(false);
 
   const intentsList = [
     "Amitié",
@@ -145,6 +155,10 @@ export default function Settings({
       setAvatarUrl(profile.avatar_url || "");
       setSelectedIntents(profile.relationship_intents || []);
       setVerificationStatus(profile.verification_status || "none");
+      setBadgePaymentForm(prev => ({
+        phoneNumber: prev.phoneNumber || profile.phone_number || "",
+        fullName: prev.fullName || profile.full_name || profile.username || ""
+      }));
       setPreferredLanguage(profile.preferred_language || "fr");
       setMaxDistanceKm(profile.max_distance_km || 50);
       
@@ -317,7 +331,11 @@ export default function Settings({
   };
 
   // Verification request handlers
-  const handleLocalFileChange = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
+  const handleLocalFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setPreview: (base64: string) => void,
+    setRawFile: (file: File) => void
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -326,55 +344,103 @@ export default function Settings({
       return;
     }
 
+    setRawFile(file);
+
     const reader = new FileReader();
     reader.onloadend = () => {
       if (typeof reader.result === "string") {
-        callback(reader.result);
+        setPreview(reader.result);
       }
     };
     reader.readAsDataURL(file);
   };
 
+  // Step 1: upload ID + selfie to Storage, mark profile "pending_payment",
+  // then open the 500 FCFA badge payment modal (separate from Premium).
   const handleVerifyRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!idFileUrl || !selfieFileUrl) {
+    if (!idFile || !selfieFile) {
       alert("Veuillez uploader les deux photos demandées.");
       return;
     }
 
     setVerificationLoading(true);
     try {
+      const idPath = `verifications/${currentUser.id}/id_${Date.now()}_${idFile.name}`;
+      const optimizedIdFile = await compressImageIfNeeded(idFile);
+      const { error: idUploadError } = await supabase.storage.from("loverose").upload(idPath, optimizedIdFile);
+      if (idUploadError) throw idUploadError;
+      const { data: idUrlData } = supabase.storage.from("loverose").getPublicUrl(idPath);
+
+      const selfiePath = `verifications/${currentUser.id}/selfie_${Date.now()}_${selfieFile.name}`;
+      const optimizedSelfieFile = await compressImageIfNeeded(selfieFile);
+      const { error: selfieUploadError } = await supabase.storage.from("loverose").upload(selfiePath, optimizedSelfieFile);
+      if (selfieUploadError) throw selfieUploadError;
+      const { data: selfieUrlData } = supabase.storage.from("loverose").getPublicUrl(selfiePath);
+
       const { error } = await supabase
         .from("profiles")
         .update({
-          verification_status: "pending"
+          verification_status: "pending_payment",
+          id_document_url: idUrlData.publicUrl,
+          selfie_url: selfieUrlData.publicUrl
         })
         .eq("uid", currentUser.id);
 
       if (error) throw error;
 
-      await supabase
-        .from("notifications")
-        .insert([
-          {
-            user_id: currentUser.id,
-            sender_id: currentUser.id,
-            type: "match",
-            content: "Votre demande de vérification de profil a été envoyée. Nos administrateurs l'analysent sous 24h.",
-            lu: false
-          }
-        ]);
-
-      setVerificationStatus("pending");
+      setVerificationStatus("pending_payment");
       onProfileUpdated();
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 5000);
-      alert("Votre demande de vérification a bien été soumise !");
+      // Documents are saved — now ask for the 500 FCFA badge fee before it goes to admin review.
+      setShowBadgePaymentConfirm(true);
     } catch (err: any) {
       console.error("Verification submit error:", err);
       alert(err.message || "Impossible d'envoyer la demande de vérification.");
     } finally {
       setVerificationLoading(false);
+    }
+  };
+
+  // Step 2: launch the Money Fusion payment for the verification badge fee.
+  // Reusable both right after upload and later if the user closed the modal
+  // before paying (profile stays "pending_payment" until this succeeds).
+  const handleConfirmBadgePayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!badgePaymentForm.phoneNumber.trim()) {
+      alert("Veuillez renseigner votre numéro de téléphone mobile money.");
+      return;
+    }
+    if (!badgePaymentForm.fullName.trim()) {
+      alert("Veuillez renseigner votre nom complet.");
+      return;
+    }
+
+    setIsLaunchingBadgePayment(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("moneyfusion-create-payment", {
+        body: {
+          plan_id: "verification_badge",
+          plan_name: "Badge de Vérification LoveRose",
+          montant: VERIFICATION_BADGE_FEE,
+          phone_number: badgePaymentForm.phoneNumber,
+          full_name: badgePaymentForm.fullName,
+          related_page_id: null,
+          related_post_id: null
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.payment_url) {
+        window.location.href = data.payment_url;
+      } else {
+        throw new Error(data?.error || "Impossible d'initialiser l'URL de paiement.");
+      }
+    } catch (err: any) {
+      console.error("Badge payment initiation failed:", err);
+      alert("Erreur d'initialisation de paiement avec Money Fusion : " + (err.message || "Veuillez réessayer."));
+    } finally {
+      setIsLaunchingBadgePayment(false);
     }
   };
 
@@ -805,10 +871,33 @@ export default function Settings({
                       Notre équipe de modération étudie vos justificatifs. Délai moyen : 12 heures.
                     </p>
                   </div>
+                ) : verificationStatus === "pending_payment" ? (
+                  <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl text-center space-y-3 text-xs font-semibold text-rose-800">
+                    <ShieldAlert className="mx-auto text-rose-500" size={24} />
+                    <p>Vos documents sont enregistrés</p>
+                    <p className="font-medium text-rose-600 text-[10px] leading-relaxed">
+                      Il ne reste plus que les frais de certification de {VERIFICATION_BADGE_FEE} FCFA à régler pour envoyer votre dossier à l'administrateur.
+                    </p>
+                    <button
+                      onClick={() => setShowBadgePaymentConfirm(true)}
+                      className="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-rose-500/10"
+                    >
+                      <span>Payer {VERIFICATION_BADGE_FEE} FCFA</span>
+                      <ArrowRight size={12} />
+                    </button>
+                  </div>
                 ) : (
                   <form onSubmit={handleVerifyRequest} className="space-y-4">
+                    {verificationStatus === "rejected" && (
+                      <div className="bg-red-50 border border-red-100 p-3 rounded-2xl flex items-start gap-2">
+                        <XCircle className="text-red-500 flex-shrink-0 mt-0.5" size={14} />
+                        <p className="text-red-700 text-[10px] leading-relaxed text-left">
+                          Votre précédente demande a été refusée. Vérifiez que vos photos sont nettes et lisibles, puis soumettez un nouveau dossier.
+                        </p>
+                      </div>
+                    )}
                     <p className="text-slate-500 text-[10px] leading-relaxed text-left">
-                      Le badge <strong>Vérifié</strong> confirme votre authenticité et multiplie vos chances de Matchs par 3 !
+                      Le badge <strong>Vérifié</strong> confirme votre authenticité et multiplie vos chances de Matchs par 3 ! Des frais de certification de <strong>{VERIFICATION_BADGE_FEE} FCFA</strong> (hors abonnement Premium) s'appliquent après l'envoi des documents.
                     </p>
 
                     <div className="space-y-3 text-left">
@@ -818,7 +907,7 @@ export default function Settings({
                           type="file"
                           accept="image/*"
                           required
-                          onChange={(e) => handleLocalFileChange(e, setIdFileUrl)}
+                          onChange={(e) => handleLocalFileChange(e, setIdFileUrl, setIdFile)}
                           className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] transition cursor-pointer font-medium text-slate-600"
                         />
                         {idFileUrl && (
@@ -834,7 +923,7 @@ export default function Settings({
                           type="file"
                           accept="image/*"
                           required
-                          onChange={(e) => handleLocalFileChange(e, setSelfieFileUrl)}
+                          onChange={(e) => handleLocalFileChange(e, setSelfieFileUrl, setSelfieFile)}
                           className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] transition cursor-pointer font-medium text-slate-600"
                         />
                         {selfieFileUrl && (
@@ -853,7 +942,7 @@ export default function Settings({
                       {verificationLoading ? (
                         <Loader2 className="animate-spin" size={12} />
                       ) : (
-                        <span>Lancer la vérification</span>
+                        <span>Continuer vers le paiement ({VERIFICATION_BADGE_FEE} FCFA)</span>
                       )}
                     </button>
                   </form>
@@ -1195,6 +1284,94 @@ export default function Settings({
       <div className="text-center pt-4 space-y-1.5 border-t border-slate-200">
         <p className="text-[10px] text-slate-400">LoveRose v2.1.0 • Fait en Afrique avec passion ❤️</p>
       </div>
+
+      {/* Verification Badge Payment Modal (500 FCFA, distinct from Premium) */}
+      {showBadgePaymentConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl p-6 border border-slate-100 space-y-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                <ShieldCheck className="text-rose-500 fill-rose-500/10" size={20} />
+                <span>Frais de Certification</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowBadgePaymentConfirm(false)}
+                className="text-slate-400 hover:text-slate-600 transition p-1"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 space-y-2 text-center">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Badge de Vérification LoveRose</p>
+              <p className="text-3xl font-black text-rose-500">{VERIFICATION_BADGE_FEE} FCFA</p>
+              <p className="text-[10px] text-slate-500">Frais uniques, distincts de votre abonnement Premium.</p>
+            </div>
+
+            <form onSubmit={handleConfirmBadgePayment} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Nom Complet du Client
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Jean Dupont"
+                  value={badgePaymentForm.fullName}
+                  onChange={(e) => setBadgePaymentForm(p => ({ ...p, fullName: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Numéro de Téléphone Mobile Money
+                </label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="Ex: 677123456"
+                  value={badgePaymentForm.phoneNumber}
+                  onChange={(e) => setBadgePaymentForm(p => ({ ...p, phoneNumber: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
+                />
+                <span className="text-[10px] text-slate-400 block font-medium">
+                  Entrez le numéro associé à votre compte de paiement (Orange, MTN, Moov, Wave, etc.)
+                </span>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowBadgePaymentConfirm(false)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLaunchingBadgePayment}
+                  className="flex-1 py-3 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-rose-500/10 flex items-center justify-center gap-1.5 transition cursor-pointer"
+                >
+                  {isLaunchingBadgePayment ? (
+                    <Loader2 className="animate-spin" size={14} />
+                  ) : (
+                    <>
+                      <span>Payer {VERIFICATION_BADGE_FEE} FCFA</span>
+                      <ArrowRight size={12} />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            <p className="text-[9px] text-slate-400 text-center font-medium leading-relaxed">
+              En cliquant sur "Payer", vous serez redirigé vers l'interface officielle de Money Fusion pour effectuer votre transaction en toute sécurité. Votre dossier sera transmis à l'administrateur une fois le paiement confirmé.
+            </p>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -60,6 +60,23 @@ export async function fulfillPayment(
     });
     console.log(`[Fulfill] Activated Premium subscription for user ${userId}`);
   }
+  // C0. TRUST / IDENTITY VERIFICATION BADGE FEE (500 FCFA unique)
+  else if (planId === "verification_badge") {
+    // The user already uploaded their ID + selfie and the profile was set to
+    // "pending_payment" client-side. Now that Money Fusion confirms payment,
+    // move it to "pending" so an administrator can review and approve/reject it.
+    const { error: verifErr } = await supabaseAdmin
+      .from("profiles")
+      .update({ verification_status: "pending" })
+      .eq("uid", userId)
+      .eq("verification_status", "pending_payment");
+
+    if (verifErr) {
+      console.error("[Fulfill] Error moving verification_status to pending after badge payment:", verifErr);
+    } else {
+      console.log(`[Fulfill] Badge verification fee paid by user ${userId}, request now pending admin review`);
+    }
+  }
   // C. CREATOR PAGE ACTIVATION FEE (1,000 FCFA unique)
   else if (planId === "creator_page_activation") {
     const { error: pageErr } = await supabaseAdmin

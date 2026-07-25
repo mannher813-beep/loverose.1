@@ -10,7 +10,9 @@ export interface Profile {
   preferences?: 'homme' | 'femme' | 'tous';
   relationship_intents?: string[]; // Amitié, Relation amoureuse, Rencontre d'un soir, Relation libertine, Business / networking
   role?: string;
-  verification_status?: 'none' | 'pending' | 'verified';
+  verification_status?: 'none' | 'pending_payment' | 'pending' | 'verified' | 'rejected';
+  id_document_url?: string;
+  selfie_url?: string;
   photos?: string[];
   created_at?: string;
   is_online?: boolean;
