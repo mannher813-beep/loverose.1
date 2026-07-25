@@ -188,7 +188,7 @@ export default function Settings({
       const loadedPhotos = profile.photos || JSON.parse(localStorage.getItem(`profile_photos_${currentUser?.id}`) || "[]");
       setPhotos(loadedPhotos);
     }
-  }, [profile, currentUser?.id]);
+  }, [profile?.uid, currentUser?.id]);
 
   if (!currentUser) {
     return (
