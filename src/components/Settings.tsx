@@ -115,6 +115,15 @@ export default function Settings({
   const [avatarUrl, setAvatarUrl] = useState("");
   const [selectedIntents, setSelectedIntents] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [uploadingPhotoIndex, setUploadingPhotoIndex] = useState<number | null>(null);
+
+  // Slow/unstable connections can leave a storage upload hanging with no
+  // response — this forces it to fail after `ms` instead of hanging forever.
+  const withUploadTimeout = <T,>(promise: PromiseLike<T>, ms = 20000): Promise<T> =>
+    Promise.race([
+      Promise.resolve(promise),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), ms)),
+    ]);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState<'fr' | 'en'>('fr');
   const [maxDistanceKm, setMaxDistanceKm] = useState<number>(50);
@@ -217,27 +226,36 @@ export default function Settings({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setUploadingPhotoIndex(index);
     try {
       const optimizedFile = await compressImageIfNeeded(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === "string") {
-          const val = reader.result;
-          setPhotos(prev => {
-            const next = [...prev];
-            next[index] = val;
-            if (index === 0 || !avatarUrl) {
-              setAvatarUrl(val);
-            }
-            return next;
-          });
+      const fileExt = optimizedFile.name.split(".").pop();
+      const fileName = `photo_${index}_${Date.now()}.${fileExt}`;
+      const filePath = `gallery/${currentUser.id}/${fileName}`;
+
+      const { error: uploadErr } = await withUploadTimeout(
+        supabase.storage.from("loverose").upload(filePath, optimizedFile, {
+          cacheControl: "3600",
+          upsert: true,
+        })
+      );
+      if (uploadErr) throw uploadErr;
+
+      const { data: { publicUrl } } = supabase.storage.from("loverose").getPublicUrl(filePath);
+
+      setPhotos(prev => {
+        const next = [...prev];
+        next[index] = publicUrl;
+        if (index === 0 || !avatarUrl) {
+          setAvatarUrl(publicUrl);
         }
-      };
-      reader.readAsDataURL(optimizedFile);
+        return next;
+      });
     } catch (err) {
-      console.error("Error processing photo upload in settings:", err);
-      alert("Impossible de traiter cette photo. Réessayez avec une autre image ou une meilleure connexion.");
+      console.error("Error uploading photo in settings:", err);
+      alert("Impossible d'envoyer cette photo (connexion trop lente ou instable). Réessayez avec une meilleure connexion.");
     } finally {
+      setUploadingPhotoIndex(null);
       e.target.value = ""; // Allow re-selecting the same file if retried
     }
   };
@@ -251,26 +269,36 @@ export default function Settings({
       return;
     }
 
+    const newIndex = photos.length;
+    setUploadingPhotoIndex(newIndex);
     try {
       const optimizedFile = await compressImageIfNeeded(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === "string") {
-          const val = reader.result;
-          setPhotos(prev => {
-            const next = [...prev, val];
-            if (next.length === 1 || !avatarUrl) {
-              setAvatarUrl(val);
-            }
-            return next;
-          });
+      const fileExt = optimizedFile.name.split(".").pop();
+      const fileName = `photo_${newIndex}_${Date.now()}.${fileExt}`;
+      const filePath = `gallery/${currentUser.id}/${fileName}`;
+
+      const { error: uploadErr } = await withUploadTimeout(
+        supabase.storage.from("loverose").upload(filePath, optimizedFile, {
+          cacheControl: "3600",
+          upsert: true,
+        })
+      );
+      if (uploadErr) throw uploadErr;
+
+      const { data: { publicUrl } } = supabase.storage.from("loverose").getPublicUrl(filePath);
+
+      setPhotos(prev => {
+        const next = [...prev, publicUrl];
+        if (next.length === 1 || !avatarUrl) {
+          setAvatarUrl(publicUrl);
         }
-      };
-      reader.readAsDataURL(optimizedFile);
+        return next;
+      });
     } catch (err) {
       console.error("Error processing premium photo upload in settings:", err);
-      alert("Impossible de traiter cette photo. Réessayez avec une autre image ou une meilleure connexion.");
+      alert("Impossible d'envoyer cette photo (connexion trop lente ou instable). Réessayez avec une meilleure connexion.");
     } finally {
+      setUploadingPhotoIndex(null);
       e.target.value = "";
     }
   };
@@ -309,6 +337,9 @@ export default function Settings({
       const validPhotos = photos.filter(Boolean);
       if (validPhotos.length < 3) {
         throw new Error("Chaque profil doit uploader au minimum trois (3) photos obligatoirement.");
+      }
+      if (validPhotos.some(p => p.startsWith("data:")) || avatarUrl.startsWith("data:")) {
+        throw new Error("Une photo est encore en cours d'envoi ou n'a pas pu être envoyée. Attendez la fin de l'envoi ou réessayez avec une meilleure connexion avant d'enregistrer.");
       }
 
       const updatedProfileData = {
@@ -622,6 +653,11 @@ export default function Settings({
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs font-black">
                                   {index === 0 ? "1 (Max)" : index + 1}
+                                </div>
+                              )}
+                              {uploadingPhotoIndex === index && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                  <Loader2 size={18} className="text-white animate-spin" />
                                 </div>
                               )}
                               {index === 0 && (
