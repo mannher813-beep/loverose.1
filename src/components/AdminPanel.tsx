@@ -58,6 +58,8 @@ interface AdminStats {
   messages_24h: number;
   reports_pending: number;
   reports_total: number;
+  pwa_install_clicks: number;
+  pwa_installs_confirmed: number;
 }
 
 interface AdminPanelProps {
@@ -884,6 +886,8 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
               { label: "Messages (24h)", value: stats.messages_24h, color: "text-cyan-500" },
               { label: "Signalements en attente", value: stats.reports_pending, color: "text-orange-500" },
               { label: "Signalements (total)", value: stats.reports_total, color: "text-slate-500" },
+              { label: "Clics sur \"Installer l'app\"", value: stats.pwa_install_clicks, color: "text-teal-500" },
+              { label: "Installations confirmées", value: stats.pwa_installs_confirmed, color: "text-green-600" },
             ].map((card) => (
               <div key={card.label} className="bg-white rounded-2xl p-4 shadow-sm">
                 <p className={`text-2xl font-extrabold ${card.color}`}>{card.value}</p>

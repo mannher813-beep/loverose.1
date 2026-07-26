@@ -86,11 +86,33 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleAppInstalled = () => {
+      supabase.from("pwa_install_events").insert({
+        user_id: currentUser?.id ?? null,
+        event_type: "installed",
+      }).then(({ error }) => {
+        if (error) console.warn("Could not log PWA install confirmation:", error);
+      });
+    };
+    window.addEventListener("appinstalled", handleAppInstalled);
+    return () => {
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, [currentUser]);
+
   const handleInstallApp = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     console.log(`User response to install prompt: ${outcome}`);
+    supabase.from("pwa_install_events").insert({
+      user_id: currentUser?.id ?? null,
+      event_type: "button_click",
+      outcome,
+    }).then(({ error }) => {
+      if (error) console.warn("Could not log PWA install click:", error);
+    });
     setDeferredPrompt(null);
     setShowInstallBanner(false);
   };
