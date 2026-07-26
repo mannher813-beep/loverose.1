@@ -93,8 +93,18 @@ export default function Chat({
           schema: "public",
           table: "matches"
         },
-        () => {
-          loadMatches();
+        (payload: any) => {
+          // The Realtime filter syntax can't express "array contains this id",
+          // so without this check every match created anywhere on the
+          // platform re-triggers a full loadMatches() (matches + per-match
+          // profile + last-message fetches) for every single connected user.
+          // That flood of redundant requests is what was causing the app-wide
+          // "Connexion trop lente" errors. Only reload when the change
+          // actually involves the current user's own matches.
+          const affectedUsers: string[] = payload.new?.users || payload.old?.users || [];
+          if (Array.isArray(affectedUsers) && affectedUsers.includes(currentUser.id)) {
+            loadMatches();
+          }
         }
       )
       .subscribe();

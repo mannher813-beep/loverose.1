@@ -17,6 +17,7 @@ import Onboarding from "./components/Onboarding";
 import PublicProfile from "./components/PublicProfile";
 import PublicLayout from "./components/public/PublicLayout";
 import AdminPanel from "./components/AdminPanel";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { usePremiumStatus } from "./hooks/usePremiumStatus";
 
 export default function App() {
@@ -643,8 +644,6 @@ export default function App() {
 
         {/* Desktop Quick Nav Controls */}
         <div className="hidden md:flex items-center space-x-6 text-xs font-bold text-slate-600">
-          {!isAdmin && (
-          <>
           <button
             onClick={() => setActiveTab('discover')}
             className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'discover' ? 'text-rose-500 font-extrabold' : ''}`}
@@ -692,8 +691,6 @@ export default function App() {
             <Settings size={16} />
             <span>Paramètres</span>
           </button>
-          </>
-          )}
           {profile?.role === 'admin' && (
             <button
               onClick={() => setActiveTab('admin')}
@@ -791,12 +788,6 @@ export default function App() {
 
         {/* Core Application Tabs switcher */}
         <>
-          {isAdmin ? (
-            <div className="flex flex-col flex-1 min-h-0">
-              <AdminPanel currentUser={currentUser} />
-            </div>
-          ) : (
-          <>
           <div className={activeTab === 'discover' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
             <Discover
               currentUser={currentUser}
@@ -854,15 +845,18 @@ export default function App() {
               onAuthRequired={() => triggerAuthRequired(true)}
             />
           </div>
-          </>
+          {isAdmin && activeTab === 'admin' && (
+            <div className="flex flex-col flex-1 min-h-0">
+              <ErrorBoundary>
+                <AdminPanel currentUser={currentUser} />
+              </ErrorBoundary>
+            </div>
           )}
         </>
       </main>
 
       {/* Mobile Tab Navbar */}
       <footer className="bg-white border-t border-slate-200 py-2.5 px-4 flex justify-around items-center sticky bottom-0 z-30 md:hidden flex-shrink-0">
-        {!isAdmin && (
-        <>
         <button
           onClick={() => setActiveTab('discover')}
           className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'discover' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
@@ -903,8 +897,6 @@ export default function App() {
           <User size={18} />
           <span className="text-[10px]">Profil</span>
         </button>
-        </>
-        )}
         {profile?.role === 'admin' && (
           <button
             onClick={() => setActiveTab('admin')}
