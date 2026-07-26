@@ -19,6 +19,7 @@ import PublicLayout from "./components/public/PublicLayout";
 import AdminPanel from "./components/AdminPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { usePremiumStatus } from "./hooks/usePremiumStatus";
+import { isPushSupported, getNotificationPermission, subscribeToPushNotifications } from "./lib/push";
 
 export default function App() {
   // Simple Path Routing
@@ -55,6 +56,55 @@ export default function App() {
   // PWA installation states
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState<boolean>(false);
+
+  // Deep-link: clicking a push notification for a message opens ?chat=<uid> directly.
+  useEffect(() => {
+    if (!currentUser) return;
+    const params = new URLSearchParams(window.location.search);
+    const chatPartnerId = params.get("chat");
+    if (chatPartnerId) {
+      setTargetChatPartnerId(chatPartnerId);
+      setActiveTab("chat");
+      params.delete("chat");
+      const cleanSearch = params.toString();
+      window.history.replaceState({}, document.title, window.location.pathname + (cleanSearch ? `?${cleanSearch}` : ""));
+    }
+  }, [currentUser]);
+
+  // Offer to enable real push notifications (Chrome/Android) once per logged-in user,
+  // unless they've already granted/denied permission or dismissed the banner before.
+  const [showPushBanner, setShowPushBanner] = useState<boolean>(false);
+  const [isEnablingPush, setIsEnablingPush] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!currentUser || !isPushSupported()) return;
+    const permission = getNotificationPermission();
+    const dismissed = localStorage.getItem(`push_banner_dismissed_${currentUser.id}`);
+    if (permission === "default" && !dismissed) {
+      setShowPushBanner(true);
+    }
+  }, [currentUser]);
+
+  const handleEnablePush = async () => {
+    if (!currentUser) return;
+    setIsEnablingPush(true);
+    const result = await subscribeToPushNotifications(currentUser.id);
+    setIsEnablingPush(false);
+    setShowPushBanner(false);
+    if (currentUser) {
+      localStorage.setItem(`push_banner_dismissed_${currentUser.id}`, "1");
+    }
+    if (!result.success) {
+      console.warn("Push subscription not enabled:", result.reason);
+    }
+  };
+
+  const dismissPushBanner = () => {
+    setShowPushBanner(false);
+    if (currentUser) {
+      localStorage.setItem(`push_banner_dismissed_${currentUser.id}`, "1");
+    }
+  };
 
   useEffect(() => {
     const handlePushToast = (e: Event) => {
@@ -808,6 +858,30 @@ export default function App() {
           </div>
         )}
 
+        {showPushBanner && (
+          <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold shadow-inner relative flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <MessageSquare size={14} className="text-rose-400" />
+              <span>Activez les notifications pour ne rater aucun message ni aucun match, même app fermée !</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleEnablePush}
+                disabled={isEnablingPush}
+                className="bg-rose-500 text-white px-3 py-1 rounded-full font-black text-[10px] tracking-wide uppercase transition hover:bg-rose-600 cursor-pointer shadow-sm disabled:opacity-60"
+              >
+                {isEnablingPush ? "..." : "Activer"}
+              </button>
+              <button
+                onClick={dismissPushBanner}
+                className="text-white/80 hover:text-white cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Core Application Tabs switcher */}
         <>
           <div className={activeTab === 'discover' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
@@ -1024,7 +1098,7 @@ export default function App() {
 
             <div className="space-y-3 pt-4">
               <button
-                onClick={() => { setMatchedPartner(null); setActiveTab('chat'); }}
+                onClick={() => { setTargetChatPartnerId(matchedPartner.uid); setMatchedPartner(null); setActiveTab('chat'); }}
                 className="w-full py-4 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-black text-sm rounded-2xl shadow-lg shadow-rose-500/25 transition cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <MessageSquare size={16} />

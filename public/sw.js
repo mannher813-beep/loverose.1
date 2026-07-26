@@ -54,3 +54,51 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// Real Web Push (VAPID) — fires even if no LoveRose tab is open, thanks to
+// the server-side "send-push" Edge Function called by DB triggers.
+self.addEventListener('push', (event) => {
+  let data = { title: 'LoveRose', body: 'Vous avez une nouvelle notification.', url: '/', tag: 'loverose-notification' };
+  try {
+    if (event.data) {
+      data = { ...data, ...event.data.json() };
+    }
+  } catch (err) {
+    console.warn('[SW] Push payload was not valid JSON', err);
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: data.tag,
+      vibrate: [200, 100, 200],
+      data: { url: data.url || '/' }
+    })
+  );
+});
+
+// Tap on a notification: focus an existing LoveRose tab if there is one,
+// navigate it to the right screen (e.g. the matching chat), otherwise open a new one.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.focus();
+          if ('navigate' in client) {
+            client.navigate(targetUrl).catch(() => {});
+          }
+          return;
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
