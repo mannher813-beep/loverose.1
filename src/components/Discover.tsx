@@ -5,6 +5,7 @@ import AdSlot from "./AdSlot";
 import { Heart, X, Sparkles, MapPin, CheckCircle, ShieldAlert, Filter, Send, MessageCircle, Eye, Star } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ProfileDetailModal from "./ProfileDetailModal";
+import AdaptiveImage from "./AdaptiveImage";
 import { isActuallyOnline } from "../lib/presence";
 
 interface DiscoverProps {
@@ -602,8 +603,9 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                 className="bg-white border border-slate-150 shadow-xl flex flex-col relative flex-1 min-h-0"
               >
                 {/* Photo underlay */}
-                <img
-                  src={activeProfile.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${activeProfile.full_name || activeProfile.uid}`}
+                <AdaptiveImage
+                  src={activeProfile.avatar_url}
+                  fallbackSrc={`https://api.dicebear.com/7.x/adventurer/svg?seed=${activeProfile.full_name || activeProfile.uid}`}
                   alt={activeProfile.full_name || "Profil"}
                   referrerPolicy="no-referrer"
                   decoding="async"
