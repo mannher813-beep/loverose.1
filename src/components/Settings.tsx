@@ -27,6 +27,7 @@ import {
 import { supabase } from "../lib/supabase";
 import { compressImageIfNeeded } from "../lib/imageCompression";
 import { Profile, VerificationRequest } from "../types";
+import { isPushSupported, getNotificationPermission, subscribeToPushNotifications } from "../lib/push";
 
 interface SettingsProps {
   currentUser: any;
@@ -136,6 +137,33 @@ export default function Settings({
   const [selfieFile, setSelfieFile] = useState<File | null>(null);
   const [verificationLoading, setVerificationLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Push notifications: lets someone enable them at any time from Settings,
+  // not just from the one-time banner shown on first load. Important for
+  // anyone who granted browser notification permission before this feature
+  // existed — the banner never reappears for them since permission is no
+  // longer "default", so this is the only way they can ever get subscribed.
+  const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported">(
+    getNotificationPermission()
+  );
+  const [isTogglingPush, setIsTogglingPush] = useState(false);
+
+  const handleEnablePushFromSettings = async () => {
+    if (!currentUser) return;
+    setIsTogglingPush(true);
+    const result = await subscribeToPushNotifications(currentUser.id);
+    setPushPermission(getNotificationPermission());
+    setIsTogglingPush(false);
+    if (!result.success) {
+      if (result.reason === "denied") {
+        alert("Les notifications ont été bloquées dans les réglages de votre navigateur/téléphone. Autorisez-les depuis les paramètres du navigateur pour les activer ici.");
+      } else if (result.reason === "unsupported") {
+        alert("Votre navigateur ne supporte pas les notifications push.");
+      } else {
+        alert("Impossible d'activer les notifications pour le moment. Réessayez plus tard.");
+      }
+    }
+  };
 
   // Verification badge payment (500 FCFA, separate from Premium subscription)
   const VERIFICATION_BADGE_FEE = 500;
@@ -1014,6 +1042,45 @@ export default function Settings({
                       )}
                     </button>
                   </form>
+                )}
+              </div>
+
+              {/* Push notifications: enable at any time, not just via the first-load banner */}
+              <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-sm space-y-3">
+                <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                  <Smartphone className="text-rose-500" size={16} />
+                  <span>Notifications Push</span>
+                </h4>
+
+                {pushPermission === "unsupported" ? (
+                  <p className="text-slate-400 text-[10px] leading-relaxed">
+                    Votre navigateur ne supporte pas les notifications push.
+                  </p>
+                ) : pushPermission === "granted" ? (
+                  <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-2xl text-center space-y-1.5 text-[10px] font-semibold text-emerald-800">
+                    <CheckCircle className="mx-auto text-emerald-500" size={20} fill="white" />
+                    <p>Notifications activées</p>
+                    <p className="font-medium text-emerald-600 leading-relaxed">
+                      Vous recevrez une alerte sur ce téléphone même quand l'app est fermée.
+                    </p>
+                  </div>
+                ) : pushPermission === "denied" ? (
+                  <p className="text-slate-500 text-[10px] leading-relaxed">
+                    Vous avez bloqué les notifications pour LoveRose. Autorisez-les depuis les réglages de notifications de votre navigateur ou de votre téléphone, puis revenez sur cette page.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-slate-500 text-[10px] leading-relaxed">
+                      Activez les notifications pour être alerté(e) en cas de nouveau message ou de match, même quand LoveRose est fermé.
+                    </p>
+                    <button
+                      onClick={handleEnablePushFromSettings}
+                      disabled={isTogglingPush}
+                      className="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md shadow-rose-500/10"
+                    >
+                      {isTogglingPush ? <Loader2 className="animate-spin" size={12} /> : <span>Activer les notifications</span>}
+                    </button>
+                  </>
                 )}
               </div>
             </div>
