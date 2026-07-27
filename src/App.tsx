@@ -13,6 +13,7 @@ import Shop from "./components/Shop";
 import ProfileSettings from "./components/ProfileSettings";
 import SettingsView from "./components/Settings";
 import NotificationsView from "./components/Notifications";
+import WhoLikedMe from "./components/WhoLikedMe";
 import Onboarding from "./components/Onboarding";
 import PublicProfile from "./components/PublicProfile";
 import PublicLayout from "./components/public/PublicLayout";
@@ -34,7 +35,7 @@ export default function App() {
   const isAdmin = profile?.role === 'admin';
   const [showConversionPopup, setShowConversionPopup] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'shop' | 'profile' | 'settings' | 'notifications' | 'admin'>('discover');
+  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'shop' | 'profile' | 'settings' | 'notifications' | 'likes' | 'admin'>('discover');
   const [targetChatPartnerId, setTargetChatPartnerId] = useState<string | null>(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   
@@ -1028,6 +1029,16 @@ export default function App() {
               onNavigateToTab={(tab) => setActiveTab(tab)}
               onStartChat={startChatWithUser}
               onAuthRequired={() => triggerAuthRequired(true)}
+            />
+          </div>
+          <div className={activeTab === 'likes' ? 'flex flex-col flex-1 min-h-0 overflow-y-auto' : 'hidden'}>
+            <WhoLikedMe
+              currentUser={currentUser}
+              currentUserProfile={profile}
+              isPremium={isPremiumUser}
+              onStartChat={startChatWithUser}
+              onAuthRequired={() => triggerAuthRequired(true)}
+              onGoToShop={() => setActiveTab('shop')}
             />
           </div>
           {isAdmin && activeTab === 'admin' && (

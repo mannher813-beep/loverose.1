@@ -28,7 +28,7 @@ interface NotificationItem {
 
 interface NotificationsProps {
   currentUser: any;
-  onNavigateToTab: (tab: 'discover' | 'chat' | 'shop' | 'profile' | 'settings' | 'notifications') => void;
+  onNavigateToTab: (tab: 'discover' | 'chat' | 'shop' | 'profile' | 'settings' | 'notifications' | 'likes') => void;
   onStartChat?: (partnerId: string) => void;
   onAuthRequired?: () => void;
 }
@@ -227,6 +227,20 @@ export default function Notifications({ currentUser, onNavigateToTab, onStartCha
           </button>
         )}
       </div>
+
+      <button
+        onClick={() => onNavigateToTab('likes')}
+        className="w-full flex items-center gap-3 bg-gradient-to-r from-rose-500 to-rose-400 hover:from-rose-600 hover:to-rose-500 text-white rounded-2xl p-4 shadow-md transition cursor-pointer"
+      >
+        <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+          <Heart size={20} fill="currentColor" />
+        </div>
+        <div className="flex-1 text-left">
+          <p className="font-extrabold text-sm">Qui vous a aimé ✨</p>
+          <p className="text-[11px] text-white/80">Voir vos likes, super likes et matchs</p>
+        </div>
+        <Sparkles size={16} className="flex-shrink-0" />
+      </button>
 
       {/* List Container */}
       {loading ? (
