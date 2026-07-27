@@ -9,12 +9,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return json({ success: false, error: "Adresse email et message requis." }, 400);
     }
 
-    if (env.TURNSTILE_SECRET_KEY) {
+    if (env.TURNSTILE_SECRET) {
       const verifyRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          secret: env.TURNSTILE_SECRET_KEY,
+          secret: env.TURNSTILE_SECRET,
           response: turnstileToken,
           remoteip: request.headers.get("CF-Connecting-IP") || "",
         }),

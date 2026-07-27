@@ -13,7 +13,7 @@ export interface Env {
   MONEY_FUSION_MERCHANT_ID?: string;
   USE_LIVE_PAYMENT?: string;
   VITE_TURNSTILE_SITE_KEY?: string;
-  TURNSTILE_SECRET_KEY?: string;
+  TURNSTILE_SECRET?: string;
 }
 
 export function getSupabaseAdmin(env: Env) {
