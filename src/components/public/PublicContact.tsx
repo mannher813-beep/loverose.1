@@ -221,6 +221,8 @@ export default function PublicContact() {
                 </div>
               </div>
 
+              <div ref={turnstileRef} className="cf-turnstile flex justify-center" />
+
               <button
                 type="submit"
                 disabled={isSubmitting}
