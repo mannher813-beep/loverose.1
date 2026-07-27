@@ -208,8 +208,8 @@ export default function PublicLayout({ currentPath, onNavigate, onShowAuth }: Pu
             </p>
             <div className="flex items-center gap-2 pt-1 text-xs">
               <Mail size={14} className="text-rose-400" />
-              <a href="mailto:support@loverose.com" className="text-slate-300 hover:text-rose-300 transition underline">
-                support@loverose.com
+              <a href="mailto:techsen237@gmail.com" className="text-slate-300 hover:text-rose-300 transition underline">
+                techsen237@gmail.com
               </a>
             </div>
           </div>

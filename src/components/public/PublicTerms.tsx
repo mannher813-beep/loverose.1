@@ -117,7 +117,7 @@ export default function PublicTerms() {
             <span>8. Droit Applicable et Litiges</span>
           </h2>
           <p>
-            Les présentes CGU sont régies par le droit en vigueur au siège social de l'Application (Côte d'Ivoire). Pour tout différend, nous vous invitons à contacter notre support à l'adresse <a href="mailto:support@loverose.com" className="text-rose-500 underline">support@loverose.com</a> pour trouver une solution amiable avant toute action contentieuse.
+            Les présentes CGU sont régies par le droit en vigueur au siège social de l'Application (Côte d'Ivoire). Pour tout différend, nous vous invitons à contacter notre support à l'adresse <a href="mailto:techsen237@gmail.com" className="text-rose-500 underline">techsen237@gmail.com</a> pour trouver une solution amiable avant toute action contentieuse.
           </p>
         </section>
       </div>
