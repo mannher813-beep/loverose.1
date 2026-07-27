@@ -91,7 +91,25 @@ export default function Auth({ onSuccess }: AuthProps) {
         </button>
 
         <p className="text-center text-[11px] text-slate-400 leading-relaxed">
-          En vous connectant, vous acceptez les <span className="hover:underline cursor-pointer font-medium text-slate-500">Conditions Générales d'Utilisation</span> et la politique de confidentialité de LoveRose (+18 ans).
+          En vous connectant, vous acceptez les{" "}
+          <a
+            href="/conditions-d-utilisation"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline cursor-pointer font-medium text-slate-500"
+          >
+            Conditions Générales d'Utilisation
+          </a>{" "}
+          et la{" "}
+          <a
+            href="/politique-de-confidentialite"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline cursor-pointer font-medium text-slate-500"
+          >
+            politique de confidentialité
+          </a>{" "}
+          de LoveRose (+18 ans).
         </p>
       </div>
     </div>
