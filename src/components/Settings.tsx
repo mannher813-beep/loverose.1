@@ -120,7 +120,7 @@ export default function Settings({
 
   // Slow/unstable connections can leave a storage upload hanging with no
   // response — this forces it to fail after `ms` instead of hanging forever.
-  const withUploadTimeout = <T,>(promise: PromiseLike<T>, ms = 20000): Promise<T> =>
+  const withUploadTimeout = <T,>(promise: PromiseLike<T>, ms = 45000): Promise<T> =>
     Promise.race([
       Promise.resolve(promise),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), ms)),

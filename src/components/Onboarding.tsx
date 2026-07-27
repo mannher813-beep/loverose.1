@@ -17,8 +17,12 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
 
   // Slow/unstable mobile connections can leave a storage upload hanging
   // indefinitely with no error and no progress — this wraps any promise so
-  // it always settles one way or another within `ms`.
-  const withTimeout = <T,>(promise: Promise<T>, ms = 20000): Promise<T> =>
+  // it always settles one way or another within `ms`. Default raised to 45s:
+  // 20s was cutting off real uploads on common 2G/3G connections, which then
+  // fell back to embedding multi-MB base64 images directly in the profile
+  // row — that huge payload was itself timing out on the final save (15s),
+  // producing the exact "connexion trop lente" failure at step 7/7.
+  const withTimeout = <T,>(promise: Promise<T>, ms = 45000): Promise<T> =>
     Promise.race([
       promise,
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), ms)),
@@ -211,7 +215,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
 
     setLoading(true);
     try {
-      let finalAvatarUrl = avatarPreview || "";
+      let finalAvatarUrl = "";
 
       // 1. Upload avatar to Supabase Storage if a real file is chosen
       if (avatarFile) {
@@ -233,14 +237,21 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
           const { data: { publicUrl } } = supabase.storage.from("loverose").getPublicUrl(filePath);
           finalAvatarUrl = publicUrl;
         } catch (uploadErr: any) {
-          // Network too slow/unstable to upload right now: fall back to the
-          // local preview instead of blocking the whole signup on it.
-          console.warn("Avatar upload failed or timed out, using local base64 fallback:", uploadErr);
+          // The avatar is required, so we can't just skip it like optional
+          // gallery photos. But embedding a multi-MB base64 fallback here
+          // was the real culprit behind "connexion trop lente" at the final
+          // step: it bloats the profile row past the save timeout below.
+          // Fail clearly instead, so the user knows exactly what to retry.
+          console.warn("Avatar upload failed or timed out:", uploadErr);
+          throw new Error("AVATAR_UPLOAD_FAILED");
         }
+      } else if (avatarPreview) {
+        finalAvatarUrl = avatarPreview;
       }
 
       // 2. Upload gallery photos to Supabase Storage
       const galleryUrls: string[] = [];
+      let galleryUploadFailures = 0;
       for (let i = 0; i < galleryFiles.length; i++) {
         const file = galleryFiles[i];
         if (file) {
@@ -262,13 +273,13 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
             const { data: { publicUrl } } = supabase.storage.from("loverose").getPublicUrl(filePath);
             galleryUrls.push(publicUrl);
           } catch (uploadErr: any) {
-            console.warn(`Gallery upload ${i + 1} failed or timed out, falling back to base64:`, uploadErr);
-            if (galleryPreviews[i]) {
-              galleryUrls.push(galleryPreviews[i] as string);
-            }
+            // Gallery photos are optional: rather than stuffing a multi-MB
+            // base64 fallback into the profile row (which then blows past
+            // the save timeout below), we just skip this one. The user can
+            // add it later from Settings once on a better connection.
+            console.warn(`Gallery upload ${i + 1} failed or timed out, skipping it:`, uploadErr);
+            galleryUploadFailures++;
           }
-        } else if (galleryPreviews[i]) {
-          galleryUrls.push(galleryPreviews[i] as string);
         }
       }
 
@@ -293,6 +304,8 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       }
 
       // 5. Update the profiles table row
+      // Payload here is now lean (Storage URLs only, never raw base64 images),
+      // so a generous-but-bounded 25s is enough even on a slow connection.
       const { error: profileErr } = await withTimeout(
         supabase
           .from("profiles")
@@ -313,19 +326,30 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
             phone_number: phoneLocal.trim(),
             updated_at: new Date().toISOString()
           }),
-        15000
+        25000
       );
 
       if (profileErr) throw profileErr;
+
+      if (galleryUploadFailures > 0) {
+        alert(
+          galleryUploadFailures === 1
+            ? "Votre profil est créé ! Une photo de galerie n'a pas pu être envoyée à cause de la connexion — vous pourrez l'ajouter plus tard depuis vos paramètres."
+            : `Votre profil est créé ! ${galleryUploadFailures} photos de galerie n'ont pas pu être envoyées à cause de la connexion — vous pourrez les ajouter plus tard depuis vos paramètres.`
+        );
+      }
 
       // Complete!
       onComplete();
     } catch (err: any) {
       console.error("Onboarding submission error:", err);
       const timedOut = err?.message === "TIMEOUT";
+      const avatarFailed = err?.message === "AVATAR_UPLOAD_FAILED";
       alert(
         timedOut
           ? "Votre connexion est trop lente ou instable pour terminer l'enregistrement. Vérifiez votre connexion et réessayez."
+          : avatarFailed
+          ? "Votre photo de profil n'a pas pu être envoyée (connexion trop lente ou instable). Réessayez, si possible avec une meilleure connexion ou en Wi-Fi."
           : "Une erreur s'est produite lors de la finalisation de votre profil : " + (err.message || err)
       );
     } finally {
