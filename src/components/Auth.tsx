@@ -25,6 +25,25 @@ export default function Auth({ onSuccess, initialIsSignUp }: AuthProps) {
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isInAppBrowser, setIsInAppBrowser] = useState(false);
+
+  useEffect(() => {
+    // Google blocks its OAuth flow inside in-app WebViews (Facebook,
+    // Instagram, Messenger, TikTok, etc.) for security reasons — this can't
+    // be worked around, only detected so we can point the user to their
+    // real browser instead of letting Google's login silently fail.
+    const ua = navigator.userAgent || "";
+    const inAppSignals = [
+      "FBAN", "FBAV", "FB_IAB", // Facebook / Messenger
+      "Instagram",
+      "Line/",
+      "MicroMessenger", // WeChat
+      "TikTok",
+      "Twitter",
+      "; wv)", // generic Android WebView marker
+    ];
+    setIsInAppBrowser(inAppSignals.some((s) => ua.includes(s)));
+  }, []);
 
   const turnstileRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | undefined>(undefined);
@@ -188,6 +207,15 @@ export default function Auth({ onSuccess, initialIsSignUp }: AuthProps) {
           <div className="bg-red-50 border border-red-100 text-red-600 text-xs p-3 rounded-xl flex items-center gap-2">
             <AlertCircle size={16} />
             <p className="flex-1 font-medium">{errorMsg}</p>
+          </div>
+        )}
+
+        {isInAppBrowser && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] p-3 rounded-xl flex items-start gap-2 leading-relaxed">
+            <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+            <span>
+              Pour vous connecter avec Google, ouvrez ce lien dans votre navigateur (⋮ puis <b>"Ouvrir dans le navigateur"</b>). L'email et mot de passe fonctionnent ici directement.
+            </span>
           </div>
         )}
 
