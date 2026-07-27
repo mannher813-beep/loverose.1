@@ -19,11 +19,13 @@ export default function PublicContact() {
   const [errorMsg, setErrorMsg] = useState("");
   const turnstileRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | undefined>(undefined);
+  const turnstileEnabledRef = useRef(false);
 
   // Render the Turnstile widget once the script is loaded
   useEffect(() => {
     const siteKey = window.__ENV__?.VITE_TURNSTILE_SITE_KEY;
     if (!siteKey || !turnstileRef.current) return;
+    turnstileEnabledRef.current = true;
 
     let attempts = 0;
     const tryRender = () => {
@@ -32,9 +34,15 @@ export default function PublicContact() {
           sitekey: siteKey,
           theme: "light",
         });
-      } else if (attempts < 20) {
+      } else if (attempts < 40) {
+        // Up to ~20s total: the external Turnstile script can be slow to
+        // load on a weak/slow mobile connection, and 5s wasn't enough.
         attempts += 1;
-        setTimeout(tryRender, 250);
+        setTimeout(tryRender, 500);
+      } else {
+        // Still not loaded after a generous window — don't block the form
+        // forever on a legitimate user with a bad connection.
+        turnstileEnabledRef.current = false;
       }
     };
     tryRender();
@@ -50,7 +58,7 @@ export default function PublicContact() {
     }
 
     const turnstileToken = window.turnstile?.getResponse(widgetIdRef.current);
-    if (!turnstileToken) {
+    if (turnstileEnabledRef.current && !turnstileToken) {
       setErrorMsg("Veuillez valider la vérification anti-robot avant d'envoyer.");
       return;
     }
@@ -156,6 +164,13 @@ export default function PublicContact() {
                 <h3 className="text-lg font-bold text-slate-900">Formulaire d'assistance</h3>
                 <p className="text-slate-400 text-xs">Veuillez renseigner les détails de votre demande.</p>
               </div>
+
+              {errorMsg && (
+                <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-600 text-xs font-semibold rounded-xl p-3">
+                  <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
 
               <div className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
