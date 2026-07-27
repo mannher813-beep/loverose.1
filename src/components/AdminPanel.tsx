@@ -25,6 +25,7 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Mail,
 } from "lucide-react";
 
 interface Report {
@@ -44,6 +45,16 @@ interface Message {
   contenu: string;
   created_at: string;
   message_type?: string;
+}
+
+interface ContactMessage {
+  id: string;
+  name?: string | null;
+  email: string;
+  subject?: string | null;
+  message: string;
+  status: "new" | "read" | "resolved";
+  created_at: string;
 }
 
 interface AdminStats {
@@ -67,7 +78,7 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ currentUser }: AdminPanelProps) {
-  const [tab, setTab] = useState<"users" | "reports" | "stats">("users");
+  const [tab, setTab] = useState<"users" | "reports" | "stats" | "messages">("users");
   const [users, setUsers] = useState<Profile[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [reportProfiles, setReportProfiles] = useState<Record<string, Profile>>({});
@@ -94,6 +105,9 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -247,6 +261,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     })();
     loadUsers();
     loadReports();
+    loadContactMessages();
 
     // Live updates: any profile change (new signup, online status, GPS ping...).
     // We used to call loadUsers() on every single event here, but with several
@@ -516,6 +531,32 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     }
   };
 
+  const loadContactMessages = async () => {
+    setMessagesLoading(true);
+    setMessagesError(null);
+    try {
+      const { data, error } = await supabase
+        .from("contact_messages")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setContactMessages((data as ContactMessage[]) || []);
+    } catch (err: any) {
+      setMessagesError(err?.message || "Impossible de charger les messages.");
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
+  const updateMessageStatus = async (msg: ContactMessage, status: "read" | "resolved") => {
+    const { error } = await supabase.from("contact_messages").update({ status }).eq("id", msg.id);
+    if (error) {
+      showToast("Erreur : " + error.message);
+    } else {
+      setContactMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, status } : m)));
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50">
       {/* Header */}
@@ -524,10 +565,10 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           <ShieldAlert size={20} className="text-rose-500" />
           <h1 className="font-extrabold text-lg text-slate-800">Panel Admin</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-1 px-1">
           <button
             onClick={() => setTab("users")}
-            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+            className={`flex-shrink-0 flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer whitespace-nowrap ${
               tab === "users" ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600"
             }`}
           >
@@ -535,7 +576,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           </button>
           <button
             onClick={() => setTab("reports")}
-            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer relative ${
+            className={`flex-shrink-0 flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer whitespace-nowrap relative ${
               tab === "reports" ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600"
             }`}
           >
@@ -543,10 +584,26 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           </button>
           <button
             onClick={() => {
+              setTab("messages");
+              if (contactMessages.length === 0) loadContactMessages();
+            }}
+            className={`flex-shrink-0 flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer whitespace-nowrap relative ${
+              tab === "messages" ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            <Mail size={15} /> Messages
+            {contactMessages.filter((m) => m.status === "new").length > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+                {contactMessages.filter((m) => m.status === "new").length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => {
               setTab("stats");
               if (!stats) loadStats();
             }}
-            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+            className={`flex-shrink-0 flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer whitespace-nowrap ${
               tab === "stats" ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600"
             }`}
           >
@@ -555,7 +612,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           <button
             onClick={() => setBroadcastOpen(true)}
             title="Envoyer une annonce à tous les utilisateurs"
-            className="flex items-center justify-center px-3 rounded-xl bg-indigo-100 text-indigo-600 hover:bg-indigo-200 cursor-pointer"
+            className="flex-shrink-0 flex items-center justify-center px-3 rounded-xl bg-indigo-100 text-indigo-600 hover:bg-indigo-200 cursor-pointer"
           >
             <Megaphone size={16} />
           </button>
@@ -857,6 +914,72 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
               <p className="text-center text-slate-400 text-sm pt-10">Aucun signalement pour l'instant.</p>
             )}
           </div>
+        ) : tab === "messages" ? (
+          messagesLoading ? (
+            <div className="flex flex-col items-center justify-center pt-10 gap-2">
+              <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-slate-400 text-xs font-medium">Chargement des messages...</p>
+            </div>
+          ) : messagesError ? (
+            <div className="flex flex-col items-center justify-center pt-10 gap-3 text-center px-6">
+              <p className="text-slate-500 text-sm font-medium">{messagesError}</p>
+              <button
+                onClick={loadContactMessages}
+                className="bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold px-5 py-2 rounded-full transition cursor-pointer"
+              >
+                Réessayer
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {contactMessages.map((m) => (
+                <div key={m.id} className="bg-white rounded-2xl p-3.5 shadow-sm space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-800 truncate">
+                        {m.name || "Anonyme"} <span className="text-slate-400 font-medium">· {m.email}</span>
+                      </p>
+                      {m.subject && <p className="text-xs text-rose-500 font-semibold mt-0.5">{m.subject}</p>}
+                    </div>
+                    <span
+                      className={`flex-shrink-0 text-[9px] font-bold uppercase px-2 py-1 rounded-full ${
+                        m.status === "new"
+                          ? "bg-red-100 text-red-600"
+                          : m.status === "read"
+                          ? "bg-amber-100 text-amber-600"
+                          : "bg-emerald-100 text-emerald-600"
+                      }`}
+                    >
+                      {m.status === "new" ? "Nouveau" : m.status === "read" ? "Lu" : "Résolu"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 whitespace-pre-wrap">{m.message}</p>
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-[10px] text-slate-400">{new Date(m.created_at).toLocaleString("fr-FR")}</p>
+                    <div className="flex gap-1.5">
+                      <a
+                        href={`mailto:${m.email}`}
+                        className="flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full cursor-pointer"
+                      >
+                        <Send size={11} /> Répondre
+                      </a>
+                      {m.status !== "resolved" && (
+                        <button
+                          onClick={() => updateMessageStatus(m, m.status === "new" ? "read" : "resolved")}
+                          className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-full cursor-pointer"
+                        >
+                          <CheckCircle2 size={11} /> {m.status === "new" ? "Marquer lu" : "Marquer résolu"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {contactMessages.length === 0 && (
+                <p className="text-center text-slate-400 text-sm pt-10">Aucun message pour l'instant.</p>
+              )}
+            </div>
+          )
         ) : statsLoading ? (
           <div className="flex flex-col items-center justify-center pt-10 gap-2">
             <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
