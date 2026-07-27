@@ -112,11 +112,18 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     setCampaignLoading(true);
     setCampaignResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke("send-reengagement-campaign", { body: payload });
+      const { data, error } = await withTimeout(
+        supabase.functions.invoke("send-reengagement-campaign", { body: payload }),
+        30000
+      );
       if (error) throw error;
       setCampaignResult(data);
     } catch (err: any) {
-      setCampaignResult({ error: err.message || "Erreur inconnue lors de l'envoi." });
+      setCampaignResult({
+        error: err.message === "TIMEOUT"
+          ? "La requête a pris trop de temps (connexion lente ou trop d'utilisateurs à traiter). Réessayez, ou vérifiez la boîte mail malgré tout : l'envoi a peut-être quand même abouti côté serveur."
+          : (err.message || "Erreur inconnue lors de l'envoi."),
+      });
     } finally {
       setCampaignLoading(false);
     }
@@ -1083,9 +1090,10 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                 <button
                   onClick={() => invokeCampaign({ testEmail: campaignTestEmail })}
                   disabled={campaignLoading || !campaignTestEmail.trim()}
-                  className="px-4 bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition cursor-pointer whitespace-nowrap"
+                  className="px-4 bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition cursor-pointer whitespace-nowrap flex items-center gap-2"
                 >
-                  Envoyer le test
+                  {campaignLoading ? <Loader2 size={14} className="animate-spin" /> : null}
+                  {campaignLoading ? "Envoi..." : "Envoyer le test"}
                 </button>
               </div>
               <p className="text-[11px] text-slate-400">Reprend les vraies données du premier utilisateur éligible, envoyées uniquement à cette adresse.</p>
