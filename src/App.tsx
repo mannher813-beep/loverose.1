@@ -743,6 +743,28 @@ export default function App() {
     }
   }
 
+  // Guest Auth Page (full page, not a popup)
+  if (!currentUser && (showGuestAuthModal || currentPath === "/connexion" || currentPath === "/inscription")) {
+    return (
+      <Auth
+        initialIsSignUp={currentPath === "/inscription"}
+        onBack={() => {
+          setShowGuestAuthModal(false);
+          setCurrentPath("/");
+          window.history.pushState(null, "", "/");
+        }}
+        onSuccess={() => {
+          setShowGuestAuthModal(false);
+          setIsLoading(true);
+          if (currentPath === "/connexion" || currentPath === "/inscription") {
+            setCurrentPath("/");
+            window.history.pushState(null, "", "/");
+          }
+        }}
+      />
+    );
+  }
+
   const getRemainingDays = () => {
     if (!subscription || !subscription.end_date) return 0;
     const diff = new Date(subscription.end_date).getTime() - new Date().getTime();
@@ -1056,37 +1078,6 @@ export default function App() {
           </button>
         )}
       </footer>
-
-      {/* Guest Auth Dialog Popup Modal */}
-      {(showGuestAuthModal || currentPath === "/connexion" || currentPath === "/inscription") && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in font-sans">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => {
-                setShowGuestAuthModal(false);
-                if (currentPath === "/connexion" || currentPath === "/inscription") {
-                  setCurrentPath("/");
-                  window.history.pushState(null, "", "/");
-                }
-              }}
-              className="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-full transition cursor-pointer z-10"
-              title="Fermer"
-            >
-              <X size={18} />
-            </button>
-            <Auth
-              onSuccess={() => {
-                setShowGuestAuthModal(false);
-                setIsLoading(true);
-                if (currentPath === "/connexion" || currentPath === "/inscription") {
-                  setCurrentPath("/");
-                  window.history.pushState(null, "", "/");
-                }
-              }}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Floating Push Toast Banner Overlay */}
       {toastNotification && (
