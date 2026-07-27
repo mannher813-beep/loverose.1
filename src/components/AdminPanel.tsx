@@ -1088,7 +1088,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                   className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-medium outline-none focus:border-rose-400"
                 />
                 <button
-                  onClick={() => invokeCampaign({ testEmail: campaignTestEmail })}
+                  onClick={() => invokeCampaign({ testEmail: campaignTestEmail, dryRun: false })}
                   disabled={campaignLoading || !campaignTestEmail.trim()}
                   className="px-4 bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition cursor-pointer whitespace-nowrap flex items-center gap-2"
                 >
@@ -1114,7 +1114,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
               <button
                 onClick={() => {
                   if (campaignConfirmText.trim() !== "ENVOYER") return;
-                  invokeCampaign({});
+                  invokeCampaign({ dryRun: false });
                   setCampaignConfirmText("");
                 }}
                 disabled={campaignLoading || campaignConfirmText.trim() !== "ENVOYER"}
