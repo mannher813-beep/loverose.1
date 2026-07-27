@@ -596,6 +596,36 @@ export default function App() {
     );
   }
 
+  // Public marketing/legal pages (CGU, politique de confidentialité, FAQ, etc.).
+  // PublicLayout existed and handled all of these paths correctly already,
+  // but was never actually mounted anywhere — so links to e.g.
+  // /conditions-d-utilisation had nowhere real to go and silently fell
+  // through to the guest Discover screen instead.
+  const publicMarketingPaths = [
+    "/accueil",
+    "/a-propos",
+    "/faq",
+    "/contact",
+    "/conditions-d-utilisation",
+    "/politique-de-confidentialite",
+  ];
+  if (!currentUser && publicMarketingPaths.includes(currentPath)) {
+    return (
+      <PublicLayout
+        currentPath={currentPath}
+        onNavigate={(path) => {
+          setCurrentPath(path);
+          window.history.pushState({}, "", path);
+        }}
+        onShowAuth={(signUp) => {
+          setCurrentPath("/");
+          window.history.replaceState({}, document.title, "/");
+          setShowGuestAuthModal(true);
+        }}
+      />
+    );
+  }
+
 
   const isPaymentSuccess = currentPath === "/payment-success" || urlParams.get("payment") === "success";
   const isPaymentCancel = currentPath === "/payment-cancel" || urlParams.get("payment") === "cancel";
