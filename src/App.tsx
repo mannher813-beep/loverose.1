@@ -92,8 +92,15 @@ export default function App() {
       return;
     }
 
-    const dismissed = localStorage.getItem(`push_banner_dismissed_${currentUser.id}`);
-    if (permission === "default" && !dismissed) {
+    // Instead of hiding the banner forever after one dismissal, re-show it
+    // every few days as long as permission is still "default" (never
+    // actually decided) — dismissing isn't the same as declining, and a lot
+    // of people just close banners reflexively on first open without
+    // meaning to opt out permanently.
+    const RENOTIFY_AFTER_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+    const dismissedAt = Number(localStorage.getItem(`push_banner_dismissed_${currentUser.id}`) || 0);
+    const shouldReshow = !dismissedAt || Date.now() - dismissedAt > RENOTIFY_AFTER_MS;
+    if (permission === "default" && shouldReshow) {
       setShowPushBanner(true);
     }
   }, [currentUser]);
@@ -105,7 +112,10 @@ export default function App() {
     setIsEnablingPush(false);
     setShowPushBanner(false);
     if (currentUser) {
-      localStorage.setItem(`push_banner_dismissed_${currentUser.id}`, "1");
+      // Successful subscription, or an explicit browser-level "denied", both
+      // stop mattering here (nothing left to re-ask) — only a lingering
+      // "default" (banner dismissed without deciding) should come back later.
+      localStorage.setItem(`push_banner_dismissed_${currentUser.id}`, String(Date.now()));
     }
     if (!result.success) {
       console.warn("Push subscription not enabled:", result.reason);
@@ -115,7 +125,7 @@ export default function App() {
   const dismissPushBanner = () => {
     setShowPushBanner(false);
     if (currentUser) {
-      localStorage.setItem(`push_banner_dismissed_${currentUser.id}`, "1");
+      localStorage.setItem(`push_banner_dismissed_${currentUser.id}`, String(Date.now()));
     }
   };
 
