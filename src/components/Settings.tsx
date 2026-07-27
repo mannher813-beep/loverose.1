@@ -143,35 +143,47 @@ export default function Settings({
   // anyone who granted browser notification permission before this feature
   // existed — the banner never reappears for them since permission is no
   // longer "default", so this is the only way they can ever get subscribed.
-  const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported">(
-    getNotificationPermission()
+  // "subscribed" is only ever set after we've actually confirmed a real
+  // PushManager subscription was created and saved — never just because the
+  // browser's Notification.permission happens to be "granted". Those two
+  // are NOT the same thing: permission can be granted while the actual
+  // subscription creation silently failed (slow service worker, storage
+  // error, etc.), and there needs to be a way to see that and retry instead
+  // of the card falsely claiming success with no way to fix it.
+  const [pushStatus, setPushStatus] = useState<"checking" | "subscribed" | "needs_action" | "denied" | "error" | "unsupported">(
+    "checking"
   );
   const [isTogglingPush, setIsTogglingPush] = useState(false);
 
-  useEffect(() => {
-    // Mirrors the same silent fix as App.tsx: permission can already be
-    // "granted" from before this feature existed, in which case no button
-    // here was ever clicked and no subscription row was ever actually saved.
-    if (currentUser && getNotificationPermission() === "granted") {
-      subscribeToPushNotifications(currentUser.id).catch(() => {});
+  const ensurePushSubscription = async (silent: boolean) => {
+    if (!currentUser) return;
+    if (!isPushSupported()) {
+      setPushStatus("unsupported");
+      return;
     }
+    const permission = getNotificationPermission();
+    if (permission === "denied") {
+      setPushStatus("denied");
+      return;
+    }
+    if (permission === "default") {
+      // Never auto-prompt without a click — only reflect that action is needed.
+      setPushStatus("needs_action");
+      return;
+    }
+    // permission === "granted": actually verify/create the subscription itself.
+    if (!silent) setIsTogglingPush(true);
+    const result = await subscribeToPushNotifications(currentUser.id);
+    if (!silent) setIsTogglingPush(false);
+    setPushStatus(result.success ? "subscribed" : "error");
+  };
+
+  useEffect(() => {
+    ensurePushSubscription(true);
   }, [currentUser]);
 
   const handleEnablePushFromSettings = async () => {
-    if (!currentUser) return;
-    setIsTogglingPush(true);
-    const result = await subscribeToPushNotifications(currentUser.id);
-    setPushPermission(getNotificationPermission());
-    setIsTogglingPush(false);
-    if (!result.success) {
-      if (result.reason === "denied") {
-        alert("Les notifications ont été bloquées dans les réglages de votre navigateur/téléphone. Autorisez-les depuis les paramètres du navigateur pour les activer ici.");
-      } else if (result.reason === "unsupported") {
-        alert("Votre navigateur ne supporte pas les notifications push.");
-      } else {
-        alert("Impossible d'activer les notifications pour le moment. Réessayez plus tard.");
-      }
-    }
+    await ensurePushSubscription(false);
   };
 
   // Verification badge payment (500 FCFA, separate from Premium subscription)
@@ -1061,11 +1073,15 @@ export default function Settings({
                   <span>Notifications Push</span>
                 </h4>
 
-                {pushPermission === "unsupported" ? (
+                {pushStatus === "checking" ? (
+                  <p className="text-slate-400 text-[10px] leading-relaxed flex items-center gap-1.5">
+                    <Loader2 className="animate-spin" size={12} /> Vérification...
+                  </p>
+                ) : pushStatus === "unsupported" ? (
                   <p className="text-slate-400 text-[10px] leading-relaxed">
                     Votre navigateur ne supporte pas les notifications push.
                   </p>
-                ) : pushPermission === "granted" ? (
+                ) : pushStatus === "subscribed" ? (
                   <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-2xl text-center space-y-1.5 text-[10px] font-semibold text-emerald-800">
                     <CheckCircle className="mx-auto text-emerald-500" size={20} fill="white" />
                     <p>Notifications activées</p>
@@ -1073,10 +1089,25 @@ export default function Settings({
                       Vous recevrez une alerte sur ce téléphone même quand l'app est fermée.
                     </p>
                   </div>
-                ) : pushPermission === "denied" ? (
+                ) : pushStatus === "denied" ? (
                   <p className="text-slate-500 text-[10px] leading-relaxed">
                     Vous avez bloqué les notifications pour LoveRose. Autorisez-les depuis les réglages de notifications de votre navigateur ou de votre téléphone, puis revenez sur cette page.
                   </p>
+                ) : pushStatus === "error" ? (
+                  <div className="bg-amber-50 border border-amber-100 p-3 rounded-2xl text-center space-y-2 text-[10px] font-semibold text-amber-800">
+                    <AlertTriangle className="mx-auto text-amber-500" size={20} />
+                    <p>La permission est accordée, mais l'activation a échoué</p>
+                    <p className="font-medium text-amber-600 leading-relaxed">
+                      Vérifiez votre connexion et réessayez. Si ça persiste, réinstallez l'app depuis l'écran d'accueil.
+                    </p>
+                    <button
+                      onClick={handleEnablePushFromSettings}
+                      disabled={isTogglingPush}
+                      className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    >
+                      {isTogglingPush ? <Loader2 className="animate-spin" size={12} /> : <span>Réessayer</span>}
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <p className="text-slate-500 text-[10px] leading-relaxed">
