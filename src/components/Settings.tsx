@@ -148,6 +148,15 @@ export default function Settings({
   );
   const [isTogglingPush, setIsTogglingPush] = useState(false);
 
+  useEffect(() => {
+    // Mirrors the same silent fix as App.tsx: permission can already be
+    // "granted" from before this feature existed, in which case no button
+    // here was ever clicked and no subscription row was ever actually saved.
+    if (currentUser && getNotificationPermission() === "granted") {
+      subscribeToPushNotifications(currentUser.id).catch(() => {});
+    }
+  }, [currentUser]);
+
   const handleEnablePushFromSettings = async () => {
     if (!currentUser) return;
     setIsTogglingPush(true);

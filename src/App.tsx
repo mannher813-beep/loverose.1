@@ -79,6 +79,19 @@ export default function App() {
   useEffect(() => {
     if (!currentUser || !isPushSupported()) return;
     const permission = getNotificationPermission();
+
+    if (permission === "granted") {
+      // Permission was already granted (often from before this feature
+      // existed), so the banner below never fires for this person and they'd
+      // otherwise stay silently unsubscribed forever. No prompt needed here —
+      // the browser won't re-ask — so just make sure a real subscription
+      // actually exists and is saved. subscribeToPushNotifications() reuses
+      // any existing PushManager subscription, so this is a harmless no-op
+      // for anyone already properly subscribed.
+      subscribeToPushNotifications(currentUser.id).catch(() => {});
+      return;
+    }
+
     const dismissed = localStorage.getItem(`push_banner_dismissed_${currentUser.id}`);
     if (permission === "default" && !dismissed) {
       setShowPushBanner(true);
