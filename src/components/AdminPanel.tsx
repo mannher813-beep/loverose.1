@@ -26,6 +26,7 @@ import {
   XCircle,
   Loader2,
   Mail,
+  HeartHandshake,
 } from "lucide-react";
 
 interface Report {
@@ -78,7 +79,7 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ currentUser }: AdminPanelProps) {
-  const [tab, setTab] = useState<"users" | "reports" | "stats" | "messages">("users");
+  const [tab, setTab] = useState<"users" | "reports" | "stats" | "messages" | "campaign">("users");
   const [users, setUsers] = useState<Profile[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [reportProfiles, setReportProfiles] = useState<Record<string, Profile>>({});
@@ -102,6 +103,24 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [broadcastSending, setBroadcastSending] = useState(false);
+  const [campaignLoading, setCampaignLoading] = useState(false);
+  const [campaignResult, setCampaignResult] = useState<any>(null);
+  const [campaignTestEmail, setCampaignTestEmail] = useState("");
+  const [campaignConfirmText, setCampaignConfirmText] = useState("");
+
+  const invokeCampaign = async (payload: { dryRun?: boolean; testEmail?: string }) => {
+    setCampaignLoading(true);
+    setCampaignResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-reengagement-campaign", { body: payload });
+      if (error) throw error;
+      setCampaignResult(data);
+    } catch (err: any) {
+      setCampaignResult({ error: err.message || "Erreur inconnue lors de l'envoi." });
+    } finally {
+      setCampaignLoading(false);
+    }
+  };
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
@@ -610,6 +629,14 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
             <BarChart3 size={15} /> Stats
           </button>
           <button
+            onClick={() => setTab("campaign")}
+            className={`flex-shrink-0 flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer whitespace-nowrap ${
+              tab === "campaign" ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            <HeartHandshake size={15} /> Campagne
+          </button>
+          <button
             onClick={() => setBroadcastOpen(true)}
             title="Envoyer une annonce à tous les utilisateurs"
             className="flex-shrink-0 flex items-center justify-center px-3 rounded-xl bg-indigo-100 text-indigo-600 hover:bg-indigo-200 cursor-pointer"
@@ -1017,6 +1044,100 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                 <p className="text-[11px] font-semibold text-slate-400 mt-0.5">{card.label}</p>
               </div>
             ))}
+          </div>
+        ) : tab === "campaign" ? (
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+              <div className="flex items-center gap-2">
+                <HeartHandshake size={18} className="text-rose-500" />
+                <h2 className="font-extrabold text-slate-800">Campagne de relance par email</h2>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Envoie un email personnalisé (likes reçus avec photos, matchs en attente, nouveautés) à tous les
+                utilisateurs inscrits qui ont un email confirmé et n'ont pas demandé à se désinscrire.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+              <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">1. Aperçu (aucun email envoyé)</p>
+              <button
+                onClick={() => invokeCampaign({ dryRun: true })}
+                disabled={campaignLoading}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {campaignLoading ? <Loader2 size={14} className="animate-spin" /> : null}
+                Voir combien de personnes seraient contactées
+              </button>
+            </div>
+
+            <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+              <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">2. Recevoir un email de test</p>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={campaignTestEmail}
+                  onChange={(e) => setCampaignTestEmail(e.target.value)}
+                  placeholder="votre@email.com"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-medium outline-none focus:border-rose-400"
+                />
+                <button
+                  onClick={() => invokeCampaign({ testEmail: campaignTestEmail })}
+                  disabled={campaignLoading || !campaignTestEmail.trim()}
+                  className="px-4 bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition cursor-pointer whitespace-nowrap"
+                >
+                  Envoyer le test
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400">Reprend les vraies données du premier utilisateur éligible, envoyées uniquement à cette adresse.</p>
+            </div>
+
+            <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3 border-2 border-rose-100">
+              <p className="text-xs font-extrabold text-rose-500 uppercase tracking-wider">3. Envoyer à tous les utilisateurs</p>
+              <p className="text-[11px] text-slate-500">
+                Tapez <span className="font-mono font-bold">ENVOYER</span> pour confirmer, puis cliquez sur le bouton. Cette action envoie un vrai email à chaque utilisateur éligible.
+              </p>
+              <input
+                type="text"
+                value={campaignConfirmText}
+                onChange={(e) => setCampaignConfirmText(e.target.value)}
+                placeholder="ENVOYER"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-rose-400"
+              />
+              <button
+                onClick={() => {
+                  if (campaignConfirmText.trim() !== "ENVOYER") return;
+                  invokeCampaign({});
+                  setCampaignConfirmText("");
+                }}
+                disabled={campaignLoading || campaignConfirmText.trim() !== "ENVOYER"}
+                className="w-full py-3 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white font-extrabold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+              >
+                {campaignLoading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                Envoyer la campagne à tous les utilisateurs
+              </button>
+            </div>
+
+            {campaignResult && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+                {campaignResult.error ? (
+                  <p className="text-xs font-bold text-red-500">{campaignResult.error}</p>
+                ) : (
+                  <>
+                    <p className="text-xs font-bold text-slate-700">
+                      {campaignResult.dryRun ? "Aperçu" : "Résultat de l'envoi"} — {campaignResult.totalEligible} éligible(s)
+                      {typeof campaignResult.sent === "number" && `, ${campaignResult.sent} envoyé(s)`}
+                      {typeof campaignResult.failed === "number" && campaignResult.failed > 0 && `, ${campaignResult.failed} échec(s)`}
+                    </p>
+                    {(campaignResult.results || [])
+                      .filter((r: any) => r.status === "failed")
+                      .slice(0, 5)
+                      .map((r: any, i: number) => (
+                        <p key={i} className="text-[10px] text-red-400">{r.email}: {r.error}</p>
+                      ))}
+                  </>
+                )}
+              </div>
+            )}
           </div>
         ) : null}
       </div>

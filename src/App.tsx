@@ -71,6 +71,20 @@ export default function App() {
     }
   }, [currentUser]);
 
+  // Deep-link: emails/push links can open a specific tab directly via ?tab=notifications etc.
+  useEffect(() => {
+    if (!currentUser) return;
+    const params = new URLSearchParams(window.location.search);
+    const requestedTab = params.get("tab");
+    const validTabs = ["discover", "chat", "shop", "profile", "settings", "notifications"] as const;
+    if (requestedTab && (validTabs as readonly string[]).includes(requestedTab)) {
+      setActiveTab(requestedTab as typeof activeTab);
+      params.delete("tab");
+      const cleanSearch = params.toString();
+      window.history.replaceState({}, document.title, window.location.pathname + (cleanSearch ? `?${cleanSearch}` : ""));
+    }
+  }, [currentUser]);
+
   // Offer to enable real push notifications (Chrome/Android) once per logged-in user,
   // unless they've already granted/denied permission or dismissed the banner before.
   const [showPushBanner, setShowPushBanner] = useState<boolean>(false);
