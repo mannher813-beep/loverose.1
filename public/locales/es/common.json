@@ -1,0 +1,47 @@
+{
+  "appName": "LoveRose",
+  "tagline": "Citas en África y más allá",
+  "nav": {
+    "discover": "Descubrir",
+    "chat": "Mensajes",
+    "shop": "Tienda",
+    "notifications": "Notificaciones",
+    "profile": "Perfil",
+    "settings": "Ajustes",
+    "admin": "Admin",
+    "likes": "A quién le gusto"
+  },
+  "buttons": {
+    "save": "Guardar",
+    "saveChanges": "Guardar cambios",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "continue": "Continuar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "confirm": "Confirmar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "send": "Enviar",
+    "retry": "Reintentar",
+    "seeMore": "Ver más",
+    "viewProfile": "Ver perfil",
+    "upgradeToPremium": "Hazte Premium",
+    "logout": "Cerrar sesión"
+  },
+  "menus": {
+    "options": "Opciones",
+    "report": "Reportar",
+    "block": "Bloquear",
+    "unblock": "Desbloquear"
+  },
+  "toasts": {
+    "savedSuccessfully": "¡Guardado con éxito!",
+    "errorOccurred": "Ocurrió un error.",
+    "copiedToClipboard": "Copiado al portapapeles.",
+    "slowConnection": "Su conexión es demasiado lenta o inestable. Verifique su conexión e inténtelo de nuevo."
+  },
+  "loading": "Cargando...",
+  "premiumOnly": "Solo para miembros Premium",
+  "online": "En línea"
+}

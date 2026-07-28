@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { Heart, AlertCircle, Loader2, Mail, Lock, ShieldCheck, Sparkles, MessageCircleHeart, ArrowLeft } from "lucide-react";
 
@@ -33,6 +34,7 @@ const HEART_PATTERN = [
 ];
 
 export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) {
+  const { t } = useTranslation("auth");
   const [mode, setMode] = useState<"login" | "signup">(initialIsSignUp ? "signup" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -108,22 +110,22 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
       if (error) throw error;
       onSuccess();
     } catch (err: any) {
-      setErrorMsg(err.message || "Impossible de démarrer l'authentification Google.");
+      setErrorMsg(err.message || t("errors.googleFailed"));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
+  const handleEmailAuth = async (e: FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
 
     if (!email || !password) {
-      setErrorMsg("Veuillez renseigner votre email et votre mot de passe.");
+      setErrorMsg(t("errors.missingFields"));
       return;
     }
     if (mode === "signup" && password.length < 6) {
-      setErrorMsg("Le mot de passe doit contenir au moins 6 caractères.");
+      setErrorMsg(t("errors.passwordTooShort"));
       return;
     }
 
@@ -134,7 +136,7 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
         const turnstileToken = window.turnstile?.getResponse(widgetIdRef.current);
         if (turnstileEnabledRef.current) {
           if (!turnstileToken) {
-            setErrorMsg("Veuillez valider la vérification anti-robot avant de continuer.");
+            setErrorMsg(t("errors.captchaRequired"));
             setIsLoading(false);
             return;
           }
@@ -145,7 +147,7 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
           });
           const verifyData = await verifyRes.json();
           if (!verifyRes.ok || !verifyData.success) {
-            setErrorMsg(verifyData.error || "Vérification anti-robot échouée. Veuillez réessayer.");
+            setErrorMsg(verifyData.error || t("errors.captchaFailed"));
             if (window.turnstile) window.turnstile.reset(widgetIdRef.current);
             setIsLoading(false);
             return;
@@ -165,7 +167,7 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
         onSuccess();
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "Une erreur est survenue. Veuillez réessayer.");
+      setErrorMsg(err.message || t("errors.generic"));
       if (mode === "signup" && window.turnstile) window.turnstile.reset(widgetIdRef.current);
     } finally {
       setIsLoading(false);
@@ -197,7 +199,7 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
                 onClick={onBack}
                 type="button"
                 className="md:hidden -ml-1 mr-1 p-1.5 rounded-full hover:bg-white/10 transition cursor-pointer"
-                title="Retour"
+                title={t("back")}
               >
                 <ArrowLeft size={20} />
               </button>
@@ -210,7 +212,7 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
                 Love<span className="text-rose-100">Rose</span>
               </h1>
               <p className="text-[10px] md:text-xs text-rose-50/80 uppercase tracking-widest font-semibold hidden md:block">
-                Rencontres d'Afrique &amp; d'Ailleurs
+                {t("tagline", { ns: "common" })}
               </p>
             </div>
           </div>
@@ -218,26 +220,26 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
           {/* Value proposition — desktop only, mobile keeps the strip minimal */}
           <div className="hidden md:block mt-10 space-y-8">
             <h2 className="text-3xl font-extrabold leading-snug">
-              Des rencontres vraies,<br />près de chez vous.
+              {t("heroTitleLine1")}<br />{t("heroTitleLine2")}
             </h2>
             <ul className="space-y-5 text-sm text-rose-50">
               <li className="flex items-start gap-3">
                 <span className="mt-0.5 bg-white/15 rounded-lg p-1.5"><ShieldCheck size={16} /></span>
-                <span>Profils vérifiés et modération active de la communauté.</span>
+                <span>{t("heroBullet1")}</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="mt-0.5 bg-white/15 rounded-lg p-1.5"><MessageCircleHeart size={16} /></span>
-                <span>Discutez librement dès qu'un match est réciproque.</span>
+                <span>{t("heroBullet2")}</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="mt-0.5 bg-white/15 rounded-lg p-1.5"><Sparkles size={16} /></span>
-                <span>Inscription gratuite, en moins de deux minutes.</span>
+                <span>{t("heroBullet3")}</span>
               </li>
             </ul>
           </div>
 
           <p className="hidden md:block text-[11px] text-rose-50/70">
-            © {new Date().getFullYear()} LoveRose. Réservé aux personnes majeures (+18 ans).
+            {t("copyrightNotice", { year: new Date().getFullYear() })}
           </p>
         </div>
       </div>
@@ -252,7 +254,7 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
               className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-rose-500 transition cursor-pointer"
             >
               <ArrowLeft size={15} />
-              Retour à l'accueil
+              {t("backToHome")}
             </button>
           </div>
         )}
@@ -265,25 +267,23 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
                 onClick={() => { setMode("login"); setErrorMsg(""); }}
                 className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${mode === "login" ? "bg-white text-rose-500 shadow-sm" : "text-slate-500"}`}
               >
-                Se connecter
+                {t("login")}
               </button>
               <button
                 type="button"
                 onClick={() => { setMode("signup"); setErrorMsg(""); }}
                 className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${mode === "signup" ? "bg-white text-rose-500 shadow-sm" : "text-slate-500"}`}
               >
-                S'inscrire
+                {t("signup")}
               </button>
             </div>
 
             <div>
               <h2 className="text-xl font-extrabold text-slate-900">
-                {mode === "signup" ? "Créez votre compte" : "Ravis de vous revoir"}
+                {mode === "signup" ? t("createYourAccount") : t("welcomeBack")}
               </h2>
               <p className="text-xs text-slate-500 mt-1">
-                {mode === "signup"
-                  ? "Rejoignez LoveRose avec Google, ou avec votre email et mot de passe."
-                  : "Connectez-vous avec Google, ou avec votre email et mot de passe."}
+                {mode === "signup" ? t("signupDescription") : t("connectDescription")}
               </p>
             </div>
 
@@ -297,9 +297,7 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
             {isInAppBrowser && (
               <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] p-3 rounded-xl flex items-start gap-2 leading-relaxed">
                 <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
-                <span>
-                  Pour vous connecter avec Google, ouvrez ce lien dans votre navigateur (⋮ puis <b>"Ouvrir dans le navigateur"</b>). L'email et mot de passe fonctionnent ici directement.
-                </span>
+                <Trans i18nKey="inAppBrowserWarning" ns="auth" components={{ b: <b /> }} />
               </div>
             )}
 
@@ -319,20 +317,20 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
                     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05"/>
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
-                  <span>Continuer avec Google</span>
+                  <span>{t("continueWithGoogle")}</span>
                 </>
               )}
             </button>
 
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ou</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("or")}</span>
               <div className="flex-1 h-px bg-slate-200" />
             </div>
 
             <form onSubmit={handleEmailAuth} className="space-y-3">
               <div>
-                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">Adresse Email</label>
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">{t("emailLabel")}</label>
                 <div className="relative">
                   <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -340,13 +338,13 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nom@exemple.com"
+                    placeholder={t("emailPlaceholder")}
                     className="w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 focus:border-rose-400 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl font-bold text-xs transition"
                   />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">Mot de passe</label>
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">{t("passwordLabel")}</label>
                 <div className="relative">
                   <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -373,33 +371,22 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
                 {isLoading ? (
                   <Loader2 className="animate-spin" size={16} />
                 ) : mode === "signup" ? (
-                  "Créer mon compte"
+                  t("createAccount")
                 ) : (
-                  "Se connecter"
+                  t("loginButton")
                 )}
               </button>
             </form>
 
             <p className="text-center text-[11px] text-slate-400 leading-relaxed pb-4">
-              En vous connectant, vous acceptez les{" "}
-              <a
-                href="/conditions-d-utilisation"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:underline cursor-pointer font-medium text-slate-500"
-              >
-                Conditions Générales d'Utilisation
-              </a>{" "}
-              et la{" "}
-              <a
-                href="/politique-de-confidentialite"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:underline cursor-pointer font-medium text-slate-500"
-              >
-                politique de confidentialité
-              </a>{" "}
-              de LoveRose (+18 ans).
+              <Trans
+                i18nKey="legalNotice"
+                ns="auth"
+                components={{
+                  1: <a href="/conditions-d-utilisation" target="_blank" rel="noopener noreferrer" className="hover:underline cursor-pointer font-medium text-slate-500" />,
+                  2: <a href="/politique-de-confidentialite" target="_blank" rel="noopener noreferrer" className="hover:underline cursor-pointer font-medium text-slate-500" />,
+                }}
+              />
             </p>
           </div>
         </div>

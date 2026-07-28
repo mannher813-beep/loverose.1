@@ -1,0 +1,47 @@
+{
+  "appName": "LoveRose",
+  "tagline": "Dating in Africa & Beyond",
+  "nav": {
+    "discover": "Discover",
+    "chat": "Messages",
+    "shop": "Shop",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "settings": "Settings",
+    "admin": "Admin",
+    "likes": "Who Likes Me"
+  },
+  "buttons": {
+    "save": "Save",
+    "saveChanges": "Save Changes",
+    "cancel": "Cancel",
+    "close": "Close",
+    "continue": "Continue",
+    "back": "Back",
+    "next": "Next",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "send": "Send",
+    "retry": "Retry",
+    "seeMore": "See more",
+    "viewProfile": "View Profile",
+    "upgradeToPremium": "Upgrade to Premium",
+    "logout": "Log Out"
+  },
+  "menus": {
+    "options": "Options",
+    "report": "Report",
+    "block": "Block",
+    "unblock": "Unblock"
+  },
+  "toasts": {
+    "savedSuccessfully": "Saved successfully!",
+    "errorOccurred": "Something went wrong.",
+    "copiedToClipboard": "Copied to clipboard.",
+    "slowConnection": "Your connection is too slow or unstable. Please check your connection and try again."
+  },
+  "loading": "Loading...",
+  "premiumOnly": "Premium members only",
+  "online": "Online"
+}

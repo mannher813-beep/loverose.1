@@ -1,0 +1,47 @@
+{
+  "appName": "LoveRose",
+  "tagline": "Rencontres d'Afrique & d'Ailleurs",
+  "nav": {
+    "discover": "Découvrir",
+    "chat": "Messagerie",
+    "shop": "Boutique",
+    "notifications": "Notifs",
+    "profile": "Profil",
+    "settings": "Paramètres",
+    "admin": "Admin",
+    "likes": "Qui m'aime"
+  },
+  "buttons": {
+    "save": "Enregistrer",
+    "saveChanges": "Enregistrer les modifications",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "continue": "Continuer",
+    "back": "Retour",
+    "next": "Suivant",
+    "confirm": "Confirmer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "send": "Envoyer",
+    "retry": "Réessayer",
+    "seeMore": "Voir plus",
+    "viewProfile": "Voir le profil",
+    "upgradeToPremium": "Passer Premium",
+    "logout": "Déconnexion"
+  },
+  "menus": {
+    "options": "Options",
+    "report": "Signaler",
+    "block": "Bloquer",
+    "unblock": "Débloquer"
+  },
+  "toasts": {
+    "savedSuccessfully": "Enregistré avec succès !",
+    "errorOccurred": "Une erreur est survenue.",
+    "copiedToClipboard": "Copié dans le presse-papiers.",
+    "slowConnection": "Votre connexion est trop lente ou instable. Vérifiez votre connexion et réessayez."
+  },
+  "loading": "Chargement...",
+  "premiumOnly": "Réservé aux membres Premium",
+  "online": "En ligne"
+}

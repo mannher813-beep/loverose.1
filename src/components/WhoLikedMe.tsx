@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
 import ProfileDetailModal from "./ProfileDetailModal";
@@ -219,7 +219,7 @@ export default function WhoLikedMe({
   }: {
     profile: Profile & { likedAt?: string; matchedAt?: string; viewedAt?: string };
     subtitle: string;
-    badge?: React.ReactNode;
+    badge?: ReactNode;
     onOpenProfile: () => void;
   }) => {
     const photo = profile.avatar_url || (profile.photos && profile.photos[0]) || "";
@@ -266,7 +266,7 @@ export default function WhoLikedMe({
     field,
   }: {
     title: string;
-    icon: React.ReactNode;
+    icon: ReactNode;
     color: string;
     people: (Profile & { likedAt?: string; matchedAt?: string; viewedAt?: string })[];
     field: "likedAt" | "matchedAt" | "viewedAt";
