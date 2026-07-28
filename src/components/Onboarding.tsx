@@ -4,6 +4,9 @@ import { compressImageIfNeeded } from "../lib/imageCompression";
 import { Profile } from "../types";
 import { Heart, Phone, MapPin, Smile, Compass, FileText, Camera, ArrowRight, ArrowLeft, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js";
+import { detectUserCountry } from "../lib/countries";
+import CountryDialSelect from "./CountryDialSelect";
 
 interface OnboardingProps {
   currentUser: any;
@@ -29,16 +32,10 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
     ]);
 
   // Form states
-  interface CountryCode {
-    iso_code: string;
-    name_fr: string;
-    dial_code: string;
-    flag_emoji: string;
-    phone_length: number;
-  }
-
-  const [countryCodes, setCountryCodes] = useState<CountryCode[]>([]);
-  const [selectedCountry, setSelectedCountry] = useState<CountryCode | null>(null);
+  // Pays + indicatif : plus de liste statique ni de table Supabase dédiée.
+  // selectedCountryIso est un code ISO 3166-1 alpha-2 ("CM", "FR", "US"...)
+  // résolu via libphonenumber-js (voir src/lib/countries.ts).
+  const [selectedCountryIso, setSelectedCountryIso] = useState<CountryCode | null>(null);
   const [phoneLocal, setPhoneLocal] = useState("");
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
@@ -123,30 +120,22 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
   };
 
   React.useEffect(() => {
-    async function fetchCountries() {
-      try {
-        const { data, error } = await supabase
-          .from("country_codes")
-          .select("*")
-          .eq("is_allowed_signup", true)
-          .order("name_fr");
-        if (!error && data) {
-          setCountryCodes(data);
-          // Auto-select Cameroon ('CM') or Ivory Coast ('CI') or first country
-          const defaultCountry = data.find(c => c.iso_code === "CM") || data.find(c => c.iso_code === "CI") || data[0];
-          setSelectedCountry(defaultCountry || null);
-        }
-      } catch (err) {
-        console.error("Error loading country codes:", err);
-      }
-    }
-    fetchCountries();
+    // Détection automatique du pays (géo-IP puis langue du navigateur),
+    // avec repli sur le Cameroun si la détection échoue. L'utilisateur
+    // reste toujours libre de changer le pays sélectionné ensuite.
+    let cancelled = false;
+    detectUserCountry("CM").then((iso) => {
+      if (!cancelled) setSelectedCountryIso(iso);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleNext = () => {
     // Basic validation per step
     if (step === 1) {
-      if (!selectedCountry) {
+      if (!selectedCountryIso) {
         alert("Veuillez sélectionner un pays.");
         return;
       }
@@ -154,9 +143,9 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
         alert("Veuillez renseigner votre numéro de téléphone.");
         return;
       }
-      const digitsOnly = phoneLocal.trim().replace(/\D/g, "");
-      if (digitsOnly.length !== selectedCountry.phone_length) {
-        alert(`Le numéro de téléphone pour ${selectedCountry.name_fr} doit contenir exactement ${selectedCountry.phone_length} chiffres.`);
+      const parsed = parsePhoneNumberFromString(phoneLocal.trim(), selectedCountryIso);
+      if (!parsed || !parsed.isValid()) {
+        alert("Ce numéro de téléphone n'est pas valide pour le pays sélectionné.");
         return;
       }
     }
@@ -290,7 +279,12 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       const finalBio = bio.trim() ? `${bio.trim()}\n\n${formattedHobbies}` : formattedHobbies;
 
       // 4. Try to update phone in Auth metadata
-      const formattedAuthPhone = selectedCountry ? `${selectedCountry.dial_code}${phoneLocal.trim().replace(/\D/g, '')}` : phoneLocal.trim();
+      // Numéro toujours enregistré au format international E.164 (ex: +237699887766),
+      // produit par libphonenumber-js plutôt que concaténé à la main.
+      const parsedPhone = selectedCountryIso
+        ? parsePhoneNumberFromString(phoneLocal.trim(), selectedCountryIso)
+        : null;
+      const formattedAuthPhone = parsedPhone?.number || phoneLocal.trim();
       try {
         await withTimeout(
           supabase.auth.updateUser({
@@ -322,8 +316,8 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
             avatar_url: finalAvatarUrl,
             photos: galleryUrls,
             verification_status: "none",
-            phone_country_code: selectedCountry?.iso_code || "",
-            phone_number: phoneLocal.trim(),
+            phone_country_code: selectedCountryIso || "",
+            phone_number: parsedPhone?.number || phoneLocal.trim(),
             updated_at: new Date().toISOString()
           }),
         25000
@@ -403,51 +397,35 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Téléphone portable</label>
                   
                   <div className="flex gap-2">
-                    <div className="w-1/3 relative">
-                      <select
-                        value={selectedCountry?.iso_code || ""}
-                        onChange={(e) => {
-                          const found = countryCodes.find(c => c.iso_code === e.target.value);
-                          if (found) setSelectedCountry(found);
-                        }}
-                        className="w-full h-[46px] px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-rose-500 appearance-none cursor-pointer"
-                      >
-                        {countryCodes.map((c) => (
-                          <option key={c.iso_code} value={c.iso_code}>
-                            {c.flag_emoji} {c.dial_code}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center px-1 text-slate-400 text-[10px]">
-                        ▼
-                      </div>
+                    <div className="w-1/3">
+                      <CountryDialSelect value={selectedCountryIso} onChange={setSelectedCountryIso} locale="fr" />
                     </div>
 
                     <div className="w-2/3">
                       <input
-                        type="text"
-                        pattern="[0-9]*"
-                        inputMode="numeric"
-                        placeholder={selectedCountry ? `Ex: 6${'0'.repeat(selectedCountry.phone_length - 1)}` : "677123456"}
+                        type="tel"
+                        placeholder="Votre numéro de téléphone"
                         value={phoneLocal}
-                        onChange={(e) => setPhoneLocal(e.target.value.replace(/\D/g, ""))}
+                        onChange={(e) => setPhoneLocal(e.target.value)}
                         className="w-full h-[46px] px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
                       />
                     </div>
                   </div>
 
-                  {selectedCountry && (
-                    <div className="flex justify-between items-center text-[10px] font-bold mt-1.5">
-                      <span className={`${phoneLocal.length !== selectedCountry.phone_length ? "text-slate-500" : "text-emerald-500"}`}>
-                        Chiffres : {phoneLocal.length} / {selectedCountry.phone_length} requis
-                      </span>
-                      {phoneLocal.length > 0 && phoneLocal.length !== selectedCountry.phone_length && (
-                        <span className="text-rose-500 font-bold">
-                          ⚠️ Longueur attendue : {selectedCountry.phone_length}
+                  {selectedCountryIso && phoneLocal.trim().length > 0 && (() => {
+                    const parsed = parsePhoneNumberFromString(phoneLocal.trim(), selectedCountryIso);
+                    const valid = !!parsed?.isValid();
+                    return (
+                      <div className="flex justify-between items-center text-[10px] font-bold mt-1.5">
+                        <span className={valid ? "text-emerald-500" : "text-slate-500"}>
+                          {valid ? `✓ Numéro valide : ${parsed?.number}` : "Numéro incomplet ou invalide"}
                         </span>
-                      )}
-                    </div>
-                  )}
+                        {!valid && (
+                          <span className="text-rose-500 font-bold">⚠️ Vérifiez le format</span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </motion.div>
             )}
