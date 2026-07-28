@@ -19,3 +19,24 @@ export function createSupabaseAdminClient(config: AppConfig): SupabaseClient {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
+
+/**
+ * Client Supabase "anon" — exactement la même clé que `VITE_SUPABASE_ANON_KEY`
+ * utilisée par `src/lib/supabase.ts` côté app React.
+ *
+ * Le domaine Auth doit passer par CE client (pas le client admin) pour tous
+ * les appels `supabase.auth.*` grand public (signUp, signInWithPassword,
+ * verifyOtp, resend, resetPasswordForEmail, refreshSession) : c'est
+ * exactement le comportement de Supabase Auth déjà en place côté app, ni
+ * plus ni moins de privilèges.
+ *
+ * `persistSession: false` et `autoRefreshToken: false` car ce client est
+ * partagé par tous les appels MCP (serveur sans état, sans session
+ * navigateur) : chaque outil doit toujours passer ses tokens explicitement
+ * plutôt que de compter sur une session interne au client.
+ */
+export function createSupabaseAnonClient(config: AppConfig): SupabaseClient {
+  return createClient(config.supabaseUrl, config.supabaseAnonKey, {
+    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+  });
+}

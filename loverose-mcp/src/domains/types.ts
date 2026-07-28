@@ -12,7 +12,10 @@ import type { AppConfig } from "../config/env.js";
  */
 export interface DomainDeps {
   server: McpServer;
+  /** Client service_role — contourne RLS, réservé aux opérations back-office. */
   admin: SupabaseClient;
+  /** Client anon — mêmes privilèges que l'app React (`src/lib/supabase.ts`). */
+  anon: SupabaseClient;
   config: AppConfig;
 }
 

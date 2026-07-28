@@ -44,7 +44,8 @@ loverose-mcp/
     │                            # `jwtRole()` déjà utilisé dans les Edge Functions
     ├── domains/
     │   ├── types.ts         # signature commune `register*Tools(deps)`
-    │   ├── auth/            # → src/components/Auth.tsx, Onboarding.tsx, table profiles
+    │   ├── auth/            # ✅ IMPLÉMENTÉ — register, login, logout, refreshSession,
+    │   │                    #    verifyPhoneOTP, verifyEmail, resendOTP, resetPassword
     │   ├── profile/         # → ProfileSettings.tsx, ProfileDetailModal.tsx, PublicProfile.tsx
     │   ├── discover/        # → Discover.tsx, WhoLikedMe.tsx, likes/matches/blocked_users
     │   ├── chat/            # → Chat.tsx, matches/messages/notifications
@@ -91,6 +92,42 @@ prévu pour de futurs outils strictement serveur-à-serveur — jamais pour
 authentifier un utilisateur final.
 
 Voir `src/core/auth/context.ts`.
+
+## Domaine Auth (implémenté)
+
+8 outils, tous des appels directs à Supabase Auth (aucune règle réimplémentée) :
+
+| Outil | Méthode Supabase Auth | Client utilisé |
+|---|---|---|
+| `register` | `auth.signUp` | anon |
+| `login` | `auth.signInWithPassword` | anon |
+| `logout` | `auth.admin.signOut(accessToken, scope)` | admin (service_role) |
+| `refreshSession` | `auth.refreshSession` | anon |
+| `verifyPhoneOTP` | `auth.verifyOtp` (type `sms`/`phone_change`) | anon |
+| `verifyEmail` | `auth.verifyOtp` (type `signup`/`email`/`email_change`) | anon |
+| `resendOTP` | `auth.resend` | anon |
+| `resetPassword` | `auth.resetPasswordForEmail` | anon |
+
+Un nouveau client "anon" (`core/supabaseClient.ts` → `createSupabaseAnonClient`)
+a été ajouté : les flux d'authentification grand public doivent utiliser
+exactement les mêmes privilèges que `src/lib/supabase.ts` côté app, jamais le
+client `service_role`. Seul `logout` utilise le client admin, car révoquer la
+session d'un token donné passe par l'API d'administration GoTrue.
+
+Nécessite la variable `SUPABASE_ANON_KEY` (voir `.env.example`), en plus de
+`SUPABASE_SERVICE_ROLE_KEY` déjà requise.
+
+**Gestion des erreurs** (`core/mcpResult.ts`) : chaque outil est enveloppé par
+`withMcpErrorHandling`, qui garantit qu'aucune exception ne s'échappe jamais
+d'un handler. Toute erreur Supabase Auth (identifiants invalides, OTP expiré,
+compte déjà existant, etc.) ou exception inattendue est renvoyée au client
+MCP sous la forme `{ content: [...], isError: true }` avec un message et,
+quand disponible, un `code`/`status` — jamais une erreur de protocole brute.
+
+Volontairement hors périmètre de ce domaine : la connexion Google
+(`signInWithOAuth`, flux de redirection navigateur non pertinent en MCP) et
+la vérification Turnstile (couche anti-bot Cloudflare séparée de Supabase
+Auth, gérée par `functions/api/verify-turnstile.ts`).
 
 ## Lancer le squelette (aucun outil ne répondra encore, mais le serveur démarre)
 

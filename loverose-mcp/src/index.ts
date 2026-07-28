@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 import { loadConfig } from "./config/env.js";
-import { createSupabaseAdminClient } from "./core/supabaseClient.js";
+import { createSupabaseAdminClient, createSupabaseAnonClient } from "./core/supabaseClient.js";
 import { createLogger } from "./core/logger.js";
 
 import { registerAuthTools } from "./domains/auth/index.js";
@@ -35,13 +35,14 @@ const logger = createLogger("bootstrap");
 async function main() {
   const config = loadConfig();
   const admin = createSupabaseAdminClient(config);
+  const anon = createSupabaseAnonClient(config);
 
   const server = new McpServer({
     name: "loverose-mcp",
     version: "0.1.0",
   });
 
-  const deps: DomainDeps = { server, admin, config };
+  const deps: DomainDeps = { server, admin, anon, config };
 
   // Enregistrement de chaque domaine métier. Chaque fonction est, pour
   // l'instant, un squelette sans outil (voir domains/*).

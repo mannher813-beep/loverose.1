@@ -13,6 +13,7 @@ export type McpTransportMode = "stdio" | "http";
 
 export interface AppConfig {
   supabaseUrl: string;
+  supabaseAnonKey: string;
   supabaseServiceRoleKey: string;
   appUrl: string;
   transport: McpTransportMode;
@@ -44,6 +45,7 @@ export function loadConfig(): AppConfig {
 
   return {
     supabaseUrl: required("SUPABASE_URL"),
+    supabaseAnonKey: required("SUPABASE_ANON_KEY"),
     supabaseServiceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY"),
     appUrl: process.env.APP_URL || "https://loverose.pages.dev",
     transport,
