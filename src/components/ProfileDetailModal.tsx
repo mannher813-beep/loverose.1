@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, MapPin, Sparkles, CheckCircle, Heart, MessageCircle, Lock, Eye } from "lucide-react";
 import { Profile } from "../types";
+import { supabase } from "../lib/supabase";
 
 interface ProfileDetailModalProps {
   profile: Profile;
@@ -14,6 +15,22 @@ interface ProfileDetailModalProps {
 
 export default function ProfileDetailModal({ profile, currentUserProfile, currentUser, isPremium = false, onClose, onStartChat, onAuthRequired }: ProfileDetailModalProps) {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+
+  // Log this as a profile view (for the "Qui a consulté mon profil" Premium
+  // feature) — only for real logged-in visits to someone else's profile.
+  // Best-effort: never blocks the UI or surfaces an error to the viewer.
+  useEffect(() => {
+    if (!currentUser || !profile?.uid || profile.uid === currentUser.id) return;
+    supabase
+      .from("profile_views")
+      .upsert(
+        { viewer_id: currentUser.id, viewed_id: profile.uid, created_at: new Date().toISOString() },
+        { onConflict: "viewer_id,viewed_id" }
+      )
+      .then(({ error }) => {
+        if (error) console.warn("Could not log profile view:", error);
+      });
+  }, [currentUser?.id, profile?.uid]);
 
   const handleChatClick = () => {
     if (!currentUser) {

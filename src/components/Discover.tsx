@@ -2,7 +2,7 @@ import { useState, useEffect, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
 import AdSlot from "./AdSlot";
-import { Heart, X, Sparkles, MapPin, CheckCircle, ShieldAlert, Filter, Send, MessageCircle, Eye, Star } from "lucide-react";
+import { Heart, X, Sparkles, MapPin, CheckCircle, ShieldAlert, Filter, Send, MessageCircle, Eye, Star, Lock, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ProfileDetailModal from "./ProfileDetailModal";
 import AdaptiveImage from "./AdaptiveImage";
@@ -14,6 +14,7 @@ interface DiscoverProps {
   isPremium?: boolean;
   onMatchDetected: (partner: Profile) => void;
   onAuthRequired?: () => void;
+  onOpenShop?: () => void;
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -68,12 +69,23 @@ function renderOnlineStatus(profile: Profile) {
   return null;
 }
 
-export default function Discover({ currentUser, currentUserProfile, isPremium = false, onMatchDetected, onAuthRequired }: DiscoverProps) {
+export default function Discover({ currentUser, currentUserProfile, isPremium = false, onMatchDetected, onAuthRequired, onOpenShop }: DiscoverProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedIntentsFilter, setSelectedIntentsFilter] = useState<string[]>([]);
+  // Advanced filters (Premium only — controls stay hidden/locked for free users)
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [ageFilterMin, setAgeFilterMin] = useState<number | null>(null);
+  const [ageFilterMax, setAgeFilterMax] = useState<number | null>(null);
+  const [verifiedOnlyFilter, setVerifiedOnlyFilter] = useState(false);
+  // Rewind (Premium): remembers only the very last swipe, and only when it's
+  // safely undoable — a like that produced an instant match is never stored
+  // here, since unmatching is a much bigger action than a simple rewind.
+  const [lastSwipe, setLastSwipe] = useState<{ profile: Profile; wasLiked: boolean } | null>(null);
+  const [isRewinding, setIsRewinding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [likedUids, setLikedUids] = useState<Set<string>>(new Set());
+  const [premiumUids, setPremiumUids] = useState<Set<string>>(new Set());
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportSuccess, setReportSuccess] = useState(false);
@@ -100,7 +112,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
     // Guests must pick a gender preference first; wait until they do.
     if (!currentUser && !guestGenderPref) return;
     loadProfiles();
-  }, [currentUser, selectedIntentsFilter, currentUserProfile?.preferences, guestGenderPref]);
+  }, [currentUser, selectedIntentsFilter, currentUserProfile?.preferences, guestGenderPref, ageFilterMin, ageFilterMax, verifiedOnlyFilter]);
 
   // Real-time subscription to update profile cards instantly when people go online/offline or change info
   useEffect(() => {
@@ -191,13 +203,20 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
           .gt("ends_at", new Date().toISOString())
       );
 
+      // Which candidates currently have an active Premium subscription — used
+      // to fulfil the "Mise en vedette de votre profil" perk promised in the
+      // Boutique. RLS blocks reading other users' subscriptions directly, so
+      // this goes through a SECURITY DEFINER RPC that only exposes the uid.
+      const premiumPromise = safe(supabase.rpc("get_active_premium_user_ids"));
+
       const [
         { data: likesData, error: likesErr },
         { data: blockedData, error: blockedErr },
         { data: profilesData, error },
         { data: boostsData, error: boostsErr },
+        { data: premiumData, error: premiumErr },
       ] = await Promise.race([
-        Promise.all([likesPromise, blockedPromise, profilesPromise, boostsPromise]),
+        Promise.all([likesPromise, blockedPromise, profilesPromise, boostsPromise, premiumPromise]),
         timeout,
       ]);
 
@@ -232,10 +251,20 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
         console.warn("Could not load profile_boosts, table may be missing:", boostsErr);
       }
 
+      // Active Premium subscribers, featured just below paid Boosts
+      const premiumUserIds = new Set<string>();
+      if (!premiumErr && premiumData) {
+        premiumData.forEach((row: any) => premiumUserIds.add(row.user_id));
+      } else if (premiumErr) {
+        console.warn("Could not load premium user ids:", premiumErr);
+      }
+      setPremiumUids(premiumUserIds);
+
       let filteredProfiles = profilesData || [];
 
       // Filter out profiles already liked or with missing complete profiles or too far based on max_distance_km
       const maxDist = currentUserProfile?.max_distance_km || 50;
+      const applyAdvancedFilters = isPremium;
       const unswiped = filteredProfiles.filter(p => {
         if (likedSet.has(p.uid)) return false;
         if (blockedSet.has(p.uid)) return false;
@@ -249,6 +278,13 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
           );
           if (dist > maxDist) return false;
         }
+
+        if (applyAdvancedFilters) {
+          if (ageFilterMin != null && p.age != null && p.age < ageFilterMin) return false;
+          if (ageFilterMax != null && p.age != null && p.age > ageFilterMax) return false;
+          if (verifiedOnlyFilter && p.verification_status !== "verified") return false;
+        }
+
         return true;
       });
       
@@ -268,21 +304,27 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       if (currentUser) {
         scored = unswiped.map(p => {
           const isBoosted = boostedUserIds.has(p.uid);
+          // Premium subscribers get featured placement too (marketed as "Mise
+          // en vedette de votre profil"), just below users with an active
+          // paid one-time Boost, which should always outrank it.
+          const isFeatured = premiumUserIds.has(p.uid);
           const score = calculateCompatibility(currentUserProfile, p);
-          return { profile: p, score, isBoosted };
+          return { profile: p, score, isBoosted, isFeatured };
         }).sort((a, b) => {
-          if (a.isBoosted && !b.isBoosted) return -1;
-          if (!a.isBoosted && b.isBoosted) return 1;
+          if (a.isBoosted !== b.isBoosted) return a.isBoosted ? -1 : 1;
+          if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
           return b.score - a.score;
         }).map(x => x.profile);
       } else {
         const boosted = unswiped.filter(p => boostedUserIds.has(p.uid));
-        const rest = shuffle(unswiped.filter(p => !boostedUserIds.has(p.uid)));
-        scored = [...boosted, ...rest];
+        const featured = unswiped.filter(p => !boostedUserIds.has(p.uid) && premiumUserIds.has(p.uid));
+        const rest = shuffle(unswiped.filter(p => !boostedUserIds.has(p.uid) && !premiumUserIds.has(p.uid)));
+        scored = [...boosted, ...featured, ...rest];
       }
 
       setProfiles(scored);
       setCurrentIndex(0);
+      setLastSwipe(null);
     } catch (err: any) {
       console.warn("Could not load profiles from database (possibly offline or unmigrated):", err);
       if (err?.message === "TIMEOUT" && retryAttempt < 1) {
@@ -359,16 +401,58 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
           .single();
 
         if (reciprocalLike) {
-          // It's a match! Inform parent component to show match popup
+          // It's a match! Inform parent component to show match popup.
+          // No rewind offered here: undoing a like after an instant match
+          // would mean unmatching, which is a bigger action than a rewind.
+          setLastSwipe(null);
           onMatchDetected(candidate);
+        } else {
+          setLastSwipe({ profile: candidate, wasLiked: true });
         }
       } catch (err) {
         console.error("Error swiping like:", err);
       }
+    } else {
+      // A pass never writes anything to the database, so it's always safe
+      // to rewind.
+      setLastSwipe({ profile: candidate, wasLiked: false });
     }
 
     // Advance to next profile
     setCurrentIndex(prev => prev + 1);
+  };
+
+  // Rewind (Premium): undo the very last swipe and bring that profile back.
+  const handleRewind = async () => {
+    if (!currentUser) {
+      if (onAuthRequired) onAuthRequired();
+      return;
+    }
+    if (!isPremium) {
+      alert("Le Rewind (annuler un swipe) est réservé aux membres Premium. Rendez-vous dans la Boutique pour en profiter !");
+      if (onOpenShop) onOpenShop();
+      return;
+    }
+    if (!lastSwipe || isRewinding) return;
+
+    setIsRewinding(true);
+    try {
+      if (lastSwipe.wasLiked) {
+        const { error } = await supabase
+          .from("likes")
+          .delete()
+          .eq("from_uid", currentUser.id)
+          .eq("to_uid", lastSwipe.profile.uid);
+        if (error) throw error;
+      }
+      setCurrentIndex(prev => Math.max(0, prev - 1));
+      setLastSwipe(null);
+    } catch (err) {
+      console.error("Error rewinding swipe:", err);
+      alert("Impossible d'annuler ce swipe pour le moment.");
+    } finally {
+      setIsRewinding(false);
+    }
   };
 
   const handleSuperLike = async () => {
@@ -515,6 +599,85 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                 );
               })}
             </div>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowAdvancedFilters(v => !v)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full transition whitespace-nowrap cursor-pointer ${
+                  ageFilterMin != null || ageFilterMax != null || verifiedOnlyFilter
+                    ? "bg-amber-400 text-white shadow-sm"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {isPremium ? <Sparkles size={13} /> : <Lock size={13} />}
+                <span>Filtres avancés</span>
+              </button>
+
+              {showAdvancedFilters && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-30 space-y-4">
+                  {!isPremium ? (
+                    <div className="text-center space-y-3 py-2">
+                      <Lock size={24} className="mx-auto text-rose-400" />
+                      <p className="text-xs font-bold text-slate-700">Filtres avancés réservés aux membres Premium</p>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Filtrez par tranche d'âge et n'affichez que les profils vérifiés.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-[10px] font-extrabold text-slate-500 uppercase mb-2">Tranche d'âge</p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={18}
+                            max={99}
+                            placeholder="Min"
+                            value={ageFilterMin ?? ""}
+                            onChange={(e) => setAgeFilterMin(e.target.value ? parseInt(e.target.value) : null)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-rose-400"
+                          />
+                          <span className="text-slate-400 text-xs">—</span>
+                          <input
+                            type="number"
+                            min={18}
+                            max={99}
+                            placeholder="Max"
+                            value={ageFilterMax ?? ""}
+                            onChange={(e) => setAgeFilterMax(e.target.value ? parseInt(e.target.value) : null)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-rose-400"
+                          />
+                        </div>
+                      </div>
+
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <CheckCircle size={13} className="text-emerald-500" />
+                          Profils vérifiés uniquement
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={verifiedOnlyFilter}
+                          onChange={(e) => setVerifiedOnlyFilter(e.target.checked)}
+                          className="w-4 h-4 accent-rose-500 cursor-pointer"
+                        />
+                      </label>
+
+                      <button
+                        onClick={() => {
+                          setAgeFilterMin(null);
+                          setAgeFilterMax(null);
+                          setVerifiedOnlyFilter(false);
+                        }}
+                        className="w-full text-center text-[11px] font-bold text-slate-400 hover:text-slate-600 cursor-pointer pt-1"
+                      >
+                        Réinitialiser
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </>
         ) : (
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
@@ -631,13 +794,21 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                   </div>
                 )}
 
-                {/* Verification Status Badge */}
-                {activeProfile.verification_status === "verified" && (
-                  <div className="absolute top-4 right-4 bg-emerald-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[9px] font-bold shadow-md uppercase tracking-wider z-10">
-                    <CheckCircle size={10} fill="white" className="text-emerald-500" />
-                    <span>Vérifié</span>
-                  </div>
-                )}
+                {/* Verification + Premium Status Badges */}
+                <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1.5">
+                  {activeProfile.verification_status === "verified" && (
+                    <div className="bg-emerald-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[9px] font-bold shadow-md uppercase tracking-wider">
+                      <CheckCircle size={10} fill="white" className="text-emerald-500" />
+                      <span>Vérifié</span>
+                    </div>
+                  )}
+                  {premiumUids.has(activeProfile.uid) && (
+                    <div className="bg-gradient-to-r from-amber-400 to-amber-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[9px] font-bold shadow-md uppercase tracking-wider">
+                      <Sparkles size={10} fill="white" className="text-amber-500" />
+                      <span>Premium</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Information Overlay Content */}
                 <div className="absolute bottom-0 left-0 right-0 p-5 text-white space-y-2.5 flex flex-col justify-end z-10">
@@ -720,6 +891,20 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
             {/* Swipe Action Buttons */}
             <div className="flex justify-center items-center gap-6 pb-2 flex-shrink-0">
               <button
+                id="swipe-rewind-btn"
+                onClick={handleRewind}
+                disabled={isRewinding || (isPremium && !lastSwipe)}
+                className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center transition cursor-pointer border border-slate-150 ${
+                  isPremium && !lastSwipe
+                    ? "bg-slate-50 text-slate-300 cursor-not-allowed"
+                    : "bg-white hover:bg-amber-50 text-amber-500 hover:scale-105 active:scale-95"
+                }`}
+                title={isPremium ? "Annuler le dernier swipe" : "Rewind (Premium)"}
+              >
+                {isPremium ? <RotateCcw size={16} /> : <Lock size={14} />}
+              </button>
+
+              <button
                 id="swipe-dislike-btn"
                 onClick={() => handleSwipe(false)}
                 className="w-14 h-14 bg-white hover:bg-red-50 text-red-500 hover:scale-105 active:scale-95 border border-slate-150 rounded-full shadow-md flex items-center justify-center transition cursor-pointer"
@@ -747,10 +932,12 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
               </button>
             </div>
 
-            {/* AdSlot when active suggestions are shown */}
-            <div className="w-full max-w-md mx-auto pt-1 pb-2 hidden sm:block flex-shrink-0">
-              <AdSlot slot="discovery_feed_1" userId={currentUser?.id} />
-            </div>
+            {/* AdSlot when active suggestions are shown — hidden for Premium (ad-free perk) */}
+            {!isPremium && (
+              <div className="w-full max-w-md mx-auto pt-1 pb-2 hidden sm:block flex-shrink-0">
+                <AdSlot slot="discovery_feed_1" userId={currentUser?.id} />
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center space-y-4">
@@ -770,10 +957,12 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
               </button>
             </div>
 
-            {/* AdSlot when suggestions are finished */}
-            <div className="w-full max-w-sm mx-auto">
-              <AdSlot slot="discovery_feed_empty" userId={currentUser?.id} />
-            </div>
+            {/* AdSlot when suggestions are finished — hidden for Premium (ad-free perk) */}
+            {!isPremium && (
+              <div className="w-full max-w-sm mx-auto">
+                <AdSlot slot="discovery_feed_empty" userId={currentUser?.id} />
+              </div>
+            )}
           </div>
         )}
       </div>

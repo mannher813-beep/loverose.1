@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
 import ProfileDetailModal from "./ProfileDetailModal";
-import { Heart, Star, Sparkles, Lock, Loader2, MapPin, MessageCircle } from "lucide-react";
+import { Heart, Star, Sparkles, Lock, Loader2, MapPin, MessageCircle, Eye } from "lucide-react";
 
 interface WhoLikedMeProps {
   currentUser: any;
@@ -22,6 +22,11 @@ interface LikeRow {
 interface MatchRow {
   id: string;
   users: string[];
+  created_at: string;
+}
+
+interface ViewRow {
+  viewer_id: string;
   created_at: string;
 }
 
@@ -47,6 +52,7 @@ export default function WhoLikedMe({
   const [superLikers, setSuperLikers] = useState<(Profile & { likedAt: string })[]>([]);
   const [likers, setLikers] = useState<(Profile & { likedAt: string })[]>([]);
   const [matches, setMatches] = useState<(Profile & { matchedAt: string })[]>([]);
+  const [viewers, setViewers] = useState<(Profile & { viewedAt: string })[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
@@ -59,7 +65,7 @@ export default function WhoLikedMe({
       setLoading(true);
       setErrorMsg("");
       try {
-        const [likesRes, matchesRes] = await withTimeout(
+        const [likesRes, matchesRes, viewsRes] = await withTimeout(
           Promise.all([
             supabase
               .from("likes")
@@ -71,14 +77,22 @@ export default function WhoLikedMe({
               .select("id, users, created_at")
               .contains("users", [currentUser.id])
               .order("created_at", { ascending: false }),
+            supabase
+              .from("profile_views")
+              .select("viewer_id, created_at")
+              .eq("viewed_id", currentUser.id)
+              .order("created_at", { ascending: false })
+              .limit(50),
           ])
         );
 
         if (likesRes.error) throw likesRes.error;
         if (matchesRes.error) throw matchesRes.error;
+        if (viewsRes.error) throw viewsRes.error;
 
         const likeRows = (likesRes.data || []) as LikeRow[];
         const matchRows = (matchesRes.data || []) as MatchRow[];
+        const viewRows = (viewsRes.data || []) as ViewRow[];
 
         const matchedUids = new Set(
           matchRows.map((m) => m.users.find((u) => u !== currentUser.id)).filter(Boolean) as string[]
@@ -88,7 +102,8 @@ export default function WhoLikedMe({
         // that belongs in the Matches section instead, not duplicated.
         const pendingLikeRows = likeRows.filter((l) => !matchedUids.has(l.from_uid));
         const uniqueLikerUids = Array.from(new Set(pendingLikeRows.map((l) => l.from_uid)));
-        const allProfileUids = Array.from(new Set([...uniqueLikerUids, ...matchedUids]));
+        const uniqueViewerUids = Array.from(new Set(viewRows.map((v) => v.viewer_id)));
+        const allProfileUids = Array.from(new Set([...uniqueLikerUids, ...matchedUids, ...uniqueViewerUids]));
 
         let profilesByUid = new Map<string, Profile>();
         if (allProfileUids.length > 0) {
@@ -118,9 +133,17 @@ export default function WhoLikedMe({
           matchList.push({ ...p, matchedAt: m.created_at });
         }
 
+        const viewerList: (Profile & { viewedAt: string })[] = [];
+        for (const v of viewRows) {
+          const p = profilesByUid.get(v.viewer_id);
+          if (!p) continue;
+          viewerList.push({ ...p, viewedAt: v.created_at });
+        }
+
         setSuperLikers(superLikeList);
         setLikers(likeList);
         setMatches(matchList);
+        setViewers(viewerList);
       } catch (err: any) {
         console.error("Error loading likes/matches:", err);
         setErrorMsg(
@@ -166,7 +189,7 @@ export default function WhoLikedMe({
             Réservé aux membres Premium
           </h2>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Découvrez qui vous a aimé, super liké, et retrouvez tous vos matchs en un seul endroit.
+            Découvrez qui vous a aimé, super liké, qui a visité votre profil, et retrouvez tous vos matchs en un seul endroit.
           </p>
         </div>
         <button
@@ -194,7 +217,7 @@ export default function WhoLikedMe({
     badge,
     onOpenProfile,
   }: {
-    profile: Profile & { likedAt?: string; matchedAt?: string };
+    profile: Profile & { likedAt?: string; matchedAt?: string; viewedAt?: string };
     subtitle: string;
     badge?: React.ReactNode;
     onOpenProfile: () => void;
@@ -245,8 +268,8 @@ export default function WhoLikedMe({
     title: string;
     icon: React.ReactNode;
     color: string;
-    people: (Profile & { likedAt?: string; matchedAt?: string })[];
-    field: "likedAt" | "matchedAt";
+    people: (Profile & { likedAt?: string; matchedAt?: string; viewedAt?: string })[];
+    field: "likedAt" | "matchedAt" | "viewedAt";
   }) => (
     <div className="space-y-3">
       <h3 className={`text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5 ${color}`}>
@@ -264,6 +287,8 @@ export default function WhoLikedMe({
               subtitle={
                 field === "likedAt"
                   ? `Il y a ${timeAgo(p.likedAt!).replace("il y a ", "")}`
+                  : field === "viewedAt"
+                  ? `Visite ${timeAgo(p.viewedAt!)}`
                   : `Match ${timeAgo(p.matchedAt!)}`
               }
               onOpenProfile={() => setSelectedProfile(p)}
@@ -315,6 +340,13 @@ export default function WhoLikedMe({
             color="text-violet-500"
             people={matches}
             field="matchedAt"
+          />
+          <Section
+            title="Visiteurs de votre profil"
+            icon={<Eye size={14} />}
+            color="text-sky-500"
+            people={viewers}
+            field="viewedAt"
           />
         </div>
       )}

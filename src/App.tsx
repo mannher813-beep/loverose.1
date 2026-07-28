@@ -981,6 +981,7 @@ export default function App() {
               isPremium={isPremiumUser}
               onMatchDetected={(partner) => setMatchedPartner(partner)}
               onAuthRequired={() => triggerAuthRequired(true)}
+              onOpenShop={() => setActiveTab('shop')}
             />
           </div>
           <div className={activeTab === 'chat' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
