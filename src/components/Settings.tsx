@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { 
   ShieldCheck, 
   CheckCircle, 
@@ -22,12 +23,23 @@ import {
   Lock, 
   Smartphone,
   ArrowRight,
-  XCircle
+  XCircle,
+  Globe
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { compressImageIfNeeded } from "../lib/imageCompression";
 import { Profile, VerificationRequest } from "../types";
 import { isPushSupported, getNotificationPermission, subscribeToPushNotifications } from "../lib/push";
+import { SUPPORTED_LANGUAGES } from "../i18n";
+
+// Libellés natifs des langues supportées (noms propres, pas de traduction
+// nécessaire). Dérivé de SUPPORTED_LANGUAGES pour ne jamais désynchroniser
+// ce sélecteur de la config i18n réelle (src/i18n/index.ts).
+const LANGUAGE_LABELS: Record<(typeof SUPPORTED_LANGUAGES)[number], { label: string; flag: string }> = {
+  fr: { label: "Français", flag: "🇫🇷" },
+  en: { label: "English", flag: "🇬🇧" },
+  es: { label: "Español", flag: "🇪🇸" },
+};
 
 interface SettingsProps {
   currentUser: any;
@@ -48,6 +60,12 @@ export default function Settings({
   isPremium = false,
   onAuthRequired
 }: SettingsProps) {
+  // Langue de l'interface : changeLanguage() met à jour tous les composants
+  // déjà connectés à react-i18next (via t()/useTranslation) et persiste le
+  // choix dans localStorage grâce au LanguageDetector déjà configuré dans
+  // src/i18n/index.ts (aucune logique de sauvegarde à écrire ici).
+  const { i18n } = useTranslation();
+
   // Navigation tabs within settings
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'security' | 'cgu' | 'privacy'>('profile');
 
@@ -1122,6 +1140,35 @@ export default function Settings({
                     </button>
                   </>
                 )}
+              </div>
+
+              {/* Langue de l'interface */}
+              <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-sm space-y-3">
+                <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                  <Globe className="text-rose-500" size={16} />
+                  <span>Langue</span>
+                </h4>
+                <div className="grid grid-cols-3 gap-2">
+                  {SUPPORTED_LANGUAGES.map((code) => {
+                    const { label, flag } = LANGUAGE_LABELS[code];
+                    const active = i18n.resolvedLanguage === code || i18n.language === code;
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => i18n.changeLanguage(code)}
+                        className={`flex flex-col items-center justify-center gap-1 py-2.5 rounded-2xl border text-[10px] font-bold transition cursor-pointer ${
+                          active
+                            ? "bg-rose-50 border-rose-300 text-rose-600"
+                            : "bg-slate-50/50 border-slate-150 text-slate-500 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span className="text-lg leading-none">{flag}</span>
+                        <span>{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
