@@ -255,6 +255,12 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
       }
 
       if (data?.payment_url) {
+        // Sauvegarde la référence AVANT la redirection : au retour sur l'app,
+        // PaymentSuccess.tsx la retrouve automatiquement et confirme le paiement
+        // sans aucune action manuelle de l'utilisateur.
+        if (data?.token) {
+          localStorage.setItem("last_payment_reference", data.token);
+        }
         // Redirect user directly to the official Money Fusion gateway
         window.location.href = data.payment_url;
       } else {

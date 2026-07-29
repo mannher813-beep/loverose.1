@@ -64,6 +64,8 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
 
     const checkPaymentStatus = async () => {
       try {
+        // 1. Lecture rapide de l'état actuel en base (déjà à jour si le webhook
+        //    Money Fusion est déjà arrivé côté serveur).
         const { data: dbPayment, error } = await supabase
           .from("payments")
           .select("*")
@@ -75,13 +77,31 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
         if (dbPayment) {
           setPlanName(dbPayment.plan_name);
           setAmount(dbPayment.montant);
-          if (dbPayment.statut === "success") {
-            setStatus("success");
-            clearInterval(pollInterval);
-            localStorage.removeItem("last_payment_reference");
-            if (userId && loadProfile) {
-              await loadProfile(userId);
-            }
+        }
+
+        if (dbPayment?.statut === "success") {
+          setStatus("success");
+          clearInterval(pollInterval);
+          localStorage.removeItem("last_payment_reference");
+          if (userId && loadProfile) {
+            await loadProfile(userId);
+          }
+          return;
+        }
+
+        // 2. Toujours en attente : on déclenche nous-mêmes la vérification réelle
+        //    auprès de Money Fusion (sans attendre un éventuel clic de l'utilisateur
+        //    ni le push serveur, qui peut parfois tarder).
+        const { data: verifyData } = await supabase.functions.invoke("moneyfusion-webhook", {
+          body: { tokenPay: activeRef },
+        });
+
+        if (verifyData?.statut === "success" || verifyData?.already) {
+          setStatus("success");
+          clearInterval(pollInterval);
+          localStorage.removeItem("last_payment_reference");
+          if (userId && loadProfile) {
+            await loadProfile(userId);
           }
         }
       } catch (dbErr) {
