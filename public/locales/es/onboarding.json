@@ -1,0 +1,100 @@
+{
+  "stepIndicator": "Paso {{current}} de {{total}}",
+
+  "phoneTitle": "Número de teléfono",
+  "phoneDescription": "Introduce tu número de móvil. Se usará para proteger tu cuenta de LoveRose y validar tus transacciones de recarga.",
+  "phoneLabel": "Teléfono móvil",
+  "phoneNumberPlaceholder": "Tu número de teléfono",
+  "phoneValidNumber": "✓ Número válido: {{number}}",
+  "phoneIncomplete": "Número incompleto o inválido",
+  "checkFormat": "⚠️ Verifica el formato",
+
+  "profileTitle": "Ubicación y perfil",
+  "profileDescription": "Ayúdanos a encontrar solteros cerca de ti.",
+  "fullNameLabel": "Nombre completo",
+  "fullNamePlaceholder": "Tu nombre",
+  "usernameLabel": "Nombre de usuario único",
+  "usernamePlaceholder": "Usuario",
+  "ageLabel": "Tu edad (18+)",
+  "ageError": "Debes tener al menos 18 años.",
+  "locationLabel": "País y ciudad",
+  "locationPlaceholder": "Ej: Abiyán, Costa de Marfil",
+  "genderLabel": "Mi género",
+  "genderOptions": { "homme": "Hombre", "femme": "Mujer", "autre": "Otro" },
+  "preferencesLabel": "Busco",
+  "preferencesOptions": { "femme": "Mujeres", "homme": "Hombres", "tous": "Todos" },
+
+  "hobbiesTitle": "Intereses",
+  "hobbiesDescription": "¿Qué te apasiona en tu día a día? Elige tus intereses favoritos.",
+  "hobbiesList": {
+    "Voyages": "Viajes",
+    "Cuisine & Gastronomie": "Cocina y Gastronomía",
+    "Musique & Concerts": "Música y Conciertos",
+    "Cinéma & Séries": "Cine y Series",
+    "Sports & Fitness": "Deportes y Fitness",
+    "Gaming": "Videojuegos",
+    "Lecture & Littérature": "Lectura y Literatura",
+    "Art & Design": "Arte y Diseño",
+    "Nature & Randonnée": "Naturaleza y Senderismo",
+    "Photographie": "Fotografía",
+    "Mode & Beauté": "Moda y Belleza",
+    "Animaux de compagnie": "Mascotas"
+  },
+
+  "intentsTitle": "Tus intenciones",
+  "intentsDescription": "Selecciona uno o varios tipos de relación que buscas (selección múltiple requerida).",
+  "intentsList": {
+    "Amitié": "Amistad",
+    "Relation amoureuse": "Relación amorosa",
+    "Rencontre d'un soir": "Encuentro casual",
+    "Relation libertine": "Relación libertina",
+    "Business / networking": "Negocios / networking"
+  },
+
+  "bioTitle": "Biografía",
+  "bioDescription": "Cuéntanos un poco sobre ti. Los perfiles con biografías honestas y atractivas reciben hasta un 80% más de contactos.",
+  "bioLabel": "Mi descripción",
+  "bioPlaceholder": "Ej: Apasionado del arte y los encuentros culturales, me encanta charlar con una buena copa y descubrir rincones insólitos...",
+  "bioCounter": "{{count}}/300 caracteres",
+
+  "avatarTitle": "Foto de perfil",
+  "avatarDescription": "Añade una foto real de ti. Se necesita un rostro visible y sonriente para verificar tu cuenta.",
+  "changePhoto": "Cambiar foto",
+  "chooseFile": "Elegir un archivo",
+  "previewAlt": "Vista previa",
+
+  "galleryTitle": "Tus fotos de galería",
+  "galleryDescription": "Añade hasta tres fotos reales para completar tu galería de LoveRose (opcional). ¡Los perfiles completos reciben 5 veces más interés!",
+  "galleryPhotoAlt": "Galería {{index}}",
+  "galleryPhotoLabel": "Foto {{index}}",
+  "galleryChange": "Cambiar",
+  "galleryCounter": "{{count}}/3 fotos de galería añadidas (opcional)",
+
+  "finishAction": "Finalizar registro",
+  "savingProgress": "Guardando...",
+  "uploadingAvatar": "Enviando tu foto de perfil...",
+  "uploadingGalleryPhoto": "Enviando la foto {{current}}/{{total}}...",
+  "finalizing": "Finalizando tu perfil...",
+
+  "validation": {
+    "selectCountry": "Por favor, selecciona un país.",
+    "phoneRequired": "Por favor, introduce tu número de teléfono.",
+    "phoneInvalid": "Este número de teléfono no es válido para el país seleccionado.",
+    "fullNameRequired": "Por favor, introduce tu nombre completo.",
+    "usernameRequired": "Por favor, elige un nombre de usuario único.",
+    "ageMinimum": "Debes tener al menos 18 años para registrarte.",
+    "locationRequired": "Por favor, indica tu país o ubicación.",
+    "hobbiesRequired": "Selecciona al menos un interés.",
+    "intentsRequired": "Por favor, marca al menos un tipo de relación que buscas.",
+    "bioTooShort": "Tu biografía debe tener al menos 10 caracteres para llamar la atención.",
+    "avatarRequired": "Por favor, elige o sube una foto de perfil.",
+    "photoTooLarge": "La foto es demasiado pesada. Elige una imagen de menos de 5 MB."
+  },
+  "errors": {
+    "timeout": "Tu conexión es demasiado lenta o inestable para completar el registro. Verifícala e inténtalo de nuevo.",
+    "avatarUploadFailed": "Tu foto de perfil no se pudo enviar (conexión lenta o inestable). Inténtalo de nuevo, si es posible con mejor conexión o Wi-Fi.",
+    "genericSubmit": "Ocurrió un error al finalizar tu perfil: {{message}}",
+    "gallerySkippedOne": "¡Tu perfil ha sido creado! Una foto de galería no se pudo enviar debido a la conexión — podrás añadirla más tarde desde Ajustes.",
+    "gallerySkippedMany": "¡Tu perfil ha sido creado! {{count}} fotos de galería no se pudieron enviar debido a la conexión — podrás añadirlas más tarde desde Ajustes."
+  }
+}

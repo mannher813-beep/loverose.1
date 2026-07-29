@@ -1,0 +1,100 @@
+{
+  "stepIndicator": "Step {{current}} of {{total}}",
+
+  "phoneTitle": "Phone number",
+  "phoneDescription": "Enter your mobile number. It will be used to secure your LoveRose account and to validate your top-up transactions.",
+  "phoneLabel": "Mobile phone",
+  "phoneNumberPlaceholder": "Your phone number",
+  "phoneValidNumber": "✓ Valid number: {{number}}",
+  "phoneIncomplete": "Incomplete or invalid number",
+  "checkFormat": "⚠️ Check the format",
+
+  "profileTitle": "Location & Profile",
+  "profileDescription": "Help us find singles near you.",
+  "fullNameLabel": "Full name",
+  "fullNamePlaceholder": "Your name",
+  "usernameLabel": "Unique username",
+  "usernamePlaceholder": "Username",
+  "ageLabel": "Your age (18+)",
+  "ageError": "You must be at least 18 years old.",
+  "locationLabel": "Country & city",
+  "locationPlaceholder": "e.g. Abidjan, Ivory Coast",
+  "genderLabel": "My gender",
+  "genderOptions": { "homme": "Man", "femme": "Woman", "autre": "Other" },
+  "preferencesLabel": "Looking for",
+  "preferencesOptions": { "femme": "Women", "homme": "Men", "tous": "Everyone" },
+
+  "hobbiesTitle": "Interests",
+  "hobbiesDescription": "What gets you excited day to day? Pick your favorite interests.",
+  "hobbiesList": {
+    "Voyages": "Travel",
+    "Cuisine & Gastronomie": "Cooking & Food",
+    "Musique & Concerts": "Music & Concerts",
+    "Cinéma & Séries": "Movies & TV Shows",
+    "Sports & Fitness": "Sports & Fitness",
+    "Gaming": "Gaming",
+    "Lecture & Littérature": "Reading & Literature",
+    "Art & Design": "Art & Design",
+    "Nature & Randonnée": "Nature & Hiking",
+    "Photographie": "Photography",
+    "Mode & Beauté": "Fashion & Beauty",
+    "Animaux de compagnie": "Pets"
+  },
+
+  "intentsTitle": "Your intentions",
+  "intentsDescription": "Select one or more types of connection you're looking for (multiple selection required).",
+  "intentsList": {
+    "Amitié": "Friendship",
+    "Relation amoureuse": "Relationship",
+    "Rencontre d'un soir": "One-night meetup",
+    "Relation libertine": "Casual/open relationship",
+    "Business / networking": "Business / networking"
+  },
+
+  "bioTitle": "Bio",
+  "bioDescription": "Tell us a bit about yourself. Profiles with honest, engaging bios get up to 80% more contacts.",
+  "bioLabel": "My description",
+  "bioPlaceholder": "e.g. Passionate about art and cultural meetups, I love chatting over a good drink and discovering hidden gems...",
+  "bioCounter": "{{count}}/300 characters",
+
+  "avatarTitle": "Profile photo",
+  "avatarDescription": "Add a real photo of yourself. A visible, smiling face is required to verify your account.",
+  "changePhoto": "Change photo",
+  "chooseFile": "Choose a file",
+  "previewAlt": "Preview",
+
+  "galleryTitle": "Your gallery photos",
+  "galleryDescription": "Add up to three real photos to complete your LoveRose gallery (optional). Complete profiles get 5x more interest!",
+  "galleryPhotoAlt": "Gallery {{index}}",
+  "galleryPhotoLabel": "Photo {{index}}",
+  "galleryChange": "Change",
+  "galleryCounter": "{{count}}/3 gallery photos added (optional)",
+
+  "finishAction": "Finish sign-up",
+  "savingProgress": "Saving...",
+  "uploadingAvatar": "Uploading your profile photo...",
+  "uploadingGalleryPhoto": "Uploading photo {{current}}/{{total}}...",
+  "finalizing": "Finalizing your profile...",
+
+  "validation": {
+    "selectCountry": "Please select a country.",
+    "phoneRequired": "Please enter your phone number.",
+    "phoneInvalid": "This phone number is not valid for the selected country.",
+    "fullNameRequired": "Please enter your full name.",
+    "usernameRequired": "Please choose a unique username.",
+    "ageMinimum": "You must be at least 18 years old to sign up.",
+    "locationRequired": "Please enter your country or location.",
+    "hobbiesRequired": "Select at least one interest.",
+    "intentsRequired": "Please check at least one type of connection you're looking for.",
+    "bioTooShort": "Your bio must be at least 10 characters long to catch attention.",
+    "avatarRequired": "Please choose or upload a profile photo.",
+    "photoTooLarge": "The photo is too large. Please choose an image smaller than 5 MB."
+  },
+  "errors": {
+    "timeout": "Your connection is too slow or unstable to finish saving. Please check your connection and try again.",
+    "avatarUploadFailed": "Your profile photo could not be uploaded (slow or unstable connection). Please try again, ideally on a better connection or Wi-Fi.",
+    "genericSubmit": "An error occurred while finalizing your profile: {{message}}",
+    "gallerySkippedOne": "Your profile has been created! One gallery photo could not be uploaded due to your connection — you can add it later from Settings.",
+    "gallerySkippedMany": "Your profile has been created! {{count}} gallery photos could not be uploaded due to your connection — you can add them later from Settings."
+  }
+}
