@@ -248,7 +248,7 @@ export async function fulfillPayment(
   }
 
   // I. ADMIN ANNOUNCEMENT PAID UNLOCK (announcement_unlock:ANNOUNCEMENT_ID)
-  else if (planId.startsWith("announcement_unlock:")) {
+  if (planId.startsWith("announcement_unlock:")) {
     const announcementId = planId.split(":")[1];
     const { error: unlockErr } = await supabaseAdmin
       .from("announcement_unlocks")
