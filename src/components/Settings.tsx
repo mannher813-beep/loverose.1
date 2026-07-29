@@ -370,16 +370,53 @@ export default function Settings({
     }
   };
 
-  const handleRemovePhoto = (index: number) => {
-    setPhotos(prev => {
-      const next = prev.filter((_, i) => i !== index);
-      if (next.length > 0) {
-        setAvatarUrl(next[0]);
-      } else {
-        setAvatarUrl("");
+  const handleRemovePhoto = async (index: number) => {
+    const removedUrl = photos[index];
+    const next = photos.filter((_, i) => i !== index);
+    const nextAvatarUrl = next.length > 0 ? next[0] : "";
+
+    // Mise à jour immédiate de l'affichage
+    setPhotos(next);
+    setAvatarUrl(nextAvatarUrl);
+
+    if (!currentUser?.id) return;
+
+    try {
+      // Suppression définitive en base : sans ce write, la photo réapparaît
+      // au prochain rechargement puisqu'elle reste dans la ligne "profiles".
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          photos: next,
+          avatar_url: nextAvatarUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("uid", currentUser.id);
+
+      if (error) throw error;
+
+      // Nettoyage du fichier dans le storage (best-effort, ne bloque pas
+      // l'utilisateur si ça échoue : l'important est que la photo ait
+      // disparu du profil).
+      if (removedUrl) {
+        const marker = "/loverose/";
+        const idx = removedUrl.indexOf(marker);
+        if (idx !== -1) {
+          const storagePath = decodeURIComponent(removedUrl.slice(idx + marker.length));
+          supabase.storage.from("loverose").remove([storagePath]).then(({ error: storageErr }) => {
+            if (storageErr) console.warn("Impossible de supprimer le fichier du storage:", storageErr);
+          });
+        }
       }
-      return next;
-    });
+    } catch (err: any) {
+      console.error("Error deleting photo:", err);
+      // On restaure l'état précédent puisque la suppression en base a échoué,
+      // pour éviter que l'utilisateur croie la photo supprimée alors qu'elle
+      // est toujours présente en base.
+      setPhotos(photos);
+      setAvatarUrl(photos[0] || "");
+      alert("Impossible de supprimer cette photo pour le moment (connexion instable). Réessayez.");
+    }
   };
 
   const handleIntentToggle = (intent: string) => {
