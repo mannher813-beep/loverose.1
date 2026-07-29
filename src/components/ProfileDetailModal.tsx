@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, MapPin, Sparkles, CheckCircle, Heart, MessageCircle, Lock, Eye } from "lucide-react";
+import { ArrowLeft, MapPin, Sparkles, CheckCircle, Heart, MessageCircle, Lock, X, Flag, ExternalLink } from "lucide-react";
 import { Profile } from "../types";
 import { supabase } from "../lib/supabase";
 
@@ -11,10 +11,25 @@ interface ProfileDetailModalProps {
   onClose: () => void;
   onStartChat?: () => void;
   onAuthRequired?: () => void;
+  /** Optional: only Discover currently wires this up (its own report flow). */
+  onReport?: () => void;
+  /** Optional: lets the person pass directly from the full profile page, like Discover's swipe stack. */
+  onPass?: () => void;
 }
 
-export default function ProfileDetailModal({ profile, currentUserProfile, currentUser, isPremium = false, onClose, onStartChat, onAuthRequired }: ProfileDetailModalProps) {
+export default function ProfileDetailModal({
+  profile,
+  currentUserProfile,
+  currentUser,
+  isPremium = false,
+  onClose,
+  onStartChat,
+  onAuthRequired,
+  onReport,
+  onPass,
+}: ProfileDetailModalProps) {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [showScoreInfo, setShowScoreInfo] = useState(false);
 
   // Log this as a profile view (for the "Qui a consulté mon profil" Premium
   // feature) — only for real logged-in visits to someone else's profile.
@@ -32,135 +47,182 @@ export default function ProfileDetailModal({ profile, currentUserProfile, curren
       });
   }, [currentUser?.id, profile?.uid]);
 
+  // Lock body scroll while this full page is open, like a real screen push.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const handleChatClick = () => {
     if (!currentUser) {
       if (onAuthRequired) onAuthRequired();
       return;
     }
-    if (onStartChat) {
-      onStartChat();
-    }
+    if (onStartChat) onStartChat();
   };
 
   // Calculate mutual compatibility score
+  const sharedIntents = (currentUserProfile?.relationship_intents || []).filter((x) =>
+    (profile.relationship_intents || []).includes(x)
+  );
   const calculateCompatibility = (): number => {
-    if (!currentUserProfile || !currentUserProfile.relationship_intents || !profile.relationship_intents) {
+    if (!currentUserProfile?.relationship_intents?.length || !profile.relationship_intents?.length) {
       return 15; // baseline score
     }
-
-    const myIntents = currentUserProfile.relationship_intents;
-    const otherIntents = profile.relationship_intents;
-    const intersection = myIntents.filter(x => otherIntents.includes(x));
-    
-    if (intersection.length > 0) {
-      const maxLen = Math.max(myIntents.length, otherIntents.length);
-      const ratio = intersection.length / maxLen;
-      return Math.round(50 + (ratio * 45));
+    if (sharedIntents.length > 0) {
+      const maxLen = Math.max(currentUserProfile.relationship_intents.length, profile.relationship_intents.length);
+      const ratio = sharedIntents.length / maxLen;
+      return Math.round(50 + ratio * 45);
     }
-
     return 15;
   };
-
   const compatibilityScore = calculateCompatibility();
-  
+
   // Safe extraction of profile photos
-  const profilePhotos: string[] = Array.isArray(profile.photos) && profile.photos.length > 0 
-    ? profile.photos 
-    : [profile.avatar_url].filter(Boolean) as string[];
+  const profilePhotos: string[] = Array.isArray(profile.photos) && profile.photos.length > 0
+    ? profile.photos
+    : ([profile.avatar_url].filter(Boolean) as string[]);
+
+  const goToPhoto = (delta: number) => {
+    setActivePhotoIndex((i) => {
+      const next = i + delta;
+      if (next < 0) return 0;
+      if (next >= profilePhotos.length) return profilePhotos.length - 1;
+      return next;
+    });
+  };
+
+  const mapsUrl = profile.location
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile.location)}`
+    : null;
 
   return (
-    <div id="profile-detail-modal" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-55 animate-fade-in font-sans">
-      <div className="bg-white rounded-3xl overflow-hidden w-full max-w-md shadow-2xl relative flex flex-col border border-slate-100 max-h-[90vh]">
-        
-        {/* Close Button absolute top right */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-30 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition cursor-pointer shadow-sm"
-          title="Fermer"
-        >
-          <X size={18} />
-        </button>
+    <div id="profile-detail-page" className="fixed inset-0 bg-white z-55 flex flex-col font-sans overscroll-none">
+      {/* Photo stage */}
+      <div className="relative flex-shrink-0 bg-slate-900" style={{ height: "58vh", minHeight: 320 }}>
+        <img
+          key={activePhotoIndex}
+          src={profilePhotos[activePhotoIndex] || `https://api.dicebear.com/7.x/adventurer/svg?seed=${profile.full_name || profile.uid}`}
+          alt={profile.full_name || "Profil"}
+          referrerPolicy="no-referrer"
+          className="w-full h-full object-cover"
+        />
 
-        {/* Profile Header Image with gradient overlay */}
-        <div className="relative h-72 bg-slate-100 flex-shrink-0">
-          <img
-            src={profilePhotos[activePhotoIndex] || `https://api.dicebear.com/7.x/adventurer/svg?seed=${profile.full_name || profile.uid}`}
-            alt={profile.full_name || "Profil"}
-            referrerPolicy="no-referrer"
-            className="w-full h-full object-cover"
-          />
-          
-          {/* Compatibility badge */}
-          <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3.5 py-1.5 rounded-full flex items-center space-x-1.5 z-10 shadow-sm border border-rose-500/10">
-            <Sparkles size={13} className="text-rose-500 animate-pulse fill-rose-500" />
-            <span className="text-xs font-bold text-slate-800">
-              {compatibilityScore}% compatible
-            </span>
-          </div>
-
-          {/* Certified verification badge */}
-          {profile.verification_status === "verified" && (
-            <div className="absolute top-4 right-14 bg-emerald-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[10px] font-bold shadow-md uppercase tracking-wider z-10">
-              <CheckCircle size={10} fill="white" className="text-emerald-500" />
-              <span>Vérifié</span>
-            </div>
-          )}
-
-          {/* Gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent"></div>
-
-          {/* Quick Name / Location inside image bottom */}
-          <div className="absolute bottom-4 left-5 right-5 text-white">
-            <div className="flex items-baseline space-x-2">
-              <h2 className="text-2xl font-black tracking-tight">{profile.full_name || "Membre LoveRose"}</h2>
-              {profile.age && <span className="text-xl font-bold">{profile.age} ans</span>}
-            </div>
-            {profile.location && (
-              <p className="text-xs text-slate-200 flex items-center mt-1">
-                <MapPin size={12} className="mr-1 text-rose-400" />
-                <span>{profile.location}</span>
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Multi-Photo Dots/Thumbnails list */}
+        {/* Instagram/Tinder-style progress segments */}
         {profilePhotos.length > 1 && (
-          <div className="bg-slate-900 px-4 py-2 flex items-center space-x-2 overflow-x-auto border-b border-slate-800 flex-shrink-0">
-            {profilePhotos.map((photo, index) => {
-              const isBlurred = !isPremium && index > 0;
-              return (
-                <button
-                  key={index}
-                  type="button"
-                  disabled={isBlurred}
-                  onClick={() => setActivePhotoIndex(index)}
-                  className={`relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border-2 transition cursor-pointer ${
-                    activePhotoIndex === index 
-                      ? "border-rose-500 scale-105 shadow-md shadow-rose-500/20" 
-                      : "border-transparent opacity-75 hover:opacity-100"
-                  }`}
-                >
-                  <img src={photo} alt="" className={`w-full h-full object-cover ${isBlurred ? "blur-md select-none pointer-events-none" : ""}`} />
-                  {isBlurred && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                      <Lock size={12} className="text-amber-400" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
+          <div className="absolute top-3 left-3 right-3 flex gap-1 z-20">
+            {profilePhotos.map((_, i) => (
+              <div key={i} className="flex-1 h-1 rounded-full bg-white/30 overflow-hidden">
+                <div className={`h-full bg-white transition-all ${i <= activePhotoIndex ? "w-full" : "w-0"}`} />
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Scrollable details view */}
-        <div className="flex-1 p-5 space-y-5 overflow-y-auto min-h-0 bg-white">
-          
+        {/* Tap zones to navigate photos (left = prev, right = next) */}
+        {profilePhotos.length > 1 && (
+          <>
+            <button
+              aria-label="Photo précédente"
+              onClick={() => goToPhoto(-1)}
+              className="absolute left-0 top-0 bottom-0 w-1/2 z-10 cursor-pointer"
+            />
+            <button
+              aria-label="Photo suivante"
+              onClick={() => goToPhoto(1)}
+              className="absolute right-0 top-0 bottom-0 w-1/2 z-10 cursor-pointer"
+            />
+          </>
+        )}
+
+        {/* Gradient for legibility */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/5 to-black/40 pointer-events-none" />
+
+        {/* Header bar: back + report */}
+        <div className="absolute top-0 left-0 right-0 pt-7 px-3 flex items-center justify-between z-30">
+          <button
+            onClick={onClose}
+            className="bg-black/40 hover:bg-black/60 text-white rounded-full p-2.5 transition cursor-pointer backdrop-blur-sm"
+            title="Retour"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          {onReport && (
+            <button
+              onClick={onReport}
+              className="bg-black/40 hover:bg-black/60 text-white rounded-full p-2.5 transition cursor-pointer backdrop-blur-sm"
+              title="Signaler"
+            >
+              <Flag size={16} />
+            </button>
+          )}
+        </div>
+
+        {/* Compatibility badge — tap for a quick explanation */}
+        <div className="absolute top-16 left-3 z-30">
+          <button
+            onClick={() => setShowScoreInfo((v) => !v)}
+            className="bg-white/95 backdrop-blur px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm border border-rose-500/10 cursor-pointer"
+          >
+            <Sparkles size={13} className="text-rose-500 fill-rose-500" />
+            <span className="text-xs font-black text-slate-800">{compatibilityScore}% compatible</span>
+          </button>
+          {showScoreInfo && (
+            <div className="mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 p-3 w-56 text-[11px] text-slate-600 leading-relaxed">
+              {sharedIntents.length > 0 ? (
+                <>Vous partagez <strong className="text-rose-600">{sharedIntents.length}</strong> intention{sharedIntents.length > 1 ? "s" : ""} de rencontre avec {profile.full_name?.split(" ")[0] || "cette personne"}.</>
+              ) : (
+                <>Score de base — complétez vos intentions de rencontre pour affiner la compatibilité.</>
+              )}
+            </div>
+          )}
+        </div>
+
+        {profile.verification_status === "verified" && (
+          <div className="absolute top-16 right-3 bg-emerald-500 text-white px-2.5 py-1.5 rounded-full flex items-center gap-1 text-[10px] font-bold shadow-md uppercase tracking-wider z-30">
+            <CheckCircle size={11} fill="white" className="text-emerald-500" />
+            <span>Vérifié</span>
+          </div>
+        )}
+
+        {/* Name / location on the photo, minimal like the card */}
+        <div className="absolute bottom-5 left-5 right-5 text-white z-20 pointer-events-none">
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-3xl font-black tracking-tight drop-shadow-md">{profile.full_name || "Membre LoveRose"}</h1>
+            {profile.age && <span className="text-2xl font-bold drop-shadow-md">{profile.age}</span>}
+          </div>
+          {profile.location && (
+            <p className="text-xs text-slate-200 flex items-center mt-1.5">
+              <MapPin size={12} className="mr-1 text-rose-400 flex-shrink-0" />
+              <span>{profile.location}</span>
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Scrollable details below the photo */}
+      <div className="flex-1 overflow-y-auto min-h-0 bg-white">
+        <div className="p-5 space-y-5 pb-28">
+
+          {mapsUrl && (
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-500 hover:text-rose-600 transition"
+            >
+              <MapPin size={13} />
+              <span>Voir {profile.location} sur la carte</span>
+              <ExternalLink size={11} />
+            </a>
+          )}
+
           {/* About / Bio section */}
           <div className="space-y-1.5">
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">À propos de moi</h4>
             {profile.bio ? (
-              <p className={`text-slate-600 text-xs md:text-sm leading-relaxed whitespace-pre-wrap ${!isPremium ? "blur-xs select-none pointer-events-none opacity-50 max-h-12 overflow-hidden" : ""}`}>
+              <p className={`text-slate-600 text-sm leading-relaxed whitespace-pre-wrap ${!isPremium ? "blur-xs select-none pointer-events-none opacity-50 max-h-12 overflow-hidden" : ""}`}>
                 {profile.bio}
               </p>
             ) : (
@@ -187,8 +249,8 @@ export default function ProfileDetailModal({ profile, currentUserProfile, curren
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Intentions de rencontre</h4>
             <div className={`flex flex-wrap gap-1.5 ${!isPremium ? "blur-xs select-none pointer-events-none opacity-40" : ""}`}>
               {profile.relationship_intents && profile.relationship_intents.length > 0 ? (
-                profile.relationship_intents.map(intent => {
-                  const isShared = currentUserProfile?.relationship_intents?.includes(intent);
+                profile.relationship_intents.map((intent) => {
+                  const isShared = sharedIntents.includes(intent);
                   return (
                     <span
                       key={intent}
@@ -209,34 +271,41 @@ export default function ProfileDetailModal({ profile, currentUserProfile, curren
             </div>
           </div>
 
-          {/* Premium Lock Call-To-Action Overlay if not Premium */}
+          {/* Premium Lock Call-To-Action */}
           {!isPremium && (
-            <div className="bg-gradient-to-r from-amber-500 to-yellow-600 rounded-2xl p-4 text-white text-center shadow-lg shadow-amber-500/10 space-y-1.5 animate-pulse">
-              <div className="flex items-center justify-center space-x-1">
+            <div className="bg-gradient-to-r from-amber-500 to-yellow-600 rounded-2xl p-4 text-white text-center shadow-lg shadow-amber-500/10 space-y-1.5">
+              <div className="flex items-center justify-center gap-1">
                 <Lock size={14} className="text-amber-200 fill-amber-200" />
                 <span className="text-[10px] font-black uppercase tracking-wider">Abonnement Premium Requis 👑</span>
               </div>
               <p className="text-[10px] text-amber-50 font-medium leading-relaxed">
-                Les photos secondaires (jusqu'à 20), la description et les intentions de rencontre précises de ce profil sont reservées aux abonnés Premium.
+                Les photos secondaires (jusqu'à 20), la description et les intentions de rencontre précises de ce profil sont réservées aux abonnés Premium.
               </p>
             </div>
           )}
-
         </div>
+      </div>
 
-        {/* Footer actions - Non-premium can still open discussions perfectly! */}
-        {onStartChat && (
-          <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center gap-3">
-            <button
-              onClick={handleChatClick}
-              className="w-full py-3 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition cursor-pointer"
-            >
-              <MessageCircle size={14} />
-              <span>{currentUser ? "Ouvrir la Discussion" : "Se connecter avec Google pour discuter"}</span>
-            </button>
-          </div>
+      {/* Sticky footer actions */}
+      <div className="p-4 border-t border-slate-100 bg-white flex items-center gap-3 flex-shrink-0" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
+        {onPass && (
+          <button
+            onClick={onPass}
+            className="w-14 h-14 flex-shrink-0 bg-white hover:bg-red-50 text-red-500 border border-slate-200 rounded-full shadow-sm flex items-center justify-center transition cursor-pointer active:scale-95"
+            title="Passer"
+          >
+            <X size={22} />
+          </button>
         )}
-
+        {onStartChat && (
+          <button
+            onClick={handleChatClick}
+            className="flex-1 py-4 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-black text-xs rounded-2xl shadow-md flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-[0.98]"
+          >
+            <MessageCircle size={16} />
+            <span>{currentUser ? "Ouvrir la Discussion" : "Se connecter avec Google pour discuter"}</span>
+          </button>
+        )}
       </div>
     </div>
   );

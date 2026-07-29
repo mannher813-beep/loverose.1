@@ -2,7 +2,7 @@ import { useState, useEffect, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
 import AdSlot from "./AdSlot";
-import { Heart, X, Sparkles, MapPin, CheckCircle, ShieldAlert, Filter, Send, MessageCircle, Eye, Star, Lock, RotateCcw } from "lucide-react";
+import { Heart, X, Sparkles, MapPin, CheckCircle, ShieldAlert, Filter, Send, MessageCircle, Info, Star, Lock, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ProfileDetailModal from "./ProfileDetailModal";
 import AdaptiveImage from "./AdaptiveImage";
@@ -810,83 +810,63 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                   )}
                 </div>
 
-                {/* Information Overlay Content */}
-                <div className="absolute bottom-0 left-0 right-0 p-5 text-white space-y-2.5 flex flex-col justify-end z-10">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-baseline space-x-2">
-                      <h2 className="text-xl font-extrabold tracking-tight drop-shadow-md">{activeProfile.full_name || "Anonyme"}</h2>
-                      {activeProfile.age && <span className="text-base font-bold text-white/95 drop-shadow-md">{activeProfile.age} ans</span>}
-                    </div>
-                    {renderOnlineStatus(activeProfile)}
-                  </div>
-
-                  {activeProfile.location && (
-                    <p className="text-[11px] text-slate-200 flex items-center">
-                      <MapPin size={11} className="mr-1 text-rose-400 flex-shrink-0" />
-                      <span className="truncate">{activeProfile.location}</span>
-                      {currentUserProfile?.latitude && currentUserProfile?.longitude && activeProfile.latitude && activeProfile.longitude && (
-                        <span className="ml-2 bg-rose-950/60 border border-rose-500/25 px-1.5 py-0.2 rounded-full text-[9px] font-extrabold text-rose-300">
-                          {Math.round(calculateDistance(currentUserProfile.latitude, currentUserProfile.longitude, activeProfile.latitude, activeProfile.longitude))} km
-                        </span>
+                {/* Information Overlay Content — kept minimal so the photo stays the focus */}
+                <div
+                  onClick={() => setSelectedViewProfile(activeProfile)}
+                  className="absolute bottom-0 left-0 right-0 p-5 text-white flex flex-col justify-end z-10 cursor-pointer"
+                >
+                  <div className="flex items-end justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <h2 className="text-xl font-extrabold tracking-tight drop-shadow-md truncate">{activeProfile.full_name || "Anonyme"}</h2>
+                        {activeProfile.age && <span className="text-base font-bold text-white/95 drop-shadow-md">{activeProfile.age}</span>}
+                        {activeProfile.verification_status === "verified" && (
+                          <CheckCircle size={15} className="text-emerald-400 fill-emerald-400/20 flex-shrink-0" />
+                        )}
+                        {renderOnlineStatus(activeProfile)}
+                      </div>
+                      {activeProfile.location && (
+                        <p className="text-[11px] text-slate-200 flex items-center mt-1">
+                          <MapPin size={11} className="mr-1 text-rose-400 flex-shrink-0" />
+                          <span className="truncate">{activeProfile.location}</span>
+                          {currentUserProfile?.latitude && currentUserProfile?.longitude && activeProfile.latitude && activeProfile.longitude && (
+                            <span className="ml-2 bg-rose-950/60 border border-rose-500/25 px-1.5 py-0.2 rounded-full text-[9px] font-extrabold text-rose-300 flex-shrink-0">
+                              {Math.round(calculateDistance(currentUserProfile.latitude, currentUserProfile.longitude, activeProfile.latitude, activeProfile.longitude))} km
+                            </span>
+                          )}
+                        </p>
                       )}
-                    </p>
-                  )}
-
-                  {activeProfile.bio ? (
-                    <p className="text-white/85 text-[11px] leading-snug line-clamp-2 drop-shadow-sm font-medium">
-                      {activeProfile.bio}
-                    </p>
-                  ) : (
-                    <p className="text-white/60 text-[11px] italic">Cet utilisateur n'a pas encore rédigé sa biographie.</p>
-                  )}
-
-                  {/* Intents tags */}
-                  {activeProfile.relationship_intents && activeProfile.relationship_intents.length > 0 && (
-                    <div className="flex flex-wrap gap-1 pt-0.5">
-                      {activeProfile.relationship_intents.slice(0, 3).map(intent => {
-                        const isShared = currentUserProfile?.relationship_intents?.includes(intent);
-                        return (
-                          <span
-                            key={intent}
-                            className={`text-[9px] px-2 py-0.5 rounded-lg font-bold ${
-                              isShared
-                                ? "bg-rose-500 text-white border border-rose-400"
-                                : "bg-black/55 text-slate-300 border border-white/10"
-                            }`}
-                          >
-                            {intent}
-                          </span>
-                        );
-                      })}
                     </div>
-                  )}
 
-                  {/* Report and View actions */}
-                  <div className="pt-2.5 flex justify-between items-center border-t border-white/10 mt-1">
+                    {/* Tap-for-details affordance — opens the full profile page */}
                     <button
-                      onClick={() => setSelectedViewProfile(activeProfile)}
-                      className="text-white hover:text-rose-200 text-[10px] flex items-center gap-1 transition cursor-pointer font-extrabold bg-rose-500/80 hover:bg-rose-500 px-2.5 py-1.5 rounded-lg border border-rose-400/20"
+                      onClick={(e) => { e.stopPropagation(); setSelectedViewProfile(activeProfile); }}
+                      className="flex-shrink-0 w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20 flex items-center justify-center transition cursor-pointer"
+                      title="Voir le profil complet"
                     >
-                      <Eye size={12} />
-                      <span>Détails & Photos</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (!currentUser) {
-                          if (onAuthRequired) onAuthRequired();
-                          return;
-                        }
-                        setIsReportOpen(true);
-                      }}
-                      className="text-white/60 hover:text-red-400 text-[10px] flex items-center gap-1 transition cursor-pointer font-bold"
-                    >
-                      <ShieldAlert size={12} />
-                      <span>Signaler</span>
+                      <Info size={17} className="text-white" />
                     </button>
                   </div>
                 </div>
               </motion.div>
             </AnimatePresence>
+
+            {/* Report action — kept accessible but out of the way of the photo */}
+            <div className="w-full max-w-[380px] flex justify-end px-1 -mt-1 flex-shrink-0">
+              <button
+                onClick={() => {
+                  if (!currentUser) {
+                    if (onAuthRequired) onAuthRequired();
+                    return;
+                  }
+                  setIsReportOpen(true);
+                }}
+                className="text-slate-400 hover:text-red-500 text-[10px] flex items-center gap-1 transition cursor-pointer font-bold"
+              >
+                <ShieldAlert size={12} />
+                <span>Signaler ce profil</span>
+              </button>
+            </div>
 
             {/* Swipe Action Buttons */}
             <div className="flex justify-center items-center gap-6 pb-2 flex-shrink-0">
@@ -969,7 +949,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
 
       {/* Report Modal */}
       {isReportOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-[60]">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-100 shadow-2xl space-y-4">
             <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
               <ShieldAlert className="text-red-500" />
@@ -1015,7 +995,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
         </div>
       )}
 
-      {/* Render profile detail view modal */}
+      {/* Render full-page profile detail view */}
       {selectedViewProfile && (
         <ProfileDetailModal
           profile={selectedViewProfile}
@@ -1024,6 +1004,17 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
           isPremium={isPremium}
           onClose={() => setSelectedViewProfile(null)}
           onAuthRequired={onAuthRequired}
+          onReport={() => {
+            if (!currentUser) {
+              if (onAuthRequired) onAuthRequired();
+              return;
+            }
+            setIsReportOpen(true);
+          }}
+          onPass={() => {
+            handleSwipe(false);
+            setSelectedViewProfile(null);
+          }}
           onStartChat={() => {
             if (!currentUser) {
               if (onAuthRequired) onAuthRequired();

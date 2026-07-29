@@ -1053,54 +1053,54 @@ export default function App() {
       </main>
 
       {/* Mobile Tab Navbar */}
-      <footer className="bg-white border-t border-slate-200 py-2.5 px-4 flex justify-around items-center sticky bottom-0 z-30 md:hidden flex-shrink-0">
+      <footer className="bg-white/95 backdrop-blur-md border-t border-slate-100 px-2 pt-2 flex justify-around items-center sticky bottom-0 z-30 md:hidden flex-shrink-0" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
         <button
           onClick={() => setActiveTab('discover')}
-          className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'discover' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'discover' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
         >
-          <Heart size={18} fill={activeTab === 'discover' ? 'currentColor' : 'none'} />
-          <span className="text-[10px]">Découvrir</span>
+          <Heart size={19} fill={activeTab === 'discover' ? 'currentColor' : 'none'} strokeWidth={activeTab === 'discover' ? 1.5 : 1.8} />
+          <span className={`text-[9px] ${activeTab === 'discover' ? 'font-extrabold' : 'font-semibold'}`}>Découvrir</span>
         </button>
         <button
           onClick={() => setActiveTab('chat')}
-          className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'chat' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'chat' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
         >
-          <MessageSquare size={18} fill={activeTab === 'chat' ? 'currentColor' : 'none'} />
-          <span className="text-[10px]">Messagerie</span>
+          <MessageSquare size={19} fill={activeTab === 'chat' ? 'currentColor' : 'none'} strokeWidth={activeTab === 'chat' ? 1.5 : 1.8} />
+          <span className={`text-[9px] ${activeTab === 'chat' ? 'font-extrabold' : 'font-semibold'}`}>Messagerie</span>
         </button>
         <button
           onClick={() => setActiveTab('shop')}
-          className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'shop' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'shop' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
         >
-          <ShoppingBag size={18} />
-          <span className="text-[10px]">Boutique</span>
+          <ShoppingBag size={19} strokeWidth={activeTab === 'shop' ? 2.2 : 1.8} />
+          <span className={`text-[9px] ${activeTab === 'shop' ? 'font-extrabold' : 'font-semibold'}`}>Boutique</span>
         </button>
         <button
           onClick={() => setActiveTab('notifications')}
-          className={`flex flex-col items-center gap-1 cursor-pointer relative ${activeTab === 'notifications' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer relative transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'notifications' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
         >
-          <Bell size={18} fill={activeTab === 'notifications' ? 'currentColor' : 'none'} />
-          <span className="text-[10px]">Notifs</span>
+          <Bell size={19} fill={activeTab === 'notifications' ? 'currentColor' : 'none'} strokeWidth={activeTab === 'notifications' ? 1.5 : 1.8} />
+          <span className={`text-[9px] ${activeTab === 'notifications' ? 'font-extrabold' : 'font-semibold'}`}>Notifs</span>
           {unreadNotificationsCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[8px] font-black h-4.5 w-4.5 rounded-full flex items-center justify-center animate-pulse border border-white">
+            <span className="absolute top-0.5 right-1.5 bg-rose-500 text-white text-[8px] font-black h-4.5 w-4.5 rounded-full flex items-center justify-center animate-pulse border-2 border-white">
               {unreadNotificationsCount}
             </span>
           )}
         </button>
         <button
           onClick={() => setActiveTab('profile')}
-          className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'profile' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'profile' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
         >
-          <User size={18} />
-          <span className="text-[10px]">Profil</span>
+          <User size={19} strokeWidth={activeTab === 'profile' ? 2.2 : 1.8} />
+          <span className={`text-[9px] ${activeTab === 'profile' ? 'font-extrabold' : 'font-semibold'}`}>Profil</span>
         </button>
         {profile?.role === 'admin' && (
           <button
             onClick={() => setActiveTab('admin')}
-            className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'admin' ? 'text-rose-500 font-bold' : 'text-slate-400'}`}
+            className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'admin' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
           >
-            <ShieldAlert size={18} />
-            <span className="text-[10px]">Admin</span>
+            <ShieldAlert size={19} strokeWidth={activeTab === 'admin' ? 2.2 : 1.8} />
+            <span className={`text-[9px] ${activeTab === 'admin' ? 'font-extrabold' : 'font-semibold'}`}>Admin</span>
           </button>
         )}
       </footer>
