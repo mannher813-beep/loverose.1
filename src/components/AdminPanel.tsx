@@ -583,83 +583,82 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     }
   };
 
+  const tabButtonClass = (isActive: boolean) =>
+    `flex-shrink-0 flex items-center justify-center gap-1.5 py-2.5 px-1 text-xs sm:text-sm font-bold transition-colors cursor-pointer whitespace-nowrap border-b-2 ${
+      isActive ? "text-white border-indigo-400" : "text-slate-400 border-transparent hover:text-slate-200"
+    }`;
+
+  const countBadgeClass = (isActive: boolean) =>
+    `font-mono text-[10px] px-1.5 py-0.5 rounded-md ${
+      isActive ? "bg-indigo-400/20 text-indigo-200" : "bg-white/5 text-slate-500"
+    }`;
+
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-100 p-4 sticky top-0 z-20">
-        <div className="flex items-center gap-2 mb-3">
-          <ShieldAlert size={20} className="text-rose-500" />
-          <h1 className="font-extrabold text-lg text-slate-800">Panel Admin</h1>
+      {/* Console header — deliberately distinct from the app's rose consumer
+          chrome, so it's unmistakable which surface you're on. */}
+      <div className="bg-gradient-to-b from-slate-900 to-slate-950 sticky top-0 z-20 shadow-lg shadow-slate-900/10">
+        <div className="p-4 pb-0">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/15 border border-indigo-400/20 flex items-center justify-center">
+              <ShieldAlert size={14} className="text-indigo-300" />
+            </div>
+            <h1 className="font-extrabold text-base text-white tracking-tight">Panel Admin</h1>
+            <span className="flex items-center gap-1.5 ml-auto font-mono text-[10px] text-slate-500">
+              <Circle size={6} className="text-emerald-400 fill-emerald-400 animate-pulse" />
+              {users.filter((u) => isActuallyOnline(u)).length} en ligne
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4 overflow-x-auto -mx-1 px-1 [scrollbar-width:none]">
+            <button onClick={() => setTab("users")} className={tabButtonClass(tab === "users")}>
+              <Users size={14} /> Utilisateurs
+              <span className={countBadgeClass(tab === "users")}>{users.length}</span>
+            </button>
+            <button onClick={() => setTab("reports")} className={tabButtonClass(tab === "reports")}>
+              <Flag size={14} /> Signalements
+              <span className={countBadgeClass(tab === "reports")}>{reports.length}</span>
+            </button>
+            <button
+              onClick={() => {
+                setTab("messages");
+                if (contactMessages.length === 0) loadContactMessages();
+              }}
+              className={tabButtonClass(tab === "messages")}
+            >
+              <Mail size={14} /> Messages
+              {contactMessages.filter((m) => m.status === "new").length > 0 && (
+                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300">
+                  {contactMessages.filter((m) => m.status === "new").length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setTab("stats");
+                if (!stats) loadStats();
+              }}
+              className={tabButtonClass(tab === "stats")}
+            >
+              <BarChart3 size={14} /> Stats
+            </button>
+            <button onClick={() => setTab("campaign")} className={tabButtonClass(tab === "campaign")}>
+              <HeartHandshake size={14} /> Campagne
+            </button>
+
+            <button
+              onClick={() => setBroadcastOpen(true)}
+              className="flex-shrink-0 flex items-center gap-1.5 py-1.5 px-3 my-1.5 sm:ml-auto rounded-full border border-indigo-400/30 text-indigo-300 text-xs font-bold hover:bg-indigo-400/10 hover:border-indigo-400/50 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <Megaphone size={13} /> Annonce
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-1 px-1">
-          <button
-            onClick={() => setTab("users")}
-            className={`flex-shrink-0 flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer whitespace-nowrap ${
-              tab === "users" ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600"
-            }`}
-          >
-            <Users size={15} /> Utilisateurs ({users.length})
-          </button>
-          <button
-            onClick={() => setTab("reports")}
-            className={`flex-shrink-0 flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer whitespace-nowrap relative ${
-              tab === "reports" ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600"
-            }`}
-          >
-            <Flag size={15} /> Signalements ({reports.length})
-          </button>
-          <button
-            onClick={() => {
-              setTab("messages");
-              if (contactMessages.length === 0) loadContactMessages();
-            }}
-            className={`flex-shrink-0 flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer whitespace-nowrap relative ${
-              tab === "messages" ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600"
-            }`}
-          >
-            <Mail size={15} /> Messages
-            {contactMessages.filter((m) => m.status === "new").length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-                {contactMessages.filter((m) => m.status === "new").length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => {
-              setTab("stats");
-              if (!stats) loadStats();
-            }}
-            className={`flex-shrink-0 flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer whitespace-nowrap ${
-              tab === "stats" ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600"
-            }`}
-          >
-            <BarChart3 size={15} /> Stats
-          </button>
-          <button
-            onClick={() => setTab("campaign")}
-            className={`flex-shrink-0 flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer whitespace-nowrap ${
-              tab === "campaign" ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600"
-            }`}
-          >
-            <HeartHandshake size={15} /> Campagne
-          </button>
-          <button
-            onClick={() => setBroadcastOpen(true)}
-            title="Envoyer une annonce à tous les utilisateurs"
-            className="flex-shrink-0 flex items-center justify-center px-3 rounded-xl bg-indigo-100 text-indigo-600 hover:bg-indigo-200 cursor-pointer"
-          >
-            <Megaphone size={16} />
-          </button>
-        </div>
-        <div className="flex items-center gap-3 mt-2.5 text-[11px] font-semibold text-slate-500">
-          <span className="flex items-center gap-1">
-            <Circle size={8} className="text-emerald-500 fill-emerald-500" />
-            {users.filter((u) => isActuallyOnline(u)).length} connecté(s)
-          </span>
-          <span className="text-slate-300">·</span>
+
+        <div className="flex items-center gap-3 mt-2 px-4 py-2 text-[11px] font-mono text-slate-500 border-t border-white/5">
           <span>{users.length} inscrit(s)</span>
-          <span className="text-slate-300">·</span>
-          <span className="flex items-center gap-1 text-red-500">
+          <span className="text-slate-700">·</span>
+          <span className="flex items-center gap-1 text-rose-400">
             <ShieldOff size={11} />
             {users.filter((u) => u.is_suspended).length} suspendu(s)
           </span>

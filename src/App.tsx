@@ -18,6 +18,7 @@ import Onboarding from "./components/Onboarding";
 import PublicProfile from "./components/PublicProfile";
 import PublicLayout from "./components/public/PublicLayout";
 import AdminPanel from "./components/AdminPanel";
+import AdminAnnouncementToast from "./components/AdminAnnouncementToast";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { usePremiumStatus } from "./hooks/usePremiumStatus";
 import { isPushSupported, getNotificationPermission, subscribeToPushNotifications } from "./lib/push";
@@ -853,21 +854,27 @@ export default function App() {
             <Settings size={16} />
             <span>Paramètres</span>
           </button>
-          {profile?.role === 'admin' && (
-            <button
-              onClick={() => setActiveTab('admin')}
-              className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'admin' ? 'text-rose-500 font-extrabold' : ''}`}
-            >
-              <ShieldAlert size={16} />
-              <span>Admin</span>
-            </button>
-          )}
         </div>
 
         {/* Quick User details or Auth Buttons for Guest */}
         <div className="flex items-center space-x-3">
           {currentUser ? (
             <>
+              {isAdmin && (
+                <button
+                  onClick={() => setActiveTab('admin')}
+                  title="Panel Admin"
+                  aria-label="Ouvrir le panel admin"
+                  className={`relative flex items-center justify-center w-9 h-9 rounded-xl transition-all cursor-pointer ${
+                    activeTab === 'admin'
+                      ? 'bg-slate-900 text-indigo-300 ring-2 ring-indigo-400/40'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-900 hover:text-indigo-300'
+                  }`}
+                >
+                  <ShieldAlert size={16} strokeWidth={2} />
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-white" />
+                </button>
+              )}
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-bold text-slate-800">{profile?.full_name || currentUser.email.split("@")[0]}</p>
                 <p className="text-[10px] text-slate-400 font-medium">Membre LoveRose</p>
@@ -1094,15 +1101,6 @@ export default function App() {
           <User size={19} strokeWidth={activeTab === 'profile' ? 2.2 : 1.8} />
           <span className={`text-[9px] ${activeTab === 'profile' ? 'font-extrabold' : 'font-semibold'}`}>Profil</span>
         </button>
-        {profile?.role === 'admin' && (
-          <button
-            onClick={() => setActiveTab('admin')}
-            className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'admin' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            <ShieldAlert size={19} strokeWidth={activeTab === 'admin' ? 2.2 : 1.8} />
-            <span className={`text-[9px] ${activeTab === 'admin' ? 'font-extrabold' : 'font-semibold'}`}>Admin</span>
-          </button>
-        )}
       </footer>
 
       {/* Floating Push Toast Banner Overlay */}
@@ -1127,6 +1125,16 @@ export default function App() {
             <X size={14} />
           </button>
         </div>
+      )}
+
+      {/* Admin announcement preview — separate from the push toast above;
+          purely visual, reads the same notifications rows the Notifs tab
+          already shows and never marks anything as read itself. */}
+      {currentUser && (
+        <AdminAnnouncementToast
+          currentUser={currentUser}
+          onOpenNotifications={() => setActiveTab('notifications')}
+        />
       )}
 
       {/* Sparkling Romantic Mutual Match Popup Modal Overlay */}

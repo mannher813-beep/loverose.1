@@ -18,6 +18,9 @@ export async function compressImageIfNeeded(file: File): Promise<File> {
       maxWidthOrHeight: 1920, // Max size is 1920px as per specifications
       useWebWorker: true, // Compress in background thread so the UI remains interactive
       initialQuality: 0.82, // High initial visual quality, virtually indistinguishable from source
+      fileType: "image/jpeg", // Force JPEG output — without this, the library defaults to
+      // the source's own format, so a PNG stays a PNG (lossless recompression only),
+      // missing the ~5-7x size win JPEG gives on ordinary photos.
     };
 
     // Safety net: on a slow/weak connection or low-end device, the Web Worker
@@ -32,9 +35,12 @@ export async function compressImageIfNeeded(file: File): Promise<File> {
     
     // Safety check: only use the compressed version if it is indeed smaller
     if (compressedFile.size < file.size) {
-      // Preserve original file name
-      return new File([compressedFile], file.name, {
-        type: file.type,
+      // Use the compressed blob's own type (always JPEG per fileType above),
+      // not the original file's type — otherwise a PNG upload ends up as
+      // JPEG bytes mislabeled "image/png". Rename the extension to match.
+      const newName = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+      return new File([compressedFile], newName, {
+        type: compressedFile.type || "image/jpeg",
         lastModified: Date.now(),
       });
     }
