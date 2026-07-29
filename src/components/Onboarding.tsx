@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { compressImageIfNeeded } from "../lib/imageCompression";
 import { Profile } from "../types";
@@ -15,7 +14,6 @@ interface OnboardingProps {
 }
 
 export default function Onboarding({ currentUser, onComplete }: OnboardingProps) {
-  const { t, i18n } = useTranslation("onboarding");
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [saveProgress, setSaveProgress] = useState("");
@@ -73,7 +71,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert(t("validation.photoTooLarge"));
+        alert("La photo est trop lourde. Veuillez choisir une image de moins de 5 Mo.");
         return;
       }
       setAvatarFile(file);
@@ -89,7 +87,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert(t("validation.photoTooLarge"));
+        alert("La photo est trop lourde. Veuillez choisir une image de moins de 5 Mo.");
         return;
       }
       setGalleryFiles(prev => {
@@ -138,51 +136,51 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
     // Basic validation per step
     if (step === 1) {
       if (!selectedCountryIso) {
-        alert(t("validation.selectCountry"));
+        alert("Veuillez sélectionner un pays.");
         return;
       }
       if (!phoneLocal.trim()) {
-        alert(t("validation.phoneRequired"));
+        alert("Veuillez renseigner votre numéro de téléphone.");
         return;
       }
       const parsed = parsePhoneNumberFromString(phoneLocal.trim(), selectedCountryIso);
       if (!parsed || !parsed.isValid()) {
-        alert(t("validation.phoneInvalid"));
+        alert("Ce numéro de téléphone n'est pas valide pour le pays sélectionné.");
         return;
       }
     }
     if (step === 2) {
       if (!fullName.trim()) {
-        alert(t("validation.fullNameRequired"));
+        alert("Veuillez renseigner votre nom complet.");
         return;
       }
       if (!username.trim()) {
-        alert(t("validation.usernameRequired"));
+        alert("Veuillez choisir un nom d'utilisateur unique.");
         return;
       }
       if (!age || age < 18) {
-        alert(t("validation.ageMinimum"));
+        alert("Vous devez avoir au moins 18 ans pour vous inscrire.");
         return;
       }
       if (!location.trim()) {
-        alert(t("validation.locationRequired"));
+        alert("Veuillez renseigner votre pays ou localisation.");
         return;
       }
     }
     if (step === 3 && selectedHobbies.length === 0) {
-      alert(t("validation.hobbiesRequired"));
+      alert("Sélectionnez au moins un centre d'intérêt.");
       return;
     }
     if (step === 4 && selectedIntents.length === 0) {
-      alert(t("validation.intentsRequired"));
+      alert("Veuillez cocher au moins un type de rencontre recherché.");
       return;
     }
     if (step === 5 && bio.trim().length < 10) {
-      alert(t("validation.bioTooShort"));
+      alert("Votre biographie doit faire au moins 10 caractères pour attirer l'attention.");
       return;
     }
     if (step === 6 && !avatarFile && !avatarPreview) {
-      alert(t("validation.avatarRequired"));
+      alert("Veuillez choisir ou uploader une photo de profil.");
       return;
     }
     // Step 7 (gallery photos) is optional — no minimum enforced anymore.
@@ -200,7 +198,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
 
   const handleSubmit = async () => {
     if (!avatarFile && !avatarPreview) {
-      alert(t("validation.avatarRequired"));
+      alert("Veuillez choisir ou uploader une photo de profil.");
       return;
     }
 
@@ -210,7 +208,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
 
       // 1. Upload avatar to Supabase Storage if a real file is chosen
       if (avatarFile) {
-        setSaveProgress(t("uploadingAvatar"));
+        setSaveProgress("Envoi de votre photo de profil...");
         const optimizedAvatar = await compressImageIfNeeded(avatarFile);
         const fileExt = optimizedAvatar.name.split('.').pop();
         const fileName = `avatar_${Date.now()}.${fileExt}`;
@@ -246,7 +244,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       for (let i = 0; i < galleryFiles.length; i++) {
         const file = galleryFiles[i];
         if (file) {
-          setSaveProgress(t("uploadingGalleryPhoto", { current: i + 1, total: galleryFiles.length }));
+          setSaveProgress(`Envoi de la photo ${i + 1}/${galleryFiles.length}...`);
           const optimizedFile = await compressImageIfNeeded(file);
           const fileExt = optimizedFile.name.split('.').pop();
           const fileName = `photo_${i + 1}_${Date.now()}.${fileExt}`;
@@ -274,7 +272,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
         }
       }
 
-      setSaveProgress(t("finalizing"));
+      setSaveProgress("Finalisation de votre profil...");
 
       // 3. Format centers of interest nicely to be saved in bio since hobbies column is not yet in profiles table
       const formattedHobbies = `Centres d'intérêt : ${selectedHobbies.join(", ")}`;
@@ -330,8 +328,8 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       if (galleryUploadFailures > 0) {
         alert(
           galleryUploadFailures === 1
-            ? t("errors.gallerySkippedOne")
-            : t("errors.gallerySkippedMany", { count: galleryUploadFailures })
+            ? "Votre profil est créé ! Une photo de galerie n'a pas pu être envoyée à cause de la connexion — vous pourrez l'ajouter plus tard depuis vos paramètres."
+            : `Votre profil est créé ! ${galleryUploadFailures} photos de galerie n'ont pas pu être envoyées à cause de la connexion — vous pourrez les ajouter plus tard depuis vos paramètres.`
         );
       }
 
@@ -343,10 +341,10 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
       const avatarFailed = err?.message === "AVATAR_UPLOAD_FAILED";
       alert(
         timedOut
-          ? t("errors.timeout")
+          ? "Votre connexion est trop lente ou instable pour terminer l'enregistrement. Vérifiez votre connexion et réessayez."
           : avatarFailed
-          ? t("errors.avatarUploadFailed")
-          : t("errors.genericSubmit", { message: err.message || err })
+          ? "Votre photo de profil n'a pas pu être envoyée (connexion trop lente ou instable). Réessayez, si possible avec une meilleure connexion ou en Wi-Fi."
+          : "Une erreur s'est produite lors de la finalisation de votre profil : " + (err.message || err)
       );
     } finally {
       setLoading(false);
@@ -372,7 +370,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
             <span className="text-xs font-black text-rose-500 uppercase tracking-widest">LoveRose</span>
           </div>
           <span className="text-[10px] font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">
-            {t("stepIndicator", { current: step, total: totalSteps })}
+            Étape {step} sur {totalSteps}
           </span>
         </div>
 
@@ -389,24 +387,24 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
               >
                 <div className="space-y-1.5">
                   <h2 className="text-lg font-black text-slate-900 flex items-center gap-1.5">
-                    <Phone size={18} className="text-rose-500" /> {t("phoneTitle")}
+                    <Phone size={18} className="text-rose-500" /> Numéro de téléphone
                   </h2>
                   <p className="text-slate-500 text-xs leading-relaxed">
-                    {t("phoneDescription")}
+                    Saisissez votre numéro de mobile. Il servira à sécuriser votre compte LoveRose et à valider vos transactions de rechargement.
                   </p>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t("phoneLabel")}</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Téléphone portable</label>
                   
                   <div className="flex gap-2">
                     <div className="w-1/3">
-                      <CountryDialSelect value={selectedCountryIso} onChange={setSelectedCountryIso} locale={i18n.language} />
+                      <CountryDialSelect value={selectedCountryIso} onChange={setSelectedCountryIso} locale="fr" />
                     </div>
 
                     <div className="w-2/3">
                       <input
                         type="tel"
-                        placeholder={t("phoneNumberPlaceholder")}
+                        placeholder="Votre numéro de téléphone"
                         value={phoneLocal}
                         onChange={(e) => setPhoneLocal(e.target.value)}
                         className="w-full h-[46px] px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
@@ -420,10 +418,10 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                     return (
                       <div className="flex justify-between items-center text-[10px] font-bold mt-1.5">
                         <span className={valid ? "text-emerald-500" : "text-slate-500"}>
-                          {valid ? t("phoneValidNumber", { number: parsed?.number }) : t("phoneIncomplete")}
+                          {valid ? `✓ Numéro valide : ${parsed?.number}` : "Numéro incomplet ou invalide"}
                         </span>
                         {!valid && (
-                          <span className="text-rose-500 font-bold">{t("checkFormat")}</span>
+                          <span className="text-rose-500 font-bold">⚠️ Vérifiez le format</span>
                         )}
                       </div>
                     );
@@ -442,29 +440,29 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
               >
                 <div className="space-y-1.5">
                   <h2 className="text-lg font-black text-slate-900 flex items-center gap-1.5">
-                    <MapPin size={18} className="text-rose-500" /> {t("profileTitle")}
+                    <MapPin size={18} className="text-rose-500" /> Localisation & Profil
                   </h2>
                   <p className="text-slate-500 text-xs leading-relaxed">
-                    {t("profileDescription")}
+                    Aidez-nous à cibler des célibataires proches de chez vous.
                   </p>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("fullNameLabel")}</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nom Complet</label>
                     <input
                       type="text"
-                      placeholder={t("fullNamePlaceholder")}
+                      placeholder="Votre nom"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("usernameLabel")}</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pseudo unique</label>
                     <input
                       type="text"
-                      placeholder={t("usernamePlaceholder")}
+                      placeholder="Pseudo"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
@@ -474,7 +472,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("ageLabel")}</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Votre Âge (18+)</label>
                     <input
                       type="number"
                       min={18}
@@ -494,14 +492,14 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                       }`}
                     />
                     {age > 0 && age < 18 && (
-                      <p className="text-[10px] text-red-500 font-semibold">{t("ageError")}</p>
+                      <p className="text-[10px] text-red-500 font-semibold">Vous devez avoir au moins 18 ans.</p>
                     )}
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("locationLabel")}</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pays & Ville</label>
                     <input
                       type="text"
-                      placeholder={t("locationPlaceholder")}
+                      placeholder="Ex: Abidjan, Côte d'Ivoire"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
                       className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
@@ -511,27 +509,27 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("genderLabel")}</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mon genre</label>
                     <select
                       value={gender}
                       onChange={(e) => setGender(e.target.value as any)}
                       className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
                     >
-                      <option value="homme">{t("genderOptions.homme")}</option>
-                      <option value="femme">{t("genderOptions.femme")}</option>
-                      <option value="autre">{t("genderOptions.autre")}</option>
+                      <option value="homme">Homme</option>
+                      <option value="femme">Femme</option>
+                      <option value="autre">Autre</option>
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("preferencesLabel")}</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Je recherche</label>
                     <select
                       value={preferences}
                       onChange={(e) => setPreferences(e.target.value as any)}
                       className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
                     >
-                      <option value="femme">{t("preferencesOptions.femme")}</option>
-                      <option value="homme">{t("preferencesOptions.homme")}</option>
-                      <option value="tous">{t("preferencesOptions.tous")}</option>
+                      <option value="femme">Des Femmes</option>
+                      <option value="homme">Des Hommes</option>
+                      <option value="tous">Tout le monde</option>
                     </select>
                   </div>
                 </div>
@@ -548,10 +546,10 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
               >
                 <div className="space-y-1.5">
                   <h2 className="text-lg font-black text-slate-900 flex items-center gap-1.5">
-                    <Smile size={18} className="text-rose-500" /> {t("hobbiesTitle")}
+                    <Smile size={18} className="text-rose-500" /> Centres d'intérêt
                   </h2>
                   <p className="text-slate-500 text-xs leading-relaxed">
-                    {t("hobbiesDescription")}
+                    Qu'est-ce qui vous fait vibrer au quotidien ? Sélectionnez vos passions préférées.
                   </p>
                 </div>
 
@@ -569,7 +567,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                             : "bg-slate-50/50 border-slate-150 text-slate-600 hover:bg-slate-50"
                         }`}
                       >
-                        <span>{t(`hobbiesList.${hobby}`)}</span>
+                        <span>{hobby}</span>
                         {selected && <CheckCircle2 size={12} className="text-rose-500" />}
                       </button>
                     );
@@ -588,10 +586,10 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
               >
                 <div className="space-y-1.5">
                   <h2 className="text-lg font-black text-slate-900 flex items-center gap-1.5">
-                    <Compass size={18} className="text-rose-500" /> {t("intentsTitle")}
+                    <Compass size={18} className="text-rose-500" /> Vos Intentions
                   </h2>
                   <p className="text-slate-500 text-xs leading-relaxed">
-                    {t("intentsDescription")}
+                    Sélectionnez un ou plusieurs types de rencontre recherchés (multi-sélection requise).
                   </p>
                 </div>
 
@@ -609,7 +607,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                             : "bg-slate-50/50 border-slate-150 text-slate-600 hover:bg-slate-50"
                         }`}
                       >
-                        <span>{t(`intentsList.${intent}`)}</span>
+                        <span>{intent}</span>
                         <div className={`w-4 h-4 rounded border flex items-center justify-center ${
                           selected ? "bg-rose-500 border-rose-500 text-white" : "border-slate-350 bg-white"
                         }`}>
@@ -632,17 +630,17 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
               >
                 <div className="space-y-1.5">
                   <h2 className="text-lg font-black text-slate-900 flex items-center gap-1.5">
-                    <FileText size={18} className="text-rose-500" /> {t("bioTitle")}
+                    <FileText size={18} className="text-rose-500" /> Biographie
                   </h2>
                   <p className="text-slate-500 text-xs leading-relaxed">
-                    {t("bioDescription")}
+                    Parlez un peu de vous. Les profils avec des biographies honnêtes et captivantes obtiennent jusqu'à 80% de contacts en plus.
                   </p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("bioLabel")}</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ma description</label>
                   <textarea
-                    placeholder={t("bioPlaceholder")}
+                    placeholder="Ex: Passionné d'art et de rencontres culturelles, j'aime échanger autour d'un bon verre et découvrir des coins insolites..."
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     rows={4}
@@ -650,7 +648,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:border-rose-500 resize-none"
                   />
                   <div className="text-right text-[9px] text-slate-400">
-                    {t("bioCounter", { count: bio.length })}
+                    {bio.length}/300 caractères
                   </div>
                 </div>
               </motion.div>
@@ -666,10 +664,10 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
               >
                 <div className="space-y-1.5">
                   <h2 className="text-lg font-black text-slate-900 flex items-center gap-1.5">
-                    <Camera size={18} className="text-rose-500" /> {t("avatarTitle")}
+                    <Camera size={18} className="text-rose-500" /> Photo de profil
                   </h2>
                   <p className="text-slate-500 text-xs leading-relaxed">
-                    {t("avatarDescription")}
+                    Ajoutez une vraie photo de vous. Un visage souriant et visible est indispensable pour valider votre compte.
                   </p>
                 </div>
 
@@ -688,15 +686,15 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                   >
                     {avatarPreview ? (
                       <>
-                        <img src={avatarPreview} alt={t("previewAlt")} className="w-full h-full object-cover" />
+                        <img src={avatarPreview} alt="Aperçu" className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[10px] font-bold">
-                          {t("changePhoto")}
+                          Changer de photo
                         </div>
                       </>
                     ) : (
                       <div className="text-center p-4 text-slate-400 space-y-1">
                         <Camera size={24} className="mx-auto text-slate-350" />
-                        <span className="text-[10px] font-bold block">{t("chooseFile")}</span>
+                        <span className="text-[10px] font-bold block">Choisir un fichier</span>
                       </div>
                     )}
                   </label>
@@ -714,10 +712,10 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
               >
                 <div className="space-y-1.5">
                   <h2 className="text-lg font-black text-slate-900 flex items-center gap-1.5">
-                    <Camera size={18} className="text-rose-500" /> {t("galleryTitle")}
+                    <Camera size={18} className="text-rose-500" /> Vos Photos de Galerie
                   </h2>
                   <p className="text-slate-500 text-xs leading-relaxed">
-                    {t("galleryDescription")}
+                    Ajoutez jusqu'à trois photos réelles pour compléter votre galerie LoveRose (optionnel). Les profils complets reçoivent 5x plus d'intérêt !
                   </p>
                 </div>
 
@@ -737,15 +735,15 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                       >
                         {galleryPreviews[index] ? (
                           <>
-                            <img src={galleryPreviews[index]!} alt={t("galleryPhotoAlt", { index: index + 1 })} className="w-full h-full object-cover" />
+                            <img src={galleryPreviews[index]!} alt={`Galerie ${index + 1}`} className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[9px] font-bold">
-                              {t("galleryChange")}
+                              Changer
                             </div>
                           </>
                         ) : (
                           <div className="text-center p-2 text-slate-400 space-y-1">
                             <Camera size={18} className="mx-auto text-slate-350" />
-                            <span className="text-[9px] font-bold block">{t("galleryPhotoLabel", { index: index + 1 })}</span>
+                            <span className="text-[9px] font-bold block">Photo {index + 1}</span>
                           </div>
                         )}
                       </label>
@@ -753,7 +751,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                   ))}
                 </div>
                 <div className="bg-rose-50/50 border border-rose-100 p-2.5 rounded-2xl text-[10px] text-rose-600 font-semibold text-center mt-2">
-                  {t("galleryCounter", { count: galleryPreviews.filter(Boolean).length })}
+                  {galleryPreviews.filter(Boolean).length}/3 photos de galerie ajoutées (facultatif)
                 </div>
               </motion.div>
             )}
@@ -769,7 +767,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
               className="px-4 py-3 bg-white hover:bg-slate-150 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
             >
               <ArrowLeft size={14} />
-              <span>{t("buttons.back", { ns: "common" })}</span>
+              <span>Retour</span>
             </button>
           )}
           <button
@@ -780,11 +778,11 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
             {loading ? (
               <>
                 <Loader2 className="animate-spin" size={14} />
-                <span>{saveProgress || t("savingProgress")}</span>
+                <span>{saveProgress || "Enregistrement..."}</span>
               </>
             ) : (
               <>
-                <span>{step === totalSteps ? t("finishAction") : t("buttons.next", { ns: "common" })}</span>
+                <span>{step === totalSteps ? "Terminer l'inscription" : "Étape suivante"}</span>
                 <ArrowRight size={14} />
               </>
             )}
