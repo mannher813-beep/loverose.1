@@ -247,6 +247,22 @@ export async function fulfillPayment(
     console.warn("[Fulfill] Referral commission logic execution skipped:", refErr);
   }
 
+  // I. ADMIN ANNOUNCEMENT PAID UNLOCK (announcement_unlock:ANNOUNCEMENT_ID)
+  else if (planId.startsWith("announcement_unlock:")) {
+    const announcementId = planId.split(":")[1];
+    const { error: unlockErr } = await supabaseAdmin
+      .from("announcement_unlocks")
+      .upsert(
+        { announcement_id: announcementId, user_id: userId },
+        { onConflict: "announcement_id,user_id" }
+      );
+    if (unlockErr) {
+      console.error("[Fulfill] Error unlocking paid announcement:", unlockErr);
+    } else {
+      console.log(`[Fulfill] Announcement ${announcementId} unlocked for user ${userId}`);
+    }
+  }
+
   // H. INSERT IN-APP NOTIFICATION
   try {
     await supabaseAdmin.from("notifications").insert([

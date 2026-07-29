@@ -11,9 +11,24 @@ import {
   Loader2, 
   Trash2, 
   Inbox,
-  Star
+  Star,
+  ArrowRight,
+  Loader
 } from "lucide-react";
 import { Profile } from "../types";
+
+interface AnnouncementCta {
+  id: string;
+  cta_enabled: boolean;
+  cta_label: string | null;
+  cta_type: "route" | "url" | "paid" | null;
+  cta_route: string | null;
+  cta_url: string | null;
+  is_paid: boolean;
+  price_amount: number | null;
+  paid_plan_name: string | null;
+  success_redirect_url: string | null;
+}
 
 interface NotificationItem {
   id: string;
@@ -23,7 +38,9 @@ interface NotificationItem {
   content: string;
   lu: boolean;
   created_at: string;
+  announcement_id?: string | null;
   sender_profile?: Profile;
+  announcement?: AnnouncementCta;
 }
 
 interface NotificationsProps {
@@ -36,6 +53,8 @@ interface NotificationsProps {
 export default function Notifications({ currentUser, onNavigateToTab, onStartChat, onAuthRequired }: NotificationsProps) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unlockedAnnouncementIds, setUnlockedAnnouncementIds] = useState<Set<string>>(new Set());
+  const [payingAnnouncementId, setPayingAnnouncementId] = useState<string | null>(null);
 
   const loadNotifications = async () => {
     if (!currentUser) return;
@@ -49,10 +68,32 @@ export default function Notifications({ currentUser, onNavigateToTab, onStartCha
 
       if (error) throw error;
 
+      // Batch-fetch des annonces liées (bouton configurable) en une seule requête
+      const announcementIds = Array.from(
+        new Set((data || []).map((n) => n.announcement_id).filter(Boolean))
+      ) as string[];
+
+      let announcementsById: Record<string, AnnouncementCta> = {};
+      if (announcementIds.length > 0) {
+        const { data: anns } = await supabase
+          .from("admin_announcements")
+          .select("id, cta_enabled, cta_label, cta_type, cta_route, cta_url, is_paid, price_amount, paid_plan_name, success_redirect_url")
+          .in("id", announcementIds);
+        for (const a of anns || []) announcementsById[a.id] = a as AnnouncementCta;
+
+        const { data: unlocks } = await supabase
+          .from("announcement_unlocks")
+          .select("announcement_id")
+          .eq("user_id", currentUser.id)
+          .in("announcement_id", announcementIds);
+        setUnlockedAnnouncementIds(new Set((unlocks || []).map((u) => u.announcement_id)));
+      }
+
       // Map sender profile
       const populated = await Promise.all(
         (data || []).map(async (notif) => {
-          if (!notif.sender_id) return notif;
+          const announcement = notif.announcement_id ? announcementsById[notif.announcement_id] : undefined;
+          if (!notif.sender_id) return { ...notif, announcement };
           
           const { data: prof } = await supabase
             .from("profiles")
@@ -62,7 +103,8 @@ export default function Notifications({ currentUser, onNavigateToTab, onStartCha
 
           return {
             ...notif,
-            sender_profile: prof || undefined
+            sender_profile: prof || undefined,
+            announcement,
           };
         })
       );
@@ -188,6 +230,66 @@ export default function Notifications({ currentUser, onNavigateToTab, onStartCha
     }
   };
 
+  const handleAnnouncementCta = async (e: React.MouseEvent, announcement: AnnouncementCta) => {
+    e.stopPropagation();
+    if (!announcement.cta_enabled) return;
+
+    if (announcement.cta_type === "route" && announcement.cta_route) {
+      onNavigateToTab(announcement.cta_route as any);
+      return;
+    }
+
+    if (announcement.cta_type === "url" && announcement.cta_url) {
+      window.open(announcement.cta_url, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    if (announcement.cta_type === "paid") {
+      if (!currentUser) {
+        onAuthRequired?.();
+        return;
+      }
+
+      // Déjà payé précédemment : on redirige directement, pas de second paiement.
+      if (unlockedAnnouncementIds.has(announcement.id) && announcement.success_redirect_url) {
+        window.location.href = announcement.success_redirect_url;
+        return;
+      }
+
+      setPayingAnnouncementId(announcement.id);
+      try {
+        const response = await fetch("/api/payments/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            planId: `announcement_unlock:${announcement.id}`,
+            planName: announcement.paid_plan_name || "Accès premium",
+            amount: announcement.price_amount || 0,
+            email: currentUser.email,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.checkoutUrl) {
+            localStorage.setItem("last_payment_reference", data.reference);
+            window.location.href = data.checkoutUrl;
+          } else {
+            throw new Error("Impossible de générer le lien de paiement.");
+          }
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || "La passerelle de paiement a renvoyé une erreur.");
+        }
+      } catch (err: any) {
+        alert(err.message || "Erreur lors de l'initialisation du paiement.");
+      } finally {
+        setPayingAnnouncementId(null);
+      }
+    }
+  };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "match":
@@ -301,6 +403,30 @@ export default function Notifications({ currentUser, onNavigateToTab, onStartCha
                     <span className="inline-block text-[9px] bg-rose-500 text-white font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md mt-1 scale-90 origin-left">
                       Nouveau
                     </span>
+                  )}
+
+                  {notif.announcement?.cta_enabled && notif.announcement.cta_label && (
+                    <button
+                      onClick={(e) => handleAnnouncementCta(e, notif.announcement!)}
+                      disabled={payingAnnouncementId === notif.announcement.id}
+                      className={`mt-2 flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 py-2 rounded-xl text-[11px] font-extrabold text-white transition cursor-pointer disabled:opacity-60 ${
+                        notif.announcement.cta_type === "paid"
+                          ? "bg-emerald-500 hover:bg-emerald-600"
+                          : "bg-indigo-500 hover:bg-indigo-600"
+                      }`}
+                    >
+                      {payingAnnouncementId === notif.announcement.id ? (
+                        <Loader size={12} className="animate-spin" />
+                      ) : (
+                        <ArrowRight size={12} />
+                      )}
+                      <span>
+                        {notif.announcement.cta_label}
+                        {notif.announcement.cta_type === "paid" && notif.announcement.price_amount
+                          ? ` · ${notif.announcement.price_amount} FCFA`
+                          : ""}
+                      </span>
+                    </button>
                   )}
                 </div>
 

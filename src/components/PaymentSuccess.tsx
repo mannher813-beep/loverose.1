@@ -13,9 +13,12 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
   const [status, setStatus] = useState<"polling" | "success" | "timeout" | "not_found">("polling");
   const [attempts, setAttempts] = useState(0);
   const [planName, setPlanName] = useState<string | null>(null);
+  const [planId, setPlanId] = useState<string | null>(null);
   const [amount, setAmount] = useState<number | null>(null);
   const [reference, setReference] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [announcementRedirectUrl, setAnnouncementRedirectUrl] = useState<string | null>(null);
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
 
   const handleManualClientValidation = async () => {
     if (!reference) return;
@@ -76,6 +79,7 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
 
         if (dbPayment) {
           setPlanName(dbPayment.plan_name);
+          setPlanId(dbPayment.plan_id);
           setAmount(dbPayment.montant);
         }
 
@@ -128,6 +132,44 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
 
     return () => clearInterval(pollInterval);
   }, [userId, loadProfile]);
+
+  // Cas particulier : paiement lié à un bouton d'annonce admin (ex: accès à un
+  // groupe WhatsApp payant). Une fois le paiement confirmé, on redirige
+  // automatiquement l'utilisateur vers le lien configuré par l'admin.
+  useEffect(() => {
+    if (status !== "success" || !planId || !planId.startsWith("announcement_unlock:")) return;
+
+    let cancelled = false;
+    const announcementId = planId.split(":")[1];
+
+    (async () => {
+      const { data } = await supabase
+        .from("admin_announcements")
+        .select("success_redirect_url")
+        .eq("id", announcementId)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (data?.success_redirect_url) {
+        setAnnouncementRedirectUrl(data.success_redirect_url);
+        setRedirectCountdown(3);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status, planId]);
+
+  useEffect(() => {
+    if (redirectCountdown === null || !announcementRedirectUrl) return;
+    if (redirectCountdown <= 0) {
+      window.location.href = announcementRedirectUrl;
+      return;
+    }
+    const t = setTimeout(() => setRedirectCountdown((c) => (c !== null ? c - 1 : null)), 1000);
+    return () => clearTimeout(t);
+  }, [redirectCountdown, announcementRedirectUrl]);
 
   const handleReturn = () => {
     // Clean up url parameters so we don't reload success screens repeatedly
@@ -212,12 +254,31 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
               </div>
             )}
 
-            <button
-              onClick={handleReturn}
-              className="w-full py-3.5 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-100 transition cursor-pointer"
-            >
-              Aller au tableau de bord
-            </button>
+            {announcementRedirectUrl ? (
+              <div className="space-y-3">
+                <div className="bg-indigo-50/60 rounded-2xl p-4 border border-indigo-100 text-center space-y-1">
+                  <p className="text-xs font-bold text-indigo-700">
+                    Redirection dans {redirectCountdown ?? 3}s...
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Vous allez être redirigé automatiquement vers votre accès.
+                  </p>
+                </div>
+                <a
+                  href={announcementRedirectUrl}
+                  className="block w-full py-3.5 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 transition text-center"
+                >
+                  Continuer maintenant
+                </a>
+              </div>
+            ) : (
+              <button
+                onClick={handleReturn}
+                className="w-full py-3.5 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-100 transition cursor-pointer"
+              >
+                Aller au tableau de bord
+              </button>
+            )}
           </motion.div>
         )}
 

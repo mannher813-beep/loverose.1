@@ -27,6 +27,9 @@ import {
   Loader2,
   Mail,
   HeartHandshake,
+  Link2,
+  DollarSign,
+  Navigation,
 } from "lucide-react";
 
 interface Report {
@@ -79,7 +82,7 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ currentUser }: AdminPanelProps) {
-  const [tab, setTab] = useState<"users" | "reports" | "stats" | "messages" | "campaign">("users");
+  const [tab, setTab] = useState<"users" | "reports" | "stats" | "messages" | "campaign" | "announce">("users");
   const [users, setUsers] = useState<Profile[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [reportProfiles, setReportProfiles] = useState<Record<string, Profile>>({});
@@ -100,9 +103,20 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const [convoTarget, setConvoTarget] = useState<Profile | null>(null);
   const [convoMessages, setConvoMessages] = useState<(Message & { senderName?: string })[]>([]);
   const [convoLoading, setConvoLoading] = useState(false);
-  const [broadcastOpen, setBroadcastOpen] = useState(false);
-  const [broadcastMessage, setBroadcastMessage] = useState("");
-  const [broadcastSending, setBroadcastSending] = useState(false);
+  // Éditeur d'annonces admin (texte + cible + bouton optionnel gratuit/payant)
+  const [annMessage, setAnnMessage] = useState("");
+  const [annTargetGender, setAnnTargetGender] = useState<"all" | "homme" | "femme">("all");
+  const [annCtaEnabled, setAnnCtaEnabled] = useState(false);
+  const [annCtaLabel, setAnnCtaLabel] = useState("");
+  const [annCtaType, setAnnCtaType] = useState<"route" | "url" | "paid">("route");
+  const [annCtaRoute, setAnnCtaRoute] = useState<"discover" | "chat" | "shop" | "profile" | "settings" | "notifications" | "likes">("discover");
+  const [annCtaUrl, setAnnCtaUrl] = useState("");
+  const [annPriceAmount, setAnnPriceAmount] = useState("");
+  const [annPaidPlanName, setAnnPaidPlanName] = useState("");
+  const [annSuccessRedirectUrl, setAnnSuccessRedirectUrl] = useState("");
+  const [annSending, setAnnSending] = useState(false);
+  const [annConfirmText, setAnnConfirmText] = useState("");
+  const [annLastResult, setAnnLastResult] = useState<{ recipients: number } | null>(null);
   const [campaignLoading, setCampaignLoading] = useState(false);
   const [campaignResult, setCampaignResult] = useState<any>(null);
   const [campaignTestEmail, setCampaignTestEmail] = useState("");
@@ -526,20 +540,90 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     }
   };
 
-  const sendBroadcast = async () => {
-    if (!broadcastMessage.trim()) return;
-    setBroadcastSending(true);
-    const { data, error } = await supabase.rpc("admin_send_notification", {
-      content: broadcastMessage.trim(),
-      target_uid: null,
-    });
-    setBroadcastSending(false);
-    if (error) {
-      showToast("Erreur : " + error.message);
-    } else {
-      showToast(`Annonce envoyée à ${data ?? "tous les"} utilisateur(s)`);
-      setBroadcastMessage("");
-      setBroadcastOpen(false);
+  const annRecipientCount = () => {
+    if (annTargetGender === "all") return users.length;
+    return users.filter((u) => u.gender === annTargetGender).length;
+  };
+
+  const resetAnnouncementForm = () => {
+    setAnnMessage("");
+    setAnnTargetGender("all");
+    setAnnCtaEnabled(false);
+    setAnnCtaLabel("");
+    setAnnCtaType("route");
+    setAnnCtaRoute("discover");
+    setAnnCtaUrl("");
+    setAnnPriceAmount("");
+    setAnnPaidPlanName("");
+    setAnnSuccessRedirectUrl("");
+    setAnnConfirmText("");
+  };
+
+  const sendAnnouncement = async () => {
+    if (!annMessage.trim()) return;
+    if (annConfirmText.trim() !== "ENVOYER") return;
+
+    // Validation minimale du bouton avant envoi, pour éviter une annonce cassée
+    if (annCtaEnabled) {
+      if (!annCtaLabel.trim()) {
+        showToast("Erreur : donnez un libellé au bouton.");
+        return;
+      }
+      if (annCtaType === "url" && !annCtaUrl.trim()) {
+        showToast("Erreur : renseignez le lien externe du bouton.");
+        return;
+      }
+      if (annCtaType === "paid") {
+        if (!annPriceAmount || Number(annPriceAmount) <= 0) {
+          showToast("Erreur : renseignez un prix valide (FCFA).");
+          return;
+        }
+        if (!annPaidPlanName.trim()) {
+          showToast("Erreur : donnez un nom au produit payant (affiché sur l'écran de paiement).");
+          return;
+        }
+        if (!annSuccessRedirectUrl.trim()) {
+          showToast("Erreur : renseignez le lien de redirection après paiement.");
+          return;
+        }
+      }
+    }
+
+    setAnnSending(true);
+    try {
+      const { data: created, error: createErr } = await supabase
+        .from("admin_announcements")
+        .insert({
+          message: annMessage.trim(),
+          target_gender: annTargetGender,
+          cta_enabled: annCtaEnabled,
+          cta_label: annCtaEnabled ? annCtaLabel.trim() : null,
+          cta_type: annCtaEnabled ? annCtaType : null,
+          cta_route: annCtaEnabled && annCtaType === "route" ? annCtaRoute : null,
+          cta_url: annCtaEnabled && annCtaType === "url" ? annCtaUrl.trim() : null,
+          is_paid: annCtaEnabled && annCtaType === "paid",
+          price_amount: annCtaEnabled && annCtaType === "paid" ? Number(annPriceAmount) : null,
+          paid_plan_name: annCtaEnabled && annCtaType === "paid" ? annPaidPlanName.trim() : null,
+          success_redirect_url: annCtaEnabled && annCtaType === "paid" ? annSuccessRedirectUrl.trim() : null,
+        })
+        .select()
+        .single();
+
+      if (createErr) throw createErr;
+
+      const { data: recipients, error: sendErr } = await supabase.rpc("admin_send_announcement", {
+        p_announcement_id: created.id,
+      });
+
+      if (sendErr) throw sendErr;
+
+      setAnnLastResult({ recipients: recipients ?? 0 });
+      showToast(`Annonce envoyée à ${recipients ?? 0} utilisateur(s)`);
+      resetAnnouncementForm();
+    } catch (err: any) {
+      showToast("Erreur : " + (err?.message || "envoi impossible"));
+    } finally {
+      setAnnSending(false);
     }
   };
 
@@ -647,8 +731,12 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
             </button>
 
             <button
-              onClick={() => setBroadcastOpen(true)}
-              className="flex-shrink-0 flex items-center gap-1.5 py-1.5 px-3 my-1.5 sm:ml-auto rounded-full border border-indigo-400/30 text-indigo-300 text-xs font-bold hover:bg-indigo-400/10 hover:border-indigo-400/50 transition-colors cursor-pointer whitespace-nowrap"
+              onClick={() => setTab("announce")}
+              className={`flex-shrink-0 flex items-center gap-1.5 py-1.5 px-3 my-1.5 sm:ml-auto rounded-full border text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                tab === "announce"
+                  ? "border-indigo-400/60 text-indigo-200 bg-indigo-400/15"
+                  : "border-indigo-400/30 text-indigo-300 hover:bg-indigo-400/10 hover:border-indigo-400/50"
+              }`}
             >
               <Megaphone size={13} /> Annonce
             </button>
@@ -1146,6 +1234,227 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
               </div>
             )}
           </div>
+        ) : tab === "announce" ? (
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+              <div className="flex items-center gap-2">
+                <Megaphone size={18} className="text-indigo-500" />
+                <h2 className="font-extrabold text-slate-800">Créateur d'annonces</h2>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Envoie une notification personnalisée à une partie ou à tous les utilisateurs, avec un bouton optionnel
+                (accès à une fonctionnalité, lien externe, ou accès payant via Money Fusion).
+              </p>
+            </div>
+
+            {/* 1. Message */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+              <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">1. Message</p>
+              <textarea
+                value={annMessage}
+                onChange={(e) => setAnnMessage(e.target.value)}
+                placeholder="Ex: Nouvelle fonctionnalité disponible, maintenance prévue..."
+                rows={3}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-indigo-400 resize-none"
+              />
+            </div>
+
+            {/* 2. Cible */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+              <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">2. Cible</p>
+              <div className="grid grid-cols-3 gap-2">
+                {(["all", "homme", "femme"] as const).map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => setAnnTargetGender(g)}
+                    className={`py-2.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                      annTargetGender === g
+                        ? "bg-indigo-500 border-indigo-500 text-white"
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    {g === "all" ? "Tout le monde" : g === "homme" ? "Hommes" : "Femmes"}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Sera envoyé à {annRecipientCount()} utilisateur(s) sur {users.length} inscrit(s).
+              </p>
+            </div>
+
+            {/* 3. Bouton optionnel */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">3. Bouton (optionnel)</p>
+                <button
+                  onClick={() => setAnnCtaEnabled((v) => !v)}
+                  className={`w-11 h-6 rounded-full transition relative cursor-pointer ${annCtaEnabled ? "bg-indigo-500" : "bg-slate-200"}`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                      annCtaEnabled ? "translate-x-5" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {annCtaEnabled && (
+                <div className="space-y-3 pt-1">
+                  <input
+                    type="text"
+                    value={annCtaLabel}
+                    onChange={(e) => setAnnCtaLabel(e.target.value)}
+                    placeholder="Texte du bouton (ex: Rejoindre le groupe VIP)"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-indigo-400"
+                  />
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => setAnnCtaType("route")}
+                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl text-[10px] font-bold border transition cursor-pointer ${
+                        annCtaType === "route" ? "bg-indigo-50 border-indigo-300 text-indigo-600" : "bg-slate-50 border-slate-200 text-slate-500"
+                      }`}
+                    >
+                      <Navigation size={14} /> Écran de l'app
+                    </button>
+                    <button
+                      onClick={() => setAnnCtaType("url")}
+                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl text-[10px] font-bold border transition cursor-pointer ${
+                        annCtaType === "url" ? "bg-indigo-50 border-indigo-300 text-indigo-600" : "bg-slate-50 border-slate-200 text-slate-500"
+                      }`}
+                    >
+                      <Link2 size={14} /> Lien externe
+                    </button>
+                    <button
+                      onClick={() => setAnnCtaType("paid")}
+                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl text-[10px] font-bold border transition cursor-pointer ${
+                        annCtaType === "paid" ? "bg-emerald-50 border-emerald-300 text-emerald-600" : "bg-slate-50 border-slate-200 text-slate-500"
+                      }`}
+                    >
+                      <DollarSign size={14} /> Payant
+                    </button>
+                  </div>
+
+                  {annCtaType === "route" && (
+                    <select
+                      value={annCtaRoute}
+                      onChange={(e) => setAnnCtaRoute(e.target.value as any)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-indigo-400"
+                    >
+                      <option value="discover">Découvrir</option>
+                      <option value="chat">Messages</option>
+                      <option value="shop">Boutique / Premium</option>
+                      <option value="likes">Qui m'a aimé</option>
+                      <option value="notifications">Notifications</option>
+                      <option value="profile">Mon profil</option>
+                      <option value="settings">Paramètres</option>
+                    </select>
+                  )}
+
+                  {annCtaType === "url" && (
+                    <input
+                      type="url"
+                      value={annCtaUrl}
+                      onChange={(e) => setAnnCtaUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-indigo-400"
+                    />
+                  )}
+
+                  {annCtaType === "paid" && (
+                    <div className="space-y-2.5 bg-emerald-50/40 border border-emerald-100 rounded-xl p-3">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Prix (FCFA)</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={annPriceAmount}
+                          onChange={(e) => setAnnPriceAmount(e.target.value)}
+                          placeholder="1000"
+                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Nom du produit (écran de paiement)</label>
+                        <input
+                          type="text"
+                          value={annPaidPlanName}
+                          onChange={(e) => setAnnPaidPlanName(e.target.value)}
+                          placeholder="Ex: Accès Groupe WhatsApp VIP"
+                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Lien après paiement confirmé</label>
+                        <input
+                          type="url"
+                          value={annSuccessRedirectUrl}
+                          onChange={(e) => setAnnSuccessRedirectUrl(e.target.value)}
+                          placeholder="Ex: https://chat.whatsapp.com/..."
+                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          L'utilisateur y sera envoyé automatiquement juste après confirmation du paiement Money Fusion.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 4. Aperçu */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+              <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">4. Aperçu</p>
+              <div className="border border-slate-150 rounded-2xl p-3 bg-slate-50/50 space-y-2">
+                <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                  {annMessage.trim() || "Votre message apparaîtra ici..."}
+                </p>
+                {annCtaEnabled && annCtaLabel.trim() && (
+                  <button
+                    disabled
+                    className={`w-full py-2 rounded-lg text-[11px] font-bold ${
+                      annCtaType === "paid" ? "bg-emerald-500" : "bg-indigo-500"
+                    } text-white`}
+                  >
+                    {annCtaLabel}
+                    {annCtaType === "paid" && annPriceAmount ? ` · ${annPriceAmount} FCFA` : ""}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 5. Envoi */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3 border-2 border-rose-100">
+              <p className="text-xs font-extrabold text-rose-500 uppercase tracking-wider">5. Envoyer</p>
+              <p className="text-[11px] text-slate-500">
+                Tapez <span className="font-mono font-bold">ENVOYER</span> pour confirmer, puis cliquez sur le bouton.
+              </p>
+              <input
+                type="text"
+                value={annConfirmText}
+                onChange={(e) => setAnnConfirmText(e.target.value)}
+                placeholder="ENVOYER"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-rose-400"
+              />
+              <button
+                onClick={sendAnnouncement}
+                disabled={annSending || !annMessage.trim() || annConfirmText.trim() !== "ENVOYER"}
+                className="w-full py-3 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white font-extrabold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+              >
+                {annSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                {annSending ? "Envoi en cours..." : `Envoyer à ${annRecipientCount()} utilisateur(s)`}
+              </button>
+            </div>
+
+            {annLastResult && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <p className="text-xs font-bold text-emerald-600">
+                  ✓ Dernière annonce envoyée à {annLastResult.recipients} utilisateur(s).
+                </p>
+              </div>
+            )}
+          </div>
         ) : null}
       </div>
 
@@ -1326,40 +1635,6 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                 ))
               )}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Broadcast modal */}
-      {broadcastOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 w-full max-w-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold text-slate-800 flex items-center gap-1.5">
-                <Megaphone size={16} className="text-indigo-500" /> Annonce à tous les utilisateurs
-              </h2>
-              <button onClick={() => setBroadcastOpen(false)} className="cursor-pointer">
-                <X size={18} className="text-slate-400" />
-              </button>
-            </div>
-            <textarea
-              value={broadcastMessage}
-              onChange={(e) => setBroadcastMessage(e.target.value)}
-              placeholder="Ex: Nouvelle fonctionnalité disponible, maintenance prévue..."
-              rows={4}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-indigo-400 resize-none"
-            />
-            <p className="text-[10px] text-slate-400 mt-1.5">
-              Sera envoyé à {users.length} utilisateur(s) inscrit(s), sous forme de notification.
-            </p>
-            <button
-              onClick={sendBroadcast}
-              disabled={!broadcastMessage.trim() || broadcastSending}
-              className="w-full mt-3 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl cursor-pointer transition flex items-center justify-center gap-2"
-            >
-              {broadcastSending && <Loader2 size={14} className="animate-spin" />}
-              {broadcastSending ? "Envoi en cours..." : "Envoyer à tous"}
-            </button>
           </div>
         </div>
       )}
