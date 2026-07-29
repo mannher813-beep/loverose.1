@@ -367,21 +367,22 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
     return 15;
   };
 
-  const handleSwipe = async (liked: boolean) => {
-    if (profiles.length === 0 || currentIndex >= profiles.length) return;
+  const handleSwipe = async (liked: boolean): Promise<boolean> => {
+    if (profiles.length === 0 || currentIndex >= profiles.length) return false;
 
     if (!currentUser) {
       if (liked) {
         if (onAuthRequired) onAuthRequired();
-        return;
+        return false;
       } else {
         // Dislike / Next profile: allow unauthenticated browsing
         setCurrentIndex(prev => prev + 1);
-        return;
+        return false;
       }
     }
     
     const candidate = profiles[currentIndex];
+    let didMatch = false;
     
     if (liked) {
       try {
@@ -406,6 +407,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
           // would mean unmatching, which is a bigger action than a rewind.
           setLastSwipe(null);
           onMatchDetected(candidate);
+          didMatch = true;
         } else {
           setLastSwipe({ profile: candidate, wasLiked: true });
         }
@@ -420,6 +422,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
 
     // Advance to next profile
     setCurrentIndex(prev => prev + 1);
+    return didMatch;
   };
 
   // Rewind (Premium): undo the very last swipe and bring that profile back.
@@ -1015,13 +1018,23 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
             handleSwipe(false);
             setSelectedViewProfile(null);
           }}
-          onStartChat={() => {
+          isMatch={false}
+          onStartChat={async () => {
             if (!currentUser) {
               if (onAuthRequired) onAuthRequired();
               return;
             }
-            handleSwipe(true);
+            const partnerName = selectedViewProfile.full_name || "ce profil";
+            const didMatch = await handleSwipe(true);
             setSelectedViewProfile(null);
+            if (!didMatch) {
+              // No mutual like yet — there's no conversation to open. Say so
+              // clearly instead of just closing the page with no feedback.
+              alert(`❤️ Like envoyé à ${partnerName} ! Vous serez notifié(e) si c'est réciproque, et la discussion s'ouvrira automatiquement.`);
+            }
+            // If it was a match, handleSwipe already triggered onMatchDetected,
+            // which shows the "It's a match!" screen with its own real
+            // "start chatting" action.
           }}
         />
       )}

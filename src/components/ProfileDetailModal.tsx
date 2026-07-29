@@ -15,6 +15,15 @@ interface ProfileDetailModalProps {
   onReport?: () => void;
   /** Optional: lets the person pass directly from the full profile page, like Discover's swipe stack. */
   onPass?: () => void;
+  /**
+   * Whether this profile is already a mutual match (a real conversation can
+   * be opened right now). Defaults to true, matching the existing callers
+   * (Chat, WhoLikedMe, AdminPanel) that only ever show already-matched or
+   * already-messaging people. Discover explicitly passes false, since
+   * there's no conversation yet — the button there sends a like instead,
+   * and says so.
+   */
+  isMatch?: boolean;
 }
 
 export default function ProfileDetailModal({
@@ -27,6 +36,7 @@ export default function ProfileDetailModal({
   onAuthRequired,
   onReport,
   onPass,
+  isMatch = true,
 }: ProfileDetailModalProps) {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [showScoreInfo, setShowScoreInfo] = useState(false);
@@ -302,8 +312,14 @@ export default function ProfileDetailModal({
             onClick={handleChatClick}
             className="flex-1 py-4 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-black text-xs rounded-2xl shadow-md flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-[0.98]"
           >
-            <MessageCircle size={16} />
-            <span>{currentUser ? "Ouvrir la Discussion" : "Se connecter avec Google pour discuter"}</span>
+            {isMatch ? <MessageCircle size={16} /> : <Heart size={16} fill="currentColor" />}
+            <span>
+              {!currentUser
+                ? "Se connecter avec Google pour discuter"
+                : isMatch
+                ? "Ouvrir la Discussion"
+                : "Envoyer un like"}
+            </span>
           </button>
         )}
       </div>
