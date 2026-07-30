@@ -1,5 +1,5 @@
 import React from "react";
-import { Heart, Sparkles, Shield, Compass, MessageSquare, ArrowRight, Star, Users } from "lucide-react";
+import { Heart, Sparkles, Shield, Compass, MessageSquare, ArrowRight, Star, Users, CheckCircle, Coins } from "lucide-react";
 
 interface PublicHomeProps {
   onNavigate: (path: string) => void;
@@ -93,6 +93,71 @@ export default function PublicHome({ onNavigate }: PublicHomeProps) {
             </p>
           </div>
         </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section className="max-w-5xl mx-auto px-4 space-y-10">
+        <div className="text-center space-y-3">
+          <h2 className="text-3xl font-black text-slate-950 tracking-tight">Tarifs</h2>
+          <p className="text-slate-500 text-sm max-w-xl mx-auto">
+            L'inscription et la découverte de profils sont gratuites. Un abonnement optionnel débloque des
+            fonctionnalités supplémentaires.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-8 max-w-3xl mx-auto">
+          {/* Free plan */}
+          <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-4 text-left">
+            <h3 className="text-lg font-extrabold text-slate-900">Compte Gratuit</h3>
+            <p className="text-2xl font-black text-slate-900">0 FCFA</p>
+            <div className="space-y-2 text-xs font-semibold text-slate-600 pt-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
+                <span>Création de profil et découverte illimitée</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
+                <span>Matchs et messagerie de base</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Premium plan - real price, kept in sync with Shop.tsx */}
+          <div className="bg-white rounded-3xl p-8 border-2 border-rose-500/30 shadow-md space-y-4 text-left relative overflow-hidden">
+            <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-extrabold px-3 py-1 rounded-bl-xl uppercase tracking-wider flex items-center gap-1">
+              <Sparkles size={10} className="fill-white" />
+              <span>Populaire</span>
+            </div>
+            <h3 className="text-lg font-extrabold text-slate-900">Abonnement Premium</h3>
+            <p className="text-2xl font-black text-rose-500">
+              500 FCFA <span className="text-xs font-semibold text-slate-400">/ sans engagement</span>
+            </p>
+            <div className="space-y-2 text-xs font-semibold text-slate-600 pt-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle size={14} className="text-rose-500 flex-shrink-0" />
+                <span>Messages illimités</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle size={14} className="text-rose-500 flex-shrink-0" />
+                <span>Badge de profil Premium</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle size={14} className="text-rose-500 flex-shrink-0" />
+                <span>Mise en vedette de votre profil</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle size={14} className="text-rose-500 flex-shrink-0" />
+                <span>Déblocage de tous vos likes reçus</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-center text-[11px] text-slate-400 max-w-xl mx-auto">
+          <Coins size={12} className="inline -mt-0.5 mr-1" />
+          Des packs de crédits ponctuels (ex: 10 crédits pour 500 FCFA) sont également disponibles pour débloquer des
+          messages ou des boosts de profil sans abonnement. Paiement sécurisé via Money Fusion (Mobile Money).
+        </p>
       </section>
 
       {/* Safety & Commitment Banner */}

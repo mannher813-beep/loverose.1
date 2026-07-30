@@ -618,6 +618,7 @@ export default function App() {
   // /conditions-d-utilisation had nowhere real to go and silently fell
   // through to the guest Discover screen instead.
   const publicMarketingPaths = [
+    "/",
     "/accueil",
     "/a-propos",
     "/faq",
@@ -625,7 +626,7 @@ export default function App() {
     "/conditions-d-utilisation",
     "/politique-de-confidentialite",
   ];
-  if (!currentUser && publicMarketingPaths.includes(currentPath)) {
+  if (!currentUser && !isLoading && publicMarketingPaths.includes(currentPath)) {
     return (
       <PublicLayout
         currentPath={currentPath}
