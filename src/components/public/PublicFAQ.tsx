@@ -38,31 +38,31 @@ export default function PublicFAQ() {
       answer: "Si vous constatez un comportement inapproprié (harcèlement, tentative de fraude, faux profil, propos déplacés), vous pouvez cliquer sur l'icône de drapeau ou l'option 'Signaler' présente sur chaque profil et publication. Notre équipe de modération étudie tous les signalements sous 24 heures et procède au bannissement immédiat des utilisateurs malveillants."
     },
     {
-      id: 5,
+      id: 6,
       category: "Paiements",
-      question: "Quels sont les moyens de paiement acceptés pour les crédits ?",
+      question: "Quels sont les moyens de paiement acceptés ?",
       answer: "Pour faciliter les transactions locales, nous acceptons les principaux opérateurs de Mobile Money largement utilisés en Afrique (Orange Money, MTN Mobile Money, Wave, Moov, etc.). Les transactions sont entièrement sécurisées et traitées de manière chiffrée. Aucune coordonnée bancaire n'est stockée sur nos serveurs."
     },
     {
-      id: 6,
+      id: 7,
       category: "Créateurs",
       question: "Le programme créateur est-il payant ?",
       answer: "Non, le programme créateur LoveRose est désormais 100% gratuit ! Vous pouvez créer une page de créateur, publier du contenu, et attirer des abonnés sans aucun frais d'activation. Cependant, pour pouvoir recevoir des paiements de la part de vos abonnés (monétisation de contenu) et réclamer des reversements, votre page doit être soumise à notre protocole de certification d'identité gratuit pour des raisons réglementaires."
     },
     {
-      id: 7,
+      id: 8,
       category: "Créateurs",
       question: "Comment puis-je réclamer mes revenus de créateur ?",
       answer: "Une fois votre page certifiée, vous pouvez configurer une méthode de retrait sécurisée par Mobile Money (Orange Money, MTN, etc.) directement depuis votre Tableau de bord Créateur. Vous devrez définir un code PIN de paiement de 4 chiffres. Chaque demande de paiement s'effectue simplement en saisissant votre code PIN, après vérification automatique de votre solde."
     },
     {
-      id: 8,
+      id: 9,
       category: "Compte",
       question: "Comment supprimer définitivement mon compte et mes données ?",
       answer: "Vous êtes propriétaire de vos données. Vous pouvez supprimer définitivement votre profil et toutes vos publications à tout moment en accédant aux Paramètres de votre compte, puis dans la section de gestion du profil. Une fois la suppression validée, toutes vos informations personnelles, photos, messages et matchs sont définitivement supprimés de notre base de données sans possibilité de récupération."
     },
     {
-      id: 9,
+      id: 10,
       category: "Confidentialité",
       question: "Où sont stockées mes données personnelles et sont-elles confidentielles ?",
       answer: "Vos données personnelles sont stockées sur des serveurs hautement sécurisés et gérées conformément à notre politique de confidentialité stricte. Seuls les éléments publics de votre profil (nom d'usage, description, photos que vous choisissez de partager) sont visibles par les autres membres inscrits. Nous ne vendons ni ne partageons vos données personnelles avec des régies publicitaires externes sans votre accord."
@@ -99,7 +99,7 @@ export default function PublicFAQ() {
         </span>
         <input
           type="text"
-          placeholder="Rechercher une question (ex: créateur, paiement, sécurité...)"
+          placeholder="Rechercher une question (ex: premium, créateur, paiement...)"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:border-rose-450 focus:ring-1 focus:ring-rose-200 outline-none transition shadow-sm"

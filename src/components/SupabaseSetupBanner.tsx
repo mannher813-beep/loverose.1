@@ -177,7 +177,21 @@ ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Les utilisateurs lisent leurs propres transactions de paiement" ON public.payments;
 CREATE POLICY "Les utilisateurs lisent leurs propres transactions de paiement" ON public.payments FOR SELECT USING (auth.uid() = user_id);
 
--- 10. Table verification_requests
+-- 10. Table subscriptions (Abonnements Premium)
+CREATE TABLE IF NOT EXISTS public.subscriptions (
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+    type TEXT DEFAULT 'none' CHECK (type IN ('premium', 'none')),
+    status TEXT DEFAULT 'none' CHECK (status IN ('active', 'expired', 'none')),
+    start_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    end_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Chaque utilisateur lit son propre abonnement" ON public.subscriptions;
+CREATE POLICY "Chaque utilisateur lit son propre abonnement" ON public.subscriptions FOR SELECT USING (auth.uid() = user_id);
+
+-- 11. Table verification_requests
 CREATE TABLE IF NOT EXISTS public.verification_requests (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -190,7 +204,7 @@ ALTER TABLE public.verification_requests ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Chaque utilisateur gère ses demandes de vérification" ON public.verification_requests;
 CREATE POLICY "Chaque utilisateur gère ses demandes de vérification" ON public.verification_requests FOR ALL USING (auth.uid() = user_id);
 
--- 11. Table reports (Signalements)
+-- 12. Table reports (Signalements)
 CREATE TABLE IF NOT EXISTS public.reports (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     reporter_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -206,7 +220,7 @@ CREATE POLICY "Chaque utilisateur lit ses propres signalements" ON public.report
 CREATE POLICY "Chaque utilisateur peut insérer ses propres signalements" ON public.reports FOR INSERT WITH CHECK (auth.uid() = reporter_id);
 
 
--- 12. Table post_likes (Likes du fil d'actualité)
+-- 13. Table post_likes (Likes du fil d'actualité)
 CREATE TABLE IF NOT EXISTS public.post_likes (
     post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -221,7 +235,7 @@ CREATE POLICY "Les likes de posts sont visibles par tous" ON public.post_likes F
 CREATE POLICY "Chaque utilisateur gère ses likes de posts" ON public.post_likes FOR ALL USING (auth.uid() = user_id);
 
 
--- 13. Table post_comments (Commentaires du fil d'actualité)
+-- 14. Table post_comments (Commentaires du fil d'actualité)
 CREATE TABLE IF NOT EXISTS public.post_comments (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE,
@@ -237,7 +251,7 @@ CREATE POLICY "Les commentaires de posts sont visibles par tous" ON public.post_
 CREATE POLICY "Chaque utilisateur gère ses commentaires" ON public.post_comments FOR ALL USING (auth.uid() = user_id);
 
 
--- 14. Table post_shares (Partages du fil d'actualité)
+-- 15. Table post_shares (Partages du fil d'actualité)
 CREATE TABLE IF NOT EXISTS public.post_shares (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE,
@@ -252,7 +266,7 @@ CREATE POLICY "Les partages de posts sont visibles par tous" ON public.post_shar
 CREATE POLICY "Chaque utilisateur gère ses partages" ON public.post_shares FOR ALL USING (auth.uid() = user_id);
 
 
--- 15. Table blocked_users (Utilisateurs bloqués)
+-- 16. Table blocked_users (Utilisateurs bloqués)
 CREATE TABLE IF NOT EXISTS public.blocked_users (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     blocker_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -268,7 +282,7 @@ CREATE POLICY "Les utilisateurs peuvent voir qui ils ont bloqué" ON public.bloc
 CREATE POLICY "Les utilisateurs peuvent bloquer et débloquer" ON public.blocked_users FOR ALL USING (auth.uid() = blocker_id);
 
 
--- 16. Table profile_boosts (Profils boostés)
+-- 17. Table profile_boosts (Profils boostés)
 CREATE TABLE IF NOT EXISTS public.profile_boosts (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -283,7 +297,7 @@ CREATE POLICY "Tout le monde peut voir les boosts" ON public.profile_boosts FOR 
 CREATE POLICY "Chaque utilisateur gère ses propres boosts" ON public.profile_boosts FOR ALL USING (auth.uid() = user_id);
 
 
--- 17. Table creator_pages (Pages Créateurs)
+-- 18. Table creator_pages (Pages Créateurs)
 CREATE TABLE IF NOT EXISTS public.creator_pages (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     owner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -311,7 +325,7 @@ CREATE POLICY "Les pages créateurs sont publiques" ON public.creator_pages FOR 
 CREATE POLICY "Les créateurs gèrent leur propre page" ON public.creator_pages FOR ALL USING (auth.uid() = owner_id);
 
 
--- 18. Table page_followers (Abonnés/Followers de pages créateurs)
+-- 19. Table page_followers (Abonnés/Followers de pages créateurs)
 CREATE TABLE IF NOT EXISTS public.page_followers (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     page_id UUID REFERENCES public.creator_pages(id) ON DELETE CASCADE,
@@ -327,7 +341,7 @@ CREATE POLICY "Les followers sont publics" ON public.page_followers FOR SELECT U
 CREATE POLICY "Les utilisateurs gèrent leurs propres suivis" ON public.page_followers FOR ALL USING (auth.uid() = user_id);
 
 
--- 19. Table page_subscriptions (Abonnements payants aux pages créateurs)
+-- 20. Table page_subscriptions (Abonnements payants aux pages créateurs)
 CREATE TABLE IF NOT EXISTS public.page_subscriptions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     page_id UUID REFERENCES public.creator_pages(id) ON DELETE CASCADE,
@@ -345,7 +359,7 @@ CREATE POLICY "Les abonnements sont visibles par les abonnés et créateurs" ON 
 );
 
 
--- 20. Table post_unlocks (Posts payants débloqués individuellement)
+-- 21. Table post_unlocks (Posts payants débloqués individuellement)
 CREATE TABLE IF NOT EXISTS public.post_unlocks (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE,
@@ -363,14 +377,54 @@ CREATE POLICY "Les déblocages sont visibles par l'utilisateur" ON public.post_u
 -- FONCTIONS ET PROCEDURES STOCKÉES
 -- ==========================================
 
+-- RPC pour vérifier si un utilisateur est premium
+CREATE OR REPLACE FUNCTION public.is_user_premium(check_user_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+    is_premium BOOLEAN;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1 FROM public.subscriptions 
+        WHERE user_id = check_user_id 
+          AND (status = 'active' OR status = 'trial') 
+          AND end_date > NOW()
+    ) INTO is_premium;
+    RETURN is_premium;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
 -- RPC pour obtenir les droits complets d'un utilisateur
 CREATE OR REPLACE FUNCTION public.get_user_entitlements(check_user_id UUID)
 RETURNS JSONB AS $$
 DECLARE
+    is_premium BOOLEAN := false;
+    sub_type TEXT := NULL;
+    sub_status TEXT := NULL;
+    expires_at TIMESTAMP WITH TIME ZONE := NULL;
     credit_balance INTEGER := 0;
     can_send BOOLEAN := false;
+    sub_record RECORD;
 BEGIN
-    -- 1. Fetch credits balance
+    -- 1. Fetch subscription details
+    SELECT * FROM public.subscriptions 
+    WHERE user_id = check_user_id 
+    ORDER BY created_at DESC 
+    LIMIT 1 
+    INTO sub_record;
+
+    IF sub_record IS NOT NULL THEN
+        sub_type := sub_record.type;
+        sub_status := sub_record.status;
+        expires_at := sub_record.end_date;
+        
+        -- Check if currently premium (status in 'active', 'trial' and not expired)
+        IF (sub_status = 'active' OR sub_status = 'trial') AND expires_at > NOW() THEN
+            is_premium := true;
+        END IF;
+    END IF;
+
+    -- 2. Fetch credits balance
     SELECT balance FROM public.user_credits 
     WHERE user_id = check_user_id 
     INTO credit_balance;
@@ -379,14 +433,18 @@ BEGIN
         credit_balance := 0;
     END IF;
 
-    -- 2. Can send paid messages if the user has credits
-    IF credit_balance > 0 THEN
+    -- 3. Can send messages if premium OR has credits
+    IF is_premium OR credit_balance > 0 THEN
         can_send := true;
     ELSE
         can_send := false;
     END IF;
 
     RETURN jsonb_build_object(
+        'premium', is_premium,
+        'subscription_type', sub_type,
+        'subscription_status', sub_status,
+        'expires_at', expires_at,
         'credits', credit_balance,
         'can_send_messages', can_send
     );
@@ -439,13 +497,21 @@ RETURNS TRIGGER AS $$
 DECLARE
     msg_count INTEGER;
     sender_credits INTEGER;
+    is_premium BOOLEAN;
     word_count INTEGER;
 BEGIN
-    -- 1. Compte combien de messages ont été envoyés par ce sender dans ce match
+    -- 1. Vérifie si le sender est Premium (messages illimités)
+    SELECT public.is_user_premium(NEW.sender_id) INTO is_premium;
+
+    IF is_premium THEN
+        RETURN NEW; -- Premium a les messages gratuits illimités
+    END IF;
+
+    -- 2. Compte combien de messages ont été envoyés par ce sender dans ce match
     SELECT COUNT(*) FROM public.messages 
     WHERE match_id = NEW.match_id AND sender_id = NEW.sender_id INTO msg_count;
 
-    -- 2. Si c'est un des 3 premiers messages gratuits
+    -- 3. Si c'est un des 3 premiers messages gratuits
     IF msg_count < 3 THEN
         -- Validation stricte : max 10 mots, uniquement des lettres (pas de chiffres)
         -- On calcule le nombre de mots en comptant les espaces + 1
@@ -462,7 +528,7 @@ BEGIN
         RETURN NEW;
     END IF;
 
-    -- 3. Si les messages gratuits sont épuisés, on vérifie et décrémente le solde de crédits
+    -- 4. Si les messages gratuits sont épuisés, on vérifie et décrémente le solde de crédits
     SELECT balance FROM public.user_credits WHERE user_id = NEW.sender_id INTO sender_credits;
     
     IF sender_credits IS NULL OR sender_credits < 1 THEN

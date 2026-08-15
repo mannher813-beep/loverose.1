@@ -44,21 +44,11 @@ export async function fulfillPayment(
     ]);
     console.log(`[Fulfill] Credited ${creditAmount} credits to user ${userId}`);
   }
-  // B. PREMIUM APP SUBSCRIPTION
+  // B. (obsolète) Abonnement Premium — retiré : LoveRose ne propose plus de
+  // système d'abonnement Premium. Ce planId n'est plus émis par le frontend ;
+  // si jamais reçu (ancien lien), on le journalise sans rien fulfill.
   else if (planId === "premium_sub") {
-    const now = new Date();
-    const expiresAt = new Date();
-    expiresAt.setDate(now.getDate() + 30);
-
-    await supabaseAdmin.from("subscriptions").upsert({
-      user_id: userId,
-      type: "premium",
-      status: "active",
-      start_date: now,
-      end_date: expiresAt,
-      updated_at: now,
-    });
-    console.log(`[Fulfill] Activated Premium subscription for user ${userId}`);
+    console.warn(`[Fulfill] planId "premium_sub" reçu mais le système Premium a été retiré. Aucune action effectuée pour user ${userId}.`);
   }
   // C0. TRUST / IDENTITY VERIFICATION BADGE FEE (500 FCFA unique)
   else if (planId === "verification_badge") {

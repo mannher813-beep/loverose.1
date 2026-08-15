@@ -45,12 +45,12 @@ interface NotificationItem {
 
 interface NotificationsProps {
   currentUser: any;
-  onNavigateToTab: (tab: 'discover' | 'chat' | 'shop' | 'profile' | 'settings' | 'notifications' | 'likes') => void;
-  onStartChat?: (partnerId: string) => void;
+  onNavigateToTab: (tab: 'discover' | 'dashboard' | 'profile' | 'settings' | 'notifications' | 'likes') => void;
+  onLikeBack?: (partnerId: string) => void;
   onAuthRequired?: () => void;
 }
 
-export default function Notifications({ currentUser, onNavigateToTab, onStartChat, onAuthRequired }: NotificationsProps) {
+export default function Notifications({ currentUser, onNavigateToTab, onLikeBack, onAuthRequired }: NotificationsProps) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [unlockedAnnouncementIds, setUnlockedAnnouncementIds] = useState<Set<string>>(new Set());
@@ -184,12 +184,11 @@ export default function Notifications({ currentUser, onNavigateToTab, onStartCha
       window.dispatchEvent(new Event("loverose-notification-read"));
 
       // Interactive behaviors depending on notification type
-      if (type === 'match' && senderId && onStartChat) {
-        onStartChat(senderId);
-      } else if (type === 'message') {
-        onNavigateToTab('chat');
+      if (type === 'match' && senderId && onLikeBack) {
+        onLikeBack(senderId);
+        onNavigateToTab('likes');
       } else if (type === 'like') {
-        onNavigateToTab('discover');
+        onNavigateToTab('likes');
       }
     } catch (err) {
       console.error("Error marking notification as read:", err);

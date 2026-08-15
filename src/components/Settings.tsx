@@ -13,7 +13,6 @@ import {
   User, 
   MapPin, 
   AlignLeft, 
-  Sparkles, 
   Save, 
   Camera, 
   Plus, 
@@ -77,7 +76,6 @@ export default function Settings({
   const [avatarUrl, setAvatarUrl] = useState("");
   const [selectedIntents, setSelectedIntents] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
-  const [uploadingPhotoIndex, setUploadingPhotoIndex] = useState<number | null>(null);
 
   // Slow/unstable connections can leave a storage upload hanging with no
   // response — this forces it to fail after `ms` instead of hanging forever.
@@ -147,7 +145,7 @@ export default function Settings({
     await ensurePushSubscription(false);
   };
 
-  // Verification badge payment (500 FCFA, separate from Premium subscription)
+  // Verification badge payment (500 FCFA)
   const VERIFICATION_BADGE_FEE = 500;
   const [showBadgePaymentConfirm, setShowBadgePaymentConfirm] = useState(false);
   const [badgePaymentForm, setBadgePaymentForm] = useState({ phoneNumber: "", fullName: "" });
@@ -232,44 +230,6 @@ export default function Settings({
   }
 
   // Profile photo methods
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingPhotoIndex(index);
-    try {
-      const optimizedFile = await compressImageIfNeeded(file);
-      const fileExt = optimizedFile.name.split(".").pop();
-      const fileName = `photo_${index}_${Date.now()}.${fileExt}`;
-      const filePath = `gallery/${currentUser.id}/${fileName}`;
-
-      const { error: uploadErr } = await withUploadTimeout(
-        supabase.storage.from("loverose").upload(filePath, optimizedFile, {
-          cacheControl: "3600",
-          upsert: true,
-        })
-      );
-      if (uploadErr) throw uploadErr;
-
-      const { data: { publicUrl } } = supabase.storage.from("loverose").getPublicUrl(filePath);
-
-      setPhotos(prev => {
-        const next = [...prev];
-        next[index] = publicUrl;
-        if (index === 0 || !avatarUrl) {
-          setAvatarUrl(publicUrl);
-        }
-        return next;
-      });
-    } catch (err) {
-      console.error("Error uploading photo in settings:", err);
-      alert("Impossible d'envoyer cette photo (connexion trop lente ou instable). Réessayez avec une meilleure connexion.");
-    } finally {
-      setUploadingPhotoIndex(null);
-      e.target.value = ""; // Allow re-selecting the same file if retried
-    }
-  };
-
   const handleAddPhotoPremium = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -669,7 +629,7 @@ export default function Settings({
                   </div>
                 )}
 
-                {/* Input pour l'ajout de photos (jusqu'à 20, débloqué pour tous) */}
+                {/* Photo gallery upload input (jusqu'à 20 photos, ouvert à tous) */}
                 <input
                   type="file"
                   id="settings-photo-premium"
@@ -679,40 +639,40 @@ export default function Settings({
                 />
 
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-2">
-                    {photos.map((photo, index) => (
-                      <div key={index} className="aspect-square bg-slate-100 border border-slate-150 rounded-xl overflow-hidden relative group">
-                        <img src={photo} alt="" className="w-full h-full object-cover" />
+                    <div className="grid grid-cols-3 gap-2">
+                      {photos.map((photo, index) => (
+                        <div key={index} className="aspect-square bg-slate-100 border border-slate-150 rounded-xl overflow-hidden relative group">
+                          <img src={photo} alt="" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePhoto(index)}
+                            className="absolute top-1 right-1 bg-black/60 hover:bg-red-500 text-white rounded-full p-1 transition cursor-pointer"
+                          >
+                            <X size={10} />
+                          </button>
+                          {index === 0 && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-rose-500 text-white text-[7px] py-0.5 text-center font-bold uppercase">
+                              Principale
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {photos.length < 20 && (
                         <button
                           type="button"
-                          onClick={() => handleRemovePhoto(index)}
-                          className="absolute top-1 right-1 bg-black/60 hover:bg-red-500 text-white rounded-full p-1 transition cursor-pointer"
+                          onClick={() => document.getElementById("settings-photo-premium")?.click()}
+                          className="aspect-square bg-slate-50 border border-dashed border-slate-300 hover:border-rose-400 hover:bg-rose-50/10 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:text-rose-500 transition cursor-pointer space-y-1"
                         >
-                          <X size={10} />
+                          <Plus size={16} />
+                          <span className="text-[9px] font-bold">Ajouter</span>
                         </button>
-                        {index === 0 && (
-                          <div className="absolute bottom-0 left-0 right-0 bg-rose-500 text-white text-[7px] py-0.5 text-center font-bold uppercase">
-                            Principale
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    {photos.length < 20 && (
-                      <button
-                        type="button"
-                        onClick={() => document.getElementById("settings-photo-premium")?.click()}
-                        className="aspect-square bg-slate-50 border border-dashed border-slate-300 hover:border-rose-400 hover:bg-rose-50/10 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:text-rose-500 transition cursor-pointer space-y-1"
-                      >
-                        <Plus size={16} />
-                        <span className="text-[9px] font-bold">Ajouter</span>
-                      </button>
-                    )}
-                  </div>
-                  <div className="text-center">
-                    <span className="text-[9px] font-extrabold text-rose-500 bg-rose-50 px-2 rounded-full border border-rose-100 uppercase tracking-wider">
-                      {photos.length}/20 photos
-                    </span>
-                  </div>
+                      )}
+                    </div>
+                    <div className="text-center">
+                      <span className="text-[9px] font-extrabold text-rose-500 bg-rose-50 px-2 rounded-full border border-rose-100 uppercase tracking-wider">
+                        {photos.length}/20 photos
+                      </span>
+                    </div>
                 </div>
               </div>
             </div>
@@ -1202,7 +1162,7 @@ export default function Settings({
               <div>
                 <h4 className="font-extrabold text-slate-900 text-sm">1. Objet du service</h4>
                 <p className="mt-1">
-                  LoveRose est une plateforme numérique facilitant la mise en relation d'adultes célibataires partageant des intentions de rencontre claires et transparentes. L'application propose un flux d'actualités communautaire, des algorithmes de calcul de compatibilité et un service d'échanges de messages.
+                  LoveRose est une plateforme numérique facilitant la mise en relation d'adultes célibataires partageant des intentions de rencontre claires et transparentes. L'application propose un flux d'actualités communautaire et des algorithmes de calcul de compatibilité.
                 </p>
               </div>
 
@@ -1227,9 +1187,9 @@ export default function Settings({
               </div>
 
               <div>
-                <h4 className="font-extrabold text-slate-900 text-sm">4. Système de crédits</h4>
+                <h4 className="font-extrabold text-slate-900 text-sm">4. Système de crédits et annonces</h4>
                 <p className="mt-1">
-                  Chaque match donne droit à trois (3) messages d'ouverture gratuits respectant une charte (maximum 10 mots, aucun chiffre). Les échanges suivants requièrent l'utilisation de crédits virtuelles rechargeables dans le Dashboard LoveRose. Les transactions de paiement sont sécurisées de manière exclusive via le prestataire officiel <strong>Money Fusion</strong>. Les crédits consommés ne sont pas remboursables.
+                  Les publications de type annonce peuvent être boostées ou mises en avant grâce à des crédits virtuels rechargeables dans le Dashboard. Les transactions de paiement sont sécurisées de manière exclusive via le prestataire officiel <strong>Money Fusion</strong>. Les crédits consommés ne sont pas remboursables.
                 </p>
               </div>
 
@@ -1324,7 +1284,7 @@ export default function Settings({
         <p className="text-[10px] text-slate-400">LoveRose v2.1.0 • Fait en Afrique avec passion ❤️</p>
       </div>
 
-      {/* Verification Badge Payment Modal (500 FCFA, distinct from Premium) */}
+      {/* Verification Badge Payment Modal (500 FCFA) */}
       {showBadgePaymentConfirm && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl p-6 border border-slate-100 space-y-6 animate-in fade-in zoom-in-95 duration-200">
@@ -1345,7 +1305,7 @@ export default function Settings({
             <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 space-y-2 text-center">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Badge de Vérification LoveRose</p>
               <p className="text-3xl font-black text-rose-500">{VERIFICATION_BADGE_FEE} FCFA</p>
-              <p className="text-[10px] text-slate-500">Frais uniques de certification.</p>
+              <p className="text-[10px] text-slate-500">Frais uniques de certification de profil.</p>
             </div>
 
             <form onSubmit={handleConfirmBadgePayment} className="space-y-4">

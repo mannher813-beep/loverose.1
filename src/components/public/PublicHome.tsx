@@ -1,5 +1,5 @@
 import React from "react";
-import { Heart, Sparkles, Shield, Compass, MessageSquare, ArrowRight, Star, Users, CheckCircle, Coins } from "lucide-react";
+import { Heart, Sparkles, Shield, Compass, ArrowRight, Star, Users, CheckCircle, Coins } from "lucide-react";
 
 interface PublicHomeProps {
   onNavigate: (path: string) => void;
@@ -74,11 +74,11 @@ export default function PublicHome({ onNavigate }: PublicHomeProps) {
           {/* Card 2 */}
           <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:shadow-md transition-all space-y-4 text-left">
             <div className="bg-indigo-50 text-indigo-500 w-12 h-12 rounded-2xl flex items-center justify-center">
-              <MessageSquare size={24} />
+              <Heart size={24} />
             </div>
-            <h3 className="text-lg font-extrabold text-slate-900">Messagerie instantanée</h3>
+            <h3 className="text-lg font-extrabold text-slate-900">Matchs mutuels</h3>
             <p className="text-slate-600 text-xs leading-relaxed">
-              Une fois le match validé, échangez en toute sécurité avec notre messagerie fluide et rapide. Envoyez des messages textuels et partagez vos passions à votre rythme.
+              Likez les profils qui vous plaisent et découvrez qui vous a aimé en retour. Un vrai match se voit immédiatement dans votre espace "Qui m'a aimé".
             </p>
           </div>
 
@@ -100,11 +100,11 @@ export default function PublicHome({ onNavigate }: PublicHomeProps) {
         <div className="text-center space-y-3">
           <h2 className="text-3xl font-black text-slate-950 tracking-tight">Tarifs</h2>
           <p className="text-slate-500 text-sm max-w-xl mx-auto">
-            L'inscription, la découverte de profils et l'accès à toutes les fonctionnalités sont entièrement gratuits.
+            L'inscription, la création de profil et la découverte d'annonces sont entièrement gratuites.
           </p>
         </div>
 
-        <div className="max-w-md mx-auto">
+        <div className="grid sm:grid-cols-1 gap-8 max-w-lg mx-auto">
           {/* Free plan */}
           <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-4 text-left">
             <h3 className="text-lg font-extrabold text-slate-900">Compte Gratuit</h3>
@@ -116,11 +116,11 @@ export default function PublicHome({ onNavigate }: PublicHomeProps) {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
-                <span>Filtres avancés, rewind et Super Like illimités</span>
+                <span>Matchs illimités et consultation de "Qui m'a aimé"</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
-                <span>Matchs, "Qui m'a liké" et messagerie de base</span>
+                <span>Jusqu'à 20 photos de profil</span>
               </div>
             </div>
           </div>
@@ -128,8 +128,8 @@ export default function PublicHome({ onNavigate }: PublicHomeProps) {
 
         <p className="text-center text-[11px] text-slate-400 max-w-xl mx-auto">
           <Coins size={12} className="inline -mt-0.5 mr-1" />
-          Des packs de crédits ponctuels (ex: 10 crédits pour 500 FCFA) sont disponibles pour débloquer des
-          messages supplémentaires ou des boosts de profil. Paiement sécurisé via Money Fusion (Mobile Money).
+          Des packs de crédits ponctuels (ex: 10 crédits pour 500 FCFA) sont disponibles pour booster la visibilité
+          de votre profil ou de vos annonces. Paiement sécurisé via Money Fusion (Mobile Money).
         </p>
       </section>
 

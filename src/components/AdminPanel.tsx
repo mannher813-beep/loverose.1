@@ -19,7 +19,6 @@ import {
   ShieldCheck,
   BadgeCheck,
   Pencil,
-  MessageSquare,
   Megaphone,
   BarChart3,
   CheckCircle2,
@@ -42,15 +41,6 @@ interface Report {
   created_at: string;
   status?: string;
   reviewed_at?: string | null;
-}
-
-interface Message {
-  id: string;
-  match_id: string;
-  sender_id: string;
-  contenu: string;
-  created_at: string;
-  message_type?: string;
 }
 
 interface ContactMessage {
@@ -82,6 +72,7 @@ interface AdminStats {
   suspended: number;
   verified: number;
   pending_verification: number;
+  premium_active: number;
   total_matches: number;
   messages_24h: number;
   reports_pending: number;
@@ -116,16 +107,13 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const [toast, setToast] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<Profile | null>(null);
   const [editForm, setEditForm] = useState<Partial<Profile>>({});
-  const [convoTarget, setConvoTarget] = useState<Profile | null>(null);
-  const [convoMessages, setConvoMessages] = useState<(Message & { senderName?: string })[]>([]);
-  const [convoLoading, setConvoLoading] = useState(false);
   // Éditeur d'annonces admin (texte + cible + bouton optionnel gratuit/payant)
   const [annMessage, setAnnMessage] = useState("");
   const [annTargetGender, setAnnTargetGender] = useState<"all" | "homme" | "femme">("all");
   const [annCtaEnabled, setAnnCtaEnabled] = useState(false);
   const [annCtaLabel, setAnnCtaLabel] = useState("");
   const [annCtaType, setAnnCtaType] = useState<"route" | "url" | "paid">("route");
-  const [annCtaRoute, setAnnCtaRoute] = useState<"discover" | "chat" | "dashboard" | "profile" | "settings" | "notifications" | "likes">("discover");
+  const [annCtaRoute, setAnnCtaRoute] = useState<"discover" | "dashboard" | "profile" | "settings" | "notifications" | "likes">("discover");
   const [annCtaUrl, setAnnCtaUrl] = useState("");
   const [annPriceAmount, setAnnPriceAmount] = useState("");
   const [annPaidPlanName, setAnnPaidPlanName] = useState("");
@@ -405,7 +393,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   };
 
   const grantBonus = async (user: Profile, days: number) => {
-    // Offre un Boost de mise en avant du profil pour `days` jours
+    // Grant `days` of premium by inserting/extending a boost — simplest cross-cutting bonus
     const endsAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
     const { error } = await supabase.from("profile_boosts").insert({
       user_id: user.uid,
@@ -579,44 +567,6 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     } else {
       showToast(status === "reviewed" ? "Signalement marqué comme traité" : "Signalement classé sans suite");
       setReports((prev) => prev.map((r) => (r.id === report.id ? { ...r, status } : r)));
-    }
-  };
-
-  const openConversations = async (user: Profile) => {
-    setConvoTarget(user);
-    setConvoLoading(true);
-    setConvoMessages([]);
-    try {
-      const { data: matches, error: matchError } = await supabase
-        .from("matches")
-        .select("id")
-        .contains("users", [user.uid]);
-      if (matchError) throw matchError;
-      const matchIds = (matches || []).map((m: any) => m.id);
-      if (matchIds.length === 0) {
-        setConvoLoading(false);
-        return;
-      }
-      const { data: msgs, error: msgError } = await supabase
-        .from("messages")
-        .select("*")
-        .in("match_id", matchIds)
-        .order("created_at", { ascending: false })
-        .limit(100);
-      if (msgError) throw msgError;
-      const senderIds = Array.from(new Set((msgs || []).map((m: any) => m.sender_id)));
-      const namesById: Record<string, string> = {};
-      if (senderIds.length > 0) {
-        const { data: senders } = await supabase.from("profiles").select("uid, full_name").in("uid", senderIds);
-        (senders || []).forEach((s: any) => (namesById[s.uid] = s.full_name));
-      }
-      setConvoMessages(
-        ((msgs || []) as Message[]).map((m) => ({ ...m, senderName: namesById[m.sender_id] || "Utilisateur" }))
-      );
-    } catch (err: any) {
-      showToast("Erreur : " + (err?.message || "impossible de charger les conversations"));
-    } finally {
-      setConvoLoading(false);
     }
   };
 
@@ -947,13 +897,6 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                     <Pencil size={14} />
                   </button>
                   <button
-                    onClick={() => openConversations(u)}
-                    title="Voir ses conversations"
-                    className="w-8 h-8 flex items-center justify-center bg-cyan-100 text-cyan-600 rounded-full cursor-pointer hover:bg-cyan-200"
-                  >
-                    <MessageSquare size={14} />
-                  </button>
-                  <button
                     onClick={() => setActionTarget(u)}
                     title="Envoyer un avertissement"
                     className="w-8 h-8 flex items-center justify-center bg-amber-100 text-amber-600 rounded-full cursor-pointer hover:bg-amber-200"
@@ -1096,13 +1039,6 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                           <Eye size={14} />
                         </button>
                         <button
-                          onClick={() => openConversations(reported)}
-                          title="Voir ses conversations"
-                          className="w-8 h-8 flex items-center justify-center bg-cyan-100 text-cyan-600 rounded-full cursor-pointer hover:bg-cyan-200"
-                        >
-                          <MessageSquare size={14} />
-                        </button>
-                        <button
                           onClick={() => setActionTarget(reported)}
                           title="Envoyer un avertissement"
                           className="w-8 h-8 flex items-center justify-center bg-amber-100 text-amber-600 rounded-full cursor-pointer hover:bg-amber-200"
@@ -1234,7 +1170,6 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
               { label: "Vérifiés ✓", value: stats.verified, color: "text-sky-500" },
               { label: "Vérif. en attente", value: stats.pending_verification, color: "text-amber-500" },
               { label: "Matches créés", value: stats.total_matches, color: "text-rose-500" },
-              { label: "Messages (24h)", value: stats.messages_24h, color: "text-cyan-500" },
               { label: "Signalements en attente", value: stats.reports_pending, color: "text-orange-500" },
               { label: "Signalements (total)", value: stats.reports_total, color: "text-slate-500" },
               { label: "Clics sur \"Installer l'app\"", value: stats.pwa_install_clicks, color: "text-teal-500" },
@@ -1510,8 +1445,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                       onChange={(e) => setAnnCtaRoute(e.target.value as any)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-indigo-400"
                     >
-                      <option value="discover">Découvrir</option>
-                      <option value="chat">Messages</option>
+                      <option value="discover">Annonces</option>
                       <option value="dashboard">Dashboard</option>
                       <option value="likes">Qui m'a aimé</option>
                       <option value="notifications">Notifications</option>
@@ -1766,44 +1700,6 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
             >
               Enregistrer
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Conversations modal (moderation) */}
-      {convoTarget && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 w-full max-w-sm max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between mb-3 flex-shrink-0">
-              <h2 className="font-bold text-slate-800">Conversations de {convoTarget.full_name}</h2>
-              <button onClick={() => setConvoTarget(null)} className="cursor-pointer">
-                <X size={18} className="text-slate-400" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-2">
-              {convoLoading ? (
-                <div className="flex flex-col items-center justify-center pt-8 gap-2">
-                  <Loader2 size={24} className="text-cyan-500 animate-spin" />
-                  <p className="text-slate-400 text-xs">Chargement...</p>
-                </div>
-              ) : convoMessages.length === 0 ? (
-                <p className="text-center text-slate-400 text-sm pt-8">Aucun message trouvé.</p>
-              ) : (
-                convoMessages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`p-2.5 rounded-xl text-sm ${
-                      m.sender_id === convoTarget.uid ? "bg-cyan-50 text-slate-700" : "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    <p className="text-[10px] font-bold text-slate-400 mb-0.5">
-                      {m.senderName} · {new Date(m.created_at).toLocaleString("fr-FR")}
-                    </p>
-                    <p>{m.contenu || (m.message_type ? `[${m.message_type}]` : "")}</p>
-                  </div>
-                ))
-              )}
-            </div>
           </div>
         </div>
       )}

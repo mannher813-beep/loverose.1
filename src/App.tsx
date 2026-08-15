@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import { Profile } from "./types";
-import { Heart, MessageSquare, LayoutDashboard, Settings, Sparkles, User, LogOut, X, Bell, ShieldAlert, Newspaper } from "lucide-react";
+import { Heart, LayoutDashboard, PlusCircle, Settings, Sparkles, User, LogOut, X, Bell, ShieldAlert, Newspaper } from "lucide-react";
 
 // Component imports
 import SupabaseSetupBanner from "./components/SupabaseSetupBanner";
 import PaymentSuccess from "./components/PaymentSuccess";
 import Auth from "./components/Auth";
 import Feed from "./components/Feed";
-import Chat from "./components/Chat";
 import Dashboard from "./components/Dashboard";
 import ProfileSettings from "./components/ProfileSettings";
 import SettingsView from "./components/Settings";
@@ -30,8 +29,7 @@ export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const isAdmin = profile?.role === 'admin';
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'dashboard' | 'profile' | 'settings' | 'notifications' | 'likes' | 'admin'>('discover');
-  const [targetChatPartnerId, setTargetChatPartnerId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'discover' | 'dashboard' | 'profile' | 'settings' | 'notifications' | 'likes' | 'admin'>('discover');
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   
   // Guest mode auth modal
@@ -53,26 +51,16 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState<boolean>(false);
 
-  // Deep-link: clicking a push notification for a message opens ?chat=<uid> directly.
-  useEffect(() => {
-    if (!currentUser) return;
-    const params = new URLSearchParams(window.location.search);
-    const chatPartnerId = params.get("chat");
-    if (chatPartnerId) {
-      setTargetChatPartnerId(chatPartnerId);
-      setActiveTab("chat");
-      params.delete("chat");
-      const cleanSearch = params.toString();
-      window.history.replaceState({}, document.title, window.location.pathname + (cleanSearch ? `?${cleanSearch}` : ""));
-    }
-  }, [currentUser]);
-
   // Deep-link: emails/push links can open a specific tab directly via ?tab=notifications etc.
   useEffect(() => {
     if (!currentUser) return;
     const params = new URLSearchParams(window.location.search);
-    const requestedTab = params.get("tab");
-    const validTabs = ["discover", "chat", "dashboard", "profile", "settings", "notifications"] as const;
+    let requestedTab = params.get("tab");
+    // Anciens liens pointant vers des onglets supprimés (messagerie, boutique) :
+    // on redirige vers leurs équivalents actuels plutôt que d'ignorer le lien.
+    if (requestedTab === "chat") requestedTab = "discover";
+    if (requestedTab === "shop") requestedTab = "dashboard";
+    const validTabs = ["discover", "dashboard", "profile", "settings", "notifications"] as const;
     if (requestedTab && (validTabs as readonly string[]).includes(requestedTab)) {
       setActiveTab(requestedTab as typeof activeTab);
       params.delete("tab");
@@ -494,9 +482,11 @@ export default function App() {
     }
   };
 
-  const startChatWithUser = async (partnerId: string) => {
+  // Enregistre un match mutuel avec cet utilisateur suite à un "like en retour"
+  // (ex: depuis "Qui m'a aimé" ou une notification de match). La messagerie
+  // ayant été retirée, cette action ne fait plus que confirmer le match.
+  const handleLikeBack = async (partnerId: string) => {
     try {
-      // 1. Check if a match already exists between currentUser.id and partnerId
       const { data: existingMatches, error: matchError } = await supabase
         .from("matches")
         .select("*")
@@ -505,7 +495,6 @@ export default function App() {
       if (!matchError && existingMatches && existingMatches.length > 0) {
         // Match already exists
       } else {
-        // 2. No match exists, insert match directly
         const { error: createError } = await supabase
           .from("matches")
           .insert([{ users: [currentUser.id, partnerId] }]);
@@ -518,15 +507,8 @@ export default function App() {
           ]);
         }
       }
-
-      // 3. Navigate to chat and pre-select partner
-      setTargetChatPartnerId(partnerId);
-      setActiveTab("chat");
     } catch (err) {
-      console.error("Error starting chat with user:", err);
-      // Fallback: navigate to chat tab anyway
-      setTargetChatPartnerId(partnerId);
-      setActiveTab("chat");
+      console.error("Error confirming match:", err);
     }
   };
 
@@ -754,11 +736,14 @@ export default function App() {
             <span>Annonces</span>
           </button>
           <button
-            onClick={() => setActiveTab('chat')}
-            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'chat' ? 'text-rose-500 font-extrabold' : ''}`}
+            onClick={() => {
+              setActiveTab('discover');
+              setTimeout(() => document.getElementById('composer-annonce')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            }}
+            className="flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500"
           >
-            <MessageSquare size={16} />
-            <span>Messagerie</span>
+            <PlusCircle size={16} />
+            <span>Publier</span>
           </button>
           <button
             onClick={() => setActiveTab('dashboard')}
@@ -860,7 +845,7 @@ export default function App() {
           <div className="bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold shadow-inner relative flex-shrink-0">
             <div className="flex items-center gap-2">
               <Heart size={14} className="fill-white animate-pulse" />
-              <span>👀 Mode aperçu : Vous découvrez LoveRose sans être inscrit. Inscrivez-vous gratuitement pour liker et discuter !</span>
+              <span>👀 Mode aperçu : Vous découvrez LoveRose sans être inscrit. Inscrivez-vous gratuitement pour liker et publier des annonces !</span>
             </div>
             <button
               onClick={() => triggerAuthRequired(true)}
@@ -897,8 +882,8 @@ export default function App() {
         {showPushBanner && (
           <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold shadow-inner relative flex-shrink-0">
             <div className="flex items-center gap-2">
-              <MessageSquare size={14} className="text-rose-400" />
-              <span>Activez les notifications pour ne rater aucun message ni aucun match, même app fermée !</span>
+              <Heart size={14} className="text-rose-400" />
+              <span>Activez les notifications pour ne rater aucune interaction ni aucun match, même app fermée !</span>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -924,17 +909,6 @@ export default function App() {
             <Feed
               currentUser={currentUser}
               currentUserProfile={profile}
-              onStartChat={(partnerId) => { setTargetChatPartnerId(partnerId); setActiveTab('chat'); }}
-              onAuthRequired={() => triggerAuthRequired(true)}
-            />
-          </div>
-          <div className={activeTab === 'chat' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
-            <Chat
-              currentUser={currentUser}
-              currentUserProfile={profile}
-              onOpenShop={() => setActiveTab('dashboard')}
-              targetChatPartnerId={targetChatPartnerId}
-              onClearTargetChatPartner={() => setTargetChatPartnerId(null)}
               onAuthRequired={() => triggerAuthRequired(true)}
             />
           </div>
@@ -968,7 +942,7 @@ export default function App() {
             <NotificationsView
               currentUser={currentUser}
               onNavigateToTab={(tab) => setActiveTab(tab)}
-              onStartChat={startChatWithUser}
+              onLikeBack={handleLikeBack}
               onAuthRequired={() => triggerAuthRequired(true)}
             />
           </div>
@@ -976,9 +950,8 @@ export default function App() {
             <WhoLikedMe
               currentUser={currentUser}
               currentUserProfile={profile}
-              onStartChat={startChatWithUser}
+              onLikeBack={handleLikeBack}
               onAuthRequired={() => triggerAuthRequired(true)}
-              onGoToShop={() => setActiveTab('dashboard')}
             />
           </div>
           {isAdmin && activeTab === 'admin' && (
@@ -1001,11 +974,14 @@ export default function App() {
           <span className={`text-[9px] ${activeTab === 'discover' ? 'font-extrabold' : 'font-semibold'}`}>Annonces</span>
         </button>
         <button
-          onClick={() => setActiveTab('chat')}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'chat' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
+          onClick={() => {
+            setActiveTab('discover');
+            setTimeout(() => document.getElementById('composer-annonce')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+          }}
+          className="flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl text-slate-400 hover:text-slate-600"
         >
-          <MessageSquare size={19} fill={activeTab === 'chat' ? 'currentColor' : 'none'} strokeWidth={activeTab === 'chat' ? 1.5 : 1.8} />
-          <span className={`text-[9px] ${activeTab === 'chat' ? 'font-extrabold' : 'font-semibold'}`}>Messagerie</span>
+          <PlusCircle size={19} strokeWidth={1.8} />
+          <span className="text-[9px] font-semibold">Publier</span>
         </button>
         <button
           onClick={() => setActiveTab('dashboard')}
@@ -1108,11 +1084,11 @@ export default function App() {
 
             <div className="space-y-3 pt-4">
               <button
-                onClick={() => { setTargetChatPartnerId(matchedPartner.uid); setMatchedPartner(null); setActiveTab('chat'); }}
+                onClick={() => setMatchedPartner(null)}
                 className="w-full py-4 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-black text-sm rounded-2xl shadow-lg shadow-rose-500/25 transition cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <MessageSquare size={16} />
-                <span>Lui envoyer un message</span>
+                <Heart size={16} fill="currentColor" />
+                <span>Super !</span>
               </button>
               <button
                 onClick={() => setMatchedPartner(null)}
@@ -1125,7 +1101,6 @@ export default function App() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

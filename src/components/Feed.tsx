@@ -9,11 +9,10 @@ import ProfileDetailModal from "./ProfileDetailModal";
 interface FeedProps {
   currentUser: any;
   currentUserProfile: Profile | null;
-  onStartChat?: (partnerId: string) => void;
   onAuthRequired?: () => void;
 }
 
-export default function Feed({ currentUser, currentUserProfile, onStartChat, onAuthRequired }: FeedProps) {
+export default function Feed({ currentUser, currentUserProfile, onAuthRequired }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [inputText, setInputText] = useState("");
   // Multiple photos per post/annonce. Each entry is the final Supabase Storage
@@ -42,20 +41,6 @@ export default function Feed({ currentUser, currentUserProfile, onStartChat, onA
     new URLSearchParams(window.location.search).get("post")
   );
   const highlightedPostRef = useRef<HTMLDivElement | null>(null);
-
-  const getAlphabeticCount = (text: string) => {
-    const match = text.match(/[a-zA-ZÀ-ÿ]/g);
-    return match ? match.length : 0;
-  };
-
-  const hasDigits = (text: string) => {
-    return /[0-9]/.test(text);
-  };
-
-  const alphabeticCount = getAlphabeticCount(inputText);
-  const containsNumbers = hasDigits(inputText);
-  // Restriction de longueur/chiffres supprimée : débloquée pour tous (Premium supprimé)
-  const isPostRestricted = false;
 
   const MAX_LISTING_PHOTOS = 6;
 
@@ -622,7 +607,7 @@ export default function Feed({ currentUser, currentUserProfile, onStartChat, onA
       
       {/* Create Post / Annonce Card */}
       {currentUser ? (
-        <div className="max-w-xl mx-auto bg-white border border-slate-150 rounded-3xl p-5 shadow-sm space-y-4">
+        <div id="composer-annonce" className="max-w-xl mx-auto bg-white border border-slate-150 rounded-3xl p-5 shadow-sm space-y-4">
           <div className="flex items-start space-x-3">
             <img
               src={currentUserProfile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${currentUserProfile?.full_name || currentUser.id}`}
@@ -747,7 +732,7 @@ export default function Feed({ currentUser, currentUserProfile, onStartChat, onA
                 <button
                   id="create-post-btn"
                   type="submit"
-                  disabled={isPosting || isUploadingMedia || !inputText.trim() || isPostRestricted}
+                  disabled={isPosting || isUploadingMedia || !inputText.trim()}
                   className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl px-4 py-2 text-xs font-extrabold shadow-md shadow-rose-500/10 flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
                 >
                   {isPosting ? (
@@ -1008,12 +993,6 @@ export default function Feed({ currentUser, currentUserProfile, onStartChat, onA
           profile={selectedViewProfile}
           currentUserProfile={currentUserProfile}
           onClose={() => setSelectedViewProfile(null)}
-          onStartChat={() => {
-            if (onStartChat) {
-              onStartChat(selectedViewProfile.uid);
-              setSelectedViewProfile(null);
-            }
-          }}
         />
       )}
     </div>

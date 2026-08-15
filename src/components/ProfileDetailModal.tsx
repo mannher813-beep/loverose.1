@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, MapPin, Sparkles, CheckCircle, Heart, MessageCircle, X, Flag, ExternalLink, Star, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, Sparkles, CheckCircle, Heart, X, Flag, ExternalLink, Star, Loader2 } from "lucide-react";
 import { Profile, PostReview } from "../types";
 import { supabase } from "../lib/supabase";
 
@@ -8,19 +8,15 @@ interface ProfileDetailModalProps {
   currentUserProfile: Profile | null;
   currentUser?: any;
   onClose: () => void;
-  onStartChat?: () => void;
+  onLikeBack?: () => void;
   onAuthRequired?: () => void;
   /** Optional: only Discover currently wires this up (its own report flow). */
   onReport?: () => void;
   /** Optional: lets the person pass directly from the full profile page, like Discover's swipe stack. */
   onPass?: () => void;
   /**
-   * Whether this profile is already a mutual match (a real conversation can
-   * be opened right now). Defaults to true, matching the existing callers
-   * (Chat, WhoLikedMe, AdminPanel) that only ever show already-matched or
-   * already-messaging people. Discover explicitly passes false, since
-   * there's no conversation yet — the button there sends a like instead,
-   * and says so.
+   * Whether this profile is already a mutual match. When true, the footer
+   * simply confirms the match rather than offering to like again.
    */
   isMatch?: boolean;
 }
@@ -30,7 +26,7 @@ export default function ProfileDetailModal({
   currentUserProfile,
   currentUser,
   onClose,
-  onStartChat,
+  onLikeBack,
   onAuthRequired,
   onReport,
   onPass,
@@ -49,7 +45,7 @@ export default function ProfileDetailModal({
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewError, setReviewError] = useState("");
 
-  // Log this as a profile view (for the "Qui a consulté mon profil" Premium
+  // Log this as a profile view (visible dans "Qui m'a aimé" / visiteurs du profil)
   // feature) — only for real logged-in visits to someone else's profile.
   // Best-effort: never blocks the UI or surfaces an error to the viewer.
   useEffect(() => {
@@ -157,12 +153,12 @@ export default function ProfileDetailModal({
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  const handleChatClick = () => {
+  const handleLikeBackClick = () => {
     if (!currentUser) {
       if (onAuthRequired) onAuthRequired();
       return;
     }
-    if (onStartChat) onStartChat();
+    if (onLikeBack) onLikeBack();
   };
 
   // Calculate mutual compatibility score
@@ -458,7 +454,6 @@ export default function ProfileDetailModal({
               </div>
             )}
           </div>
-
         </div>
       </div>
 
@@ -473,17 +468,17 @@ export default function ProfileDetailModal({
             <X size={22} />
           </button>
         )}
-        {onStartChat && (
+        {onLikeBack && (
           <button
-            onClick={handleChatClick}
+            onClick={handleLikeBackClick}
             className="flex-1 py-4 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-black text-xs rounded-2xl shadow-md flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-[0.98]"
           >
-            {isMatch ? <MessageCircle size={16} /> : <Heart size={16} fill="currentColor" />}
+            {isMatch ? <Sparkles size={16} /> : <Heart size={16} fill="currentColor" />}
             <span>
               {!currentUser
-                ? "Se connecter avec Google pour discuter"
+                ? "Se connecter avec Google"
                 : isMatch
-                ? "Ouvrir la Discussion"
+                ? "Vous vous plaisez mutuellement"
                 : "Envoyer un like"}
             </span>
           </button>

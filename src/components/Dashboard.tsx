@@ -88,7 +88,7 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
     fetchCountries();
 
     // Realtime credits subscriber
-    const creditsSubName = `shop-credits-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
+    const creditsSubName = `dashboard-credits-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
     const creditsSub = supabase
       .channel(creditsSubName)
       .on(
@@ -629,16 +629,16 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
           <div className="flex items-center justify-center md:justify-start space-x-2">
             <span className="bg-rose-500/20 text-rose-300 border border-rose-500/20 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">LoveRose Dashboard</span>
           </div>
-          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">Crédits & Boosts</h2>
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">Gérez votre activité</h2>
           <p className="text-slate-300 text-xs md:text-sm max-w-md leading-relaxed">
-            Gérez vos crédits et boostez la visibilité de votre profil pour attirer de nouveaux matchs.
+            Suivez vos revenus, vos statistiques et boostez la visibilité de vos annonces pour attirer plus d'interactions.
           </p>
         </div>
 
         {/* Current status display card */}
         <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-5 w-full md:w-auto md:min-w-64 space-y-4 z-10 text-xs font-semibold text-slate-300">
           <div className="flex justify-between items-center border-b border-white/5 pb-2">
-            <span>Solde actuel :</span>
+            <span>Solde de crédits :</span>
             <span className="font-extrabold text-amber-400 text-sm flex items-center gap-1">
               <Coins size={14} className="fill-amber-400" />
               <span>{credits} crédits</span>
@@ -659,7 +659,7 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
 
       {/* Grid containing plans & packages */}
       <div className="max-w-4xl mx-auto space-y-6">
-        
+
         {/* Section 1.5: Profile Boost */}
         <div className="bg-white border border-slate-150 rounded-3xl p-6 md:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-4 max-w-xl text-left">

@@ -2,14 +2,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
 import ProfileDetailModal from "./ProfileDetailModal";
-import { Heart, Star, Sparkles, Loader2, MapPin, MessageCircle, Eye } from "lucide-react";
+import { Heart, Star, Sparkles, Loader2, MapPin, ChevronRight, Eye } from "lucide-react";
 
 interface WhoLikedMeProps {
   currentUser: any;
   currentUserProfile: Profile | null;
-  onStartChat: (uid: string) => void;
+  onLikeBack: (uid: string) => void;
   onAuthRequired: () => void;
-  onGoToShop: () => void;
 }
 
 interface LikeRow {
@@ -41,9 +40,8 @@ const withTimeout = <T,>(promise: PromiseLike<T>, ms = 12000): Promise<T> =>
 export default function WhoLikedMe({
   currentUser,
   currentUserProfile,
-  onStartChat,
+  onLikeBack,
   onAuthRequired,
-  onGoToShop,
 }: WhoLikedMeProps) {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -225,7 +223,7 @@ export default function WhoLikedMe({
           <p className="text-[11px] text-slate-400">{subtitle}</p>
         </div>
         <div className="flex-shrink-0 text-rose-400">
-          <MessageCircle size={18} />
+          <ChevronRight size={18} />
         </div>
       </button>
     );
@@ -279,7 +277,7 @@ export default function WhoLikedMe({
           <Heart size={22} className="text-rose-500" fill="currentColor" />
           Qui vous a aimé
         </h2>
-        <p className="text-xs text-slate-500">Tapez sur un profil pour le voir ou lui envoyer un message.</p>
+        <p className="text-xs text-slate-500">Tapez sur un profil pour le voir.</p>
       </div>
 
       {loading ? (
@@ -329,11 +327,12 @@ export default function WhoLikedMe({
           profile={selectedProfile}
           currentUserProfile={currentUserProfile}
           currentUser={currentUser}
+          isMatch={false}
           onClose={() => setSelectedProfile(null)}
-          onStartChat={() => {
+          onLikeBack={() => {
             const uid = selectedProfile.uid;
             setSelectedProfile(null);
-            onStartChat(uid);
+            onLikeBack(uid);
           }}
           onAuthRequired={onAuthRequired}
         />

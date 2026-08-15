@@ -50,8 +50,9 @@ export default function PublicTerms() {
             LoveRose est une plateforme sociale hybride regroupant :
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs">
-            <li>Un service de rencontre géolocalisé permettant aux membres de découvrir d'autres profils, de s'envoyer des "likes", de "matcher" et d'échanger des messages textuels confidentiels.</li>
+            <li>Un service de rencontre géolocalisé permettant aux membres de découvrir d'autres profils, de s'envoyer des "likes" et de "matcher".</li>
             <li>Un espace d'expression pour les créateurs de contenu indépendants ("Espace Créateurs") leur permettant de publier des photos, vidéos et articles dans un fil d'actualité public ou à destination de leurs abonnés.</li>
+            <li>Un système de crédits virtuels payants permettant de booster la visibilité d'un profil ou d'une annonce.</li>
           </ul>
         </section>
 

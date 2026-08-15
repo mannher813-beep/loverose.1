@@ -13,7 +13,6 @@ export const NAMESPACES = [
   "onboarding",
   "discover",
   "feed",
-  "chat",
   "creator", // CreatorDashboard + CreatorOnboarding
   "notifications",
   "settings",
