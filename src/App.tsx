@@ -664,8 +664,12 @@ export default function App() {
     }
   }
 
-  // Check if logged in user profile is incomplete
-  if (currentUser) {
+  // Check if logged in user profile is incomplete.
+  // Les comptes anonymes (connexion invité) ne sont jamais forcés dans ce
+  // parcours : ils ont accès à toutes les fonctionnalités (annonces, photo
+  // de profil, etc.) dès la connexion, et peuvent compléter leur profil
+  // plus tard, s'ils le souhaitent, depuis les Réglages.
+  if (currentUser && !currentUser.is_anonymous) {
     const isProfileIncomplete = !profile || 
       !profile.full_name || 
       !profile.age || 
