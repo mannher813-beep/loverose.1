@@ -29,6 +29,7 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
 
   // Paid "annonce" composer fields
   const [isListing, setIsListing] = useState(false);
+  const [isFreeListing, setIsFreeListing] = useState(false);
   const [listingPriceInput, setListingPriceInput] = useState("");
   const [whatsappLinkInput, setWhatsappLinkInput] = useState("");
 
@@ -470,9 +471,32 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
         } as Post;
       });
 
-      setPosts(populatedPosts);
+      // Annonces d'auteurs "boostés" (profile_boosts actif) en tête, le reste
+      // mélangé aléatoirement à chaque chargement pour un fil non chronologique.
+      const { data: boostsData, error: boostsErr } = await supabase
+        .from("profile_boosts")
+        .select("user_id, ends_at")
+        .gt("ends_at", new Date().toISOString());
+      const boostedUserIds = new Set<string>(
+        boostsErr ? [] : (boostsData || []).map((b: any) => b.user_id)
+      );
+
+      const shuffle = <T,>(arr: T[]): T[] => {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      };
+
+      const boosted = populatedPosts.filter((p) => boostedUserIds.has(p.author_id));
+      const rest = shuffle(populatedPosts.filter((p) => !boostedUserIds.has(p.author_id)));
+      const orderedPosts = [...boosted, ...rest];
+
+      setPosts(orderedPosts);
       // Load interactions for loaded posts
-      await loadInteractionsForPosts(populatedPosts);
+      await loadInteractionsForPosts(orderedPosts);
     } catch (err: any) {
       console.warn("Could not query posts table (possibly offline or unmigrated):", err);
       setErrorMessage("Impossible de charger le fil d'actualité.");
@@ -495,17 +519,20 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
     let listingPrice: number | null = null;
     let whatsappLink: string | null = null;
     if (isListing) {
-      const priceNum = Number(listingPriceInput);
-      if (!listingPriceInput || !Number.isFinite(priceNum) || priceNum <= 0) {
-        setErrorMessage("Indiquez un prix valide (FCFA) pour votre annonce.");
-        return;
-      }
       if (!whatsappLinkInput.trim()) {
-        setErrorMessage("Indiquez votre lien WhatsApp (ex: https://wa.me/2376...) pour que l'acheteur puisse vous contacter après paiement.");
+        setErrorMessage("Indiquez votre lien WhatsApp (ex: https://wa.me/2376...) pour que l'acheteur puisse vous contacter.");
         return;
       }
-      listingPrice = priceNum;
       whatsappLink = whatsappLinkInput.trim();
+
+      if (!isFreeListing) {
+        const priceNum = Number(listingPriceInput);
+        if (!listingPriceInput || !Number.isFinite(priceNum) || priceNum <= 0) {
+          setErrorMessage("Indiquez un prix valide (FCFA) pour votre annonce, ou activez le contact WhatsApp gratuit.");
+          return;
+        }
+        listingPrice = priceNum;
+      }
     }
 
     setIsPosting(true);
@@ -521,6 +548,7 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
             media_dimensions: mediaDimensions,
             listing_price: listingPrice,
             whatsapp_link: whatsappLink,
+            is_free_listing: isListing && isFreeListing,
           }
         ])
         .select();
@@ -531,6 +559,7 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
       setMediaUrls([]);
       setMediaDimensions([]);
       setIsListing(false);
+      setIsFreeListing(false);
       setListingPriceInput("");
       setWhatsappLinkInput("");
 
@@ -681,17 +710,30 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
 
                 {isListing && (
                   <div className="space-y-2.5 bg-emerald-50/40 border border-emerald-100 rounded-xl p-3">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Prix (FCFA)</label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={listingPriceInput}
-                        onChange={(e) => setListingPriceInput(e.target.value)}
-                        placeholder="5000"
-                        className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
-                      />
-                    </div>
+                    <label className="flex items-center justify-between gap-2 py-1 cursor-pointer select-none">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Contact WhatsApp gratuit</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsFreeListing((v) => !v)}
+                        className={`w-10 h-5.5 rounded-full transition relative cursor-pointer flex-shrink-0 ${isFreeListing ? "bg-emerald-500" : "bg-slate-200"}`}
+                      >
+                        <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-white rounded-full transition ${isFreeListing ? "translate-x-4.5" : "translate-x-0"}`} />
+                      </button>
+                    </label>
+
+                    {!isFreeListing && (
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Prix (FCFA)</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={listingPriceInput}
+                          onChange={(e) => setListingPriceInput(e.target.value)}
+                          placeholder="5000"
+                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                        />
+                      </div>
+                    )}
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Votre lien WhatsApp</label>
                       <input
@@ -702,7 +744,9 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
                         className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
                       />
                       <p className="text-[10px] text-slate-400 mt-1">
-                        L'acheteur sera redirigé ici automatiquement dès que son paiement est confirmé.
+                        {isFreeListing
+                          ? "Le bouton WhatsApp sera visible immédiatement, sans paiement. Comme aucun achat n'est enregistré, ces contacts ne donnent pas lieu à un avis noté."
+                          : "L'acheteur sera redirigé ici automatiquement dès que son paiement est confirmé."}
                       </p>
                     </div>
                   </div>
@@ -839,8 +883,25 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
                       )
                     )}
 
+                    {/* Free-contact annonce: no payment, WhatsApp button opens directly */}
+                    {p.is_free_listing && p.whatsapp_link && (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Annonce</p>
+                          <p className="text-sm font-black text-slate-900">Contact gratuit</p>
+                        </div>
+                        <button
+                          onClick={() => window.open(p.whatsapp_link!, "_blank", "noopener,noreferrer")}
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5 flex-shrink-0"
+                        >
+                          <MessageSquare size={13} />
+                          <span>Contacter sur WhatsApp</span>
+                        </button>
+                      </div>
+                    )}
+
                     {/* Paid annonce block: price + pay / contact button */}
-                    {!!p.listing_price && (
+                    {!p.is_free_listing && !!p.listing_price && (
                       <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex items-center justify-between gap-3">
                         <div>
                           <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Annonce</p>

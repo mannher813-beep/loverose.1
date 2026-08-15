@@ -26,6 +26,9 @@ export interface Profile {
   suspended_until?: string | null;
   suspension_reason?: string | null;
   suspended_at?: string | null;
+  // Censure légère (shadow-ban) : masque les posts/annonces de l'utilisateur
+  // du fil public sans suspendre son compte. Indépendant de is_suspended.
+  is_hidden_from_feed?: boolean;
 }
 
 export interface Like {
@@ -78,6 +81,35 @@ export interface Post {
   // listing — buyer pays via MoneyFusion then is redirected to whatsapp_link.
   listing_price?: number | null;
   whatsapp_link?: string | null;
+  // true = annonce avec contact WhatsApp gratuit (pas de paiement, pas de
+  // ligne listing_purchases créée — donc pas d'avis possible sur ce contact).
+  is_free_listing?: boolean;
+}
+
+export interface PostReview {
+  id: string;
+  post_id: string;
+  reviewer_id: string;
+  seller_id: string;
+  rating: number; // 1-5
+  comment?: string | null;
+  created_at: string;
+  is_hidden?: boolean;
+  hidden_by?: string | null;
+  hidden_at?: string | null;
+  hidden_reason?: string | null;
+  // Joined client-side for display
+  reviewer_profile?: Profile;
+}
+
+export interface ListingPurchase {
+  id: string;
+  post_id: string;
+  buyer_id: string;
+  seller_id: string;
+  payment_id?: string | null;
+  amount: number;
+  created_at: string;
 }
 
 export interface Payment {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, MapPin, Sparkles, CheckCircle, Heart, MessageCircle, Lock, X, Flag, ExternalLink } from "lucide-react";
-import { Profile } from "../types";
+import { ArrowLeft, MapPin, Sparkles, CheckCircle, Heart, MessageCircle, Lock, X, Flag, ExternalLink, Star, Loader2 } from "lucide-react";
+import { Profile, PostReview } from "../types";
 import { supabase } from "../lib/supabase";
 
 interface ProfileDetailModalProps {
@@ -41,6 +41,16 @@ export default function ProfileDetailModal({
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [showScoreInfo, setShowScoreInfo] = useState(false);
 
+  // Avis / notation (achats confirmés uniquement — voir post_reviews RLS)
+  const [reviews, setReviews] = useState<PostReview[]>([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+  const [reviewablePostId, setReviewablePostId] = useState<string | null>(null);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewError, setReviewError] = useState("");
+
   // Log this as a profile view (for the "Qui a consulté mon profil" Premium
   // feature) — only for real logged-in visits to someone else's profile.
   // Best-effort: never blocks the UI or surfaces an error to the viewer.
@@ -56,6 +66,91 @@ export default function ProfileDetailModal({
         if (error) console.warn("Could not log profile view:", error);
       });
   }, [currentUser?.id, profile?.uid]);
+
+  // Load public reviews left for this profile (as a seller) — hidden ones are
+  // filtered server-side by RLS for anyone except the seller/reviewer/admin.
+  useEffect(() => {
+    if (!profile?.uid) return;
+    let cancelled = false;
+    setIsLoadingReviews(true);
+    (async () => {
+      const { data, error } = await supabase
+        .from("post_reviews")
+        .select("*")
+        .eq("seller_id", profile.uid)
+        .order("created_at", { ascending: false });
+      if (cancelled) return;
+      if (error) {
+        console.warn("Could not load reviews:", error);
+        setReviews([]);
+      } else {
+        const reviewerIds = Array.from(new Set((data || []).map((r) => r.reviewer_id)));
+        let reviewerProfiles: Record<string, Profile> = {};
+        if (reviewerIds.length > 0) {
+          const { data: profs } = await supabase.from("profiles").select("*").in("uid", reviewerIds);
+          (profs || []).forEach((p: any) => { reviewerProfiles[p.uid] = p; });
+        }
+        setReviews((data || []).map((r: any) => ({ ...r, reviewer_profile: reviewerProfiles[r.reviewer_id] })));
+      }
+      setIsLoadingReviews(false);
+    })();
+    return () => { cancelled = true; };
+  }, [profile?.uid]);
+
+  // Determine whether the visitor bought a service from this seller and
+  // hasn't reviewed it yet — the DB itself enforces this (post_reviews
+  // INSERT policy requires a matching listing_purchases row), this just
+  // drives whether we show the "Laisser un avis" button.
+  useEffect(() => {
+    if (!currentUser?.id || !profile?.uid || currentUser.id === profile.uid) {
+      setReviewablePostId(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const [{ data: purchases }, { data: myReviews }] = await Promise.all([
+        supabase.from("listing_purchases").select("post_id").eq("buyer_id", currentUser.id).eq("seller_id", profile.uid),
+        supabase.from("post_reviews").select("post_id").eq("reviewer_id", currentUser.id).eq("seller_id", profile.uid),
+      ]);
+      if (cancelled) return;
+      const reviewedPostIds = new Set((myReviews || []).map((r: any) => r.post_id));
+      const unreviewed = (purchases || []).find((p: any) => !reviewedPostIds.has(p.post_id));
+      setReviewablePostId(unreviewed ? unreviewed.post_id : null);
+    })();
+    return () => { cancelled = true; };
+  }, [currentUser?.id, profile?.uid]);
+
+  const submitReview = async () => {
+    if (!currentUser?.id || !reviewablePostId) return;
+    setIsSubmittingReview(true);
+    setReviewError("");
+    try {
+      const { data, error } = await supabase
+        .from("post_reviews")
+        .insert({
+          post_id: reviewablePostId,
+          reviewer_id: currentUser.id,
+          seller_id: profile.uid,
+          rating: reviewRating,
+          comment: reviewComment.trim() || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      setReviews((prev) => [{ ...data, reviewer_profile: undefined }, ...prev]);
+      setReviewablePostId(null);
+      setShowReviewForm(false);
+      setReviewComment("");
+      setReviewRating(5);
+    } catch (err: any) {
+      console.error("Error submitting review:", err);
+      setReviewError(err.message || "Impossible d'enregistrer votre avis.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const avgRating = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
 
   // Lock body scroll while this full page is open, like a real screen push.
   useEffect(() => {
@@ -279,6 +374,91 @@ export default function ProfileDetailModal({
                 <span className="text-slate-400 text-xs italic">Aucune intention sélectionnée.</span>
               )}
             </div>
+          </div>
+
+          {/* Ratings & reviews — visible à tous, laissés uniquement par des acheteurs confirmés */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avis</h4>
+              {reviews.length > 0 && (
+                <div className="flex items-center gap-1">
+                  <Star size={13} className="text-amber-400 fill-amber-400" />
+                  <span className="text-xs font-black text-slate-800">{avgRating.toFixed(1)}</span>
+                  <span className="text-[10px] text-slate-400">({reviews.length})</span>
+                </div>
+              )}
+            </div>
+
+            {isLoadingReviews ? (
+              <div className="flex items-center gap-2 text-slate-400 text-xs py-2">
+                <Loader2 size={14} className="animate-spin" /> Chargement des avis...
+              </div>
+            ) : reviews.length === 0 ? (
+              <p className="text-slate-400 text-xs italic">Aucun avis pour le moment.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {reviews.slice(0, 5).map((r) => (
+                  <div key={r.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700">
+                        {r.reviewer_profile?.full_name || "Acheteur"}
+                      </span>
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <Star key={n} size={11} className={n <= r.rating ? "text-amber-400 fill-amber-400" : "text-slate-200 fill-slate-200"} />
+                        ))}
+                      </div>
+                    </div>
+                    {r.comment && <p className="text-xs text-slate-600 leading-relaxed">{r.comment}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {reviewablePostId && !showReviewForm && (
+              <button
+                onClick={() => setShowReviewForm(true)}
+                className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-rose-500 border border-rose-200 hover:bg-rose-50 rounded-xl py-2.5 transition cursor-pointer"
+              >
+                <Star size={13} /> Laisser un avis sur ce vendeur
+              </button>
+            )}
+
+            {reviewablePostId && showReviewForm && (
+              <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-3.5 space-y-2.5">
+                <div className="flex items-center justify-center gap-1.5">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button key={n} type="button" onClick={() => setReviewRating(n)} className="cursor-pointer">
+                      <Star size={22} className={n <= reviewRating ? "text-amber-400 fill-amber-400" : "text-slate-200 fill-slate-200"} />
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Votre commentaire (facultatif)"
+                  rows={3}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-rose-400 resize-none"
+                />
+                {reviewError && <p className="text-[10px] text-red-500 font-semibold">{reviewError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowReviewForm(false)}
+                    className="flex-1 text-xs font-bold text-slate-500 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={submitReview}
+                    disabled={isSubmittingReview}
+                    className="flex-1 bg-rose-500 hover:bg-rose-600 text-white text-xs font-extrabold py-2.5 rounded-xl transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    {isSubmittingReview && <Loader2 size={13} className="animate-spin" />}
+                    <span>Publier l'avis</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Premium Lock Call-To-Action */}

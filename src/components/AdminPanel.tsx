@@ -30,6 +30,8 @@ import {
   Link2,
   DollarSign,
   Navigation,
+  Star,
+  EyeOff,
 } from "lucide-react";
 
 interface Report {
@@ -61,6 +63,18 @@ interface ContactMessage {
   created_at: string;
 }
 
+interface PostReviewAdmin {
+  id: string;
+  post_id: string;
+  reviewer_id: string;
+  seller_id: string;
+  rating: number;
+  comment?: string | null;
+  created_at: string;
+  is_hidden?: boolean;
+  hidden_reason?: string | null;
+}
+
 interface AdminStats {
   total_users: number;
   online_now: number;
@@ -82,9 +96,12 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ currentUser }: AdminPanelProps) {
-  const [tab, setTab] = useState<"users" | "reports" | "stats" | "messages" | "campaign" | "announce">("users");
+  const [tab, setTab] = useState<"users" | "reports" | "stats" | "messages" | "campaign" | "announce" | "reviews">("users");
   const [users, setUsers] = useState<Profile[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [reviews, setReviews] = useState<PostReviewAdmin[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewProfiles, setReviewProfiles] = useState<Record<string, Profile>>({});
   const [reportProfiles, setReportProfiles] = useState<Record<string, Profile>>({});
   const [viewProfile, setViewProfile] = useState<Profile | null>(null);
   const [search, setSearch] = useState("");
@@ -453,6 +470,70 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   };
 
 
+  const loadReviews = async () => {
+    setReviewsLoading(true);
+    try {
+      // Admin's post_reviews SELECT policy (is_admin()) also returns hidden
+      // reviews, which is what we want here for moderation.
+      const { data, error } = await supabase
+        .from("post_reviews")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setReviews(data || []);
+
+      const profileIds = Array.from(
+        new Set((data || []).flatMap((r: PostReviewAdmin) => [r.reviewer_id, r.seller_id]))
+      );
+      if (profileIds.length > 0) {
+        const { data: profs } = await supabase.from("profiles").select("*").in("uid", profileIds);
+        const map: Record<string, Profile> = {};
+        (profs || []).forEach((p: any) => { map[p.uid] = p; });
+        setReviewProfiles(map);
+      }
+    } catch (err: any) {
+      showToast("Erreur chargement des avis : " + err.message);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const toggleReviewHidden = async (review: PostReviewAdmin) => {
+    const next = !review.is_hidden;
+    let reason: string | null = review.hidden_reason || null;
+    if (next) {
+      reason = prompt("Motif de la censure de cet avis (optionnel) :", "") || null;
+    }
+    const { error } = await supabase
+      .from("post_reviews")
+      .update({
+        is_hidden: next,
+        hidden_by: next ? currentUser?.id : null,
+        hidden_at: next ? new Date().toISOString() : null,
+        hidden_reason: next ? reason : null,
+      })
+      .eq("id", review.id);
+    if (error) {
+      showToast("Erreur : " + error.message);
+    } else {
+      showToast(next ? "Avis masqué" : "Avis réaffiché");
+      setReviews((prev) =>
+        prev.map((r) => (r.id === review.id ? { ...r, is_hidden: next, hidden_reason: next ? reason : null } : r))
+      );
+    }
+  };
+
+  const toggleShadowBan = async (user: Profile) => {
+    const next = !user.is_hidden_from_feed;
+    const { error } = await supabase.from("profiles").update({ is_hidden_from_feed: next }).eq("uid", user.uid);
+    if (error) {
+      showToast("Erreur : " + error.message);
+    } else {
+      showToast(next ? `Annonces de ${user.full_name} masquées du fil` : `Annonces de ${user.full_name} de nouveau visibles`);
+      setUsers((prev) => prev.map((u) => (u.uid === user.uid ? { ...u, is_hidden_from_feed: next } : u)));
+    }
+  };
+
   const toggleVerification = async (user: Profile) => {
     const next = user.verification_status === "verified" ? "none" : "verified";
     const { error } = await supabase.from("profiles").update({ verification_status: next }).eq("uid", user.uid);
@@ -729,6 +810,18 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
             <button onClick={() => setTab("campaign")} className={tabButtonClass(tab === "campaign")}>
               <HeartHandshake size={14} /> Campagne
             </button>
+            <button
+              onClick={() => {
+                setTab("reviews");
+                if (reviews.length === 0) loadReviews();
+              }}
+              className={tabButtonClass(tab === "reviews")}
+            >
+              <Star size={14} /> Avis
+              {reviews.filter((r) => r.is_hidden).length > 0 && (
+                <span className={countBadgeClass(tab === "reviews")}>{reviews.filter((r) => r.is_hidden).length}</span>
+              )}
+            </button>
 
             <button
               onClick={() => setTab("announce")}
@@ -825,6 +918,11 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                         Suspendu
                       </span>
                     )}
+                    {u.is_hidden_from_feed && (
+                      <span className="text-[9px] font-bold uppercase bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full">
+                        Masqué du fil
+                      </span>
+                    )}
                   </p>
                   <p className="text-xs text-slate-400 truncate">
                     {u.age ? `${u.age} ans · ` : ""}{u.gender} · {isActuallyOnline(u) ? "En ligne" : "Hors ligne"}
@@ -865,13 +963,24 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                   </button>
                   <button
                     onClick={() => grantBonus(u, 7)}
-                    title="Offrir 7 jours de boost"
+                    title="Offrir 7 jours de boost (priorité dans le fil)"
                     className="w-8 h-8 flex items-center justify-center bg-emerald-100 text-emerald-600 rounded-full cursor-pointer hover:bg-emerald-200"
                   >
                     <Gift size={14} />
                   </button>
                   {u.uid !== currentUser?.id && (
                     <>
+                      <button
+                        onClick={() => toggleShadowBan(u)}
+                        title={u.is_hidden_from_feed ? "Réafficher ses annonces dans le fil" : "Masquer ses annonces du fil (censure légère)"}
+                        className={`w-8 h-8 flex items-center justify-center rounded-full cursor-pointer ${
+                          u.is_hidden_from_feed
+                            ? "bg-slate-700 text-white hover:bg-slate-800"
+                            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        }`}
+                      >
+                        {u.is_hidden_from_feed ? <Eye size={14} /> : <ShieldOff size={14} />}
+                      </button>
                       {u.is_suspended ? (
                         <button
                           onClick={() => reactivateUser(u)}
@@ -1232,6 +1341,68 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                   </>
                 )}
               </div>
+            )}
+          </div>
+        ) : tab === "reviews" ? (
+          <div className="space-y-3">
+            {reviewsLoading ? (
+              <div className="flex items-center gap-2 text-slate-400 text-sm pt-10 justify-center">
+                <Loader2 size={16} className="animate-spin" /> Chargement des avis...
+              </div>
+            ) : reviews.length === 0 ? (
+              <p className="text-center text-slate-400 text-sm pt-10">Aucun avis pour l'instant.</p>
+            ) : (
+              reviews.map((r) => {
+                const reviewer = reviewProfiles[r.reviewer_id];
+                const seller = reviewProfiles[r.seller_id];
+                return (
+                  <div key={r.id} className={`bg-white rounded-2xl p-3.5 shadow-sm space-y-2 ${r.is_hidden ? "opacity-60" : ""}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800 flex items-center gap-1 flex-wrap">
+                          <span
+                            onClick={() => reviewer && setViewProfile(reviewer)}
+                            className={reviewer ? "cursor-pointer hover:text-rose-500 hover:underline" : ""}
+                          >
+                            {reviewer?.full_name || "Acheteur inconnu"}
+                          </span>
+                          <span className="text-slate-400">→</span>
+                          <span
+                            onClick={() => seller && setViewProfile(seller)}
+                            className={seller ? "cursor-pointer hover:text-rose-500 hover:underline" : ""}
+                          >
+                            {seller?.full_name || "Vendeur inconnu"}
+                          </span>
+                          {r.is_hidden && (
+                            <span className="text-[9px] font-bold uppercase bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full">
+                              Masqué
+                            </span>
+                          )}
+                        </p>
+                        <div className="flex items-center gap-0.5 mt-1">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <Star key={n} size={11} className={n <= r.rating ? "text-amber-400 fill-amber-400" : "text-slate-200 fill-slate-200"} />
+                          ))}
+                        </div>
+                        {r.comment && <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">{r.comment}</p>}
+                        {r.is_hidden && r.hidden_reason && (
+                          <p className="text-[10px] text-slate-400 mt-1 italic">Motif : {r.hidden_reason}</p>
+                        )}
+                        <p className="text-[10px] text-slate-400 mt-1">{new Date(r.created_at).toLocaleString("fr-FR")}</p>
+                      </div>
+                      <button
+                        onClick={() => toggleReviewHidden(r)}
+                        title={r.is_hidden ? "Réafficher cet avis" : "Masquer cet avis"}
+                        className={`w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full cursor-pointer ${
+                          r.is_hidden ? "bg-slate-700 text-white hover:bg-slate-800" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        }`}
+                      >
+                        {r.is_hidden ? <Eye size={14} /> : <EyeOff size={14} />}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         ) : tab === "announce" ? (
