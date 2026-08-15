@@ -1187,9 +1187,9 @@ export default function Settings({
               </div>
 
               <div>
-                <h4 className="font-extrabold text-slate-900 text-sm">4. Système de crédits et annonces</h4>
+                <h4 className="font-extrabold text-slate-900 text-sm">4. Annonces et transactions entre membres</h4>
                 <p className="mt-1">
-                  Les publications de type annonce peuvent être boostées ou mises en avant grâce à des crédits virtuels rechargeables dans le Dashboard. Les transactions de paiement sont sécurisées de manière exclusive via le prestataire officiel <strong>Money Fusion</strong>. Les crédits consommés ne sont pas remboursables.
+                  LoveRose ne vend elle-même aucun service de mise en avant, d'abonnement ou de crédit. Seuls les membres peuvent proposer des services payants via leurs annonces, avec paiement direct entre acheteur et vendeur sécurisé de manière exclusive via le prestataire officiel <strong>Money Fusion</strong>. Les transactions confirmées ne sont pas remboursables.
                 </p>
               </div>
 

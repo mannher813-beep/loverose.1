@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import {
-  Coins, CheckCircle, Sparkles, Loader2, ArrowRight, ShieldCheck, ShoppingBag, Zap, X,
+  Loader2, ShieldCheck, ShoppingBag, X,
   Eye, FileText, Heart, Star, Users, TrendingUp, ArrowDownCircle, Gauge, Wallet, ChevronRight
 } from "lucide-react";
 import { Profile } from "../types";
@@ -17,22 +17,8 @@ interface DashboardProps {
 const formatFcfa = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} FCFA`;
 
 export default function Dashboard({ currentUser, currentUserProfile, onPaymentSuccess, onAuthRequired }: DashboardProps) {
-  const [credits, setCredits] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<string | null>(null);
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
   const [isVerifyingRef, setIsVerifyingRef] = useState<string | null>(null);
-  const [activeBoostEnd, setActiveBoostEnd] = useState<string | null>(null);
-  const [isBoosting, setIsBoosting] = useState<boolean>(false);
-
-  // Payment confirmation dialog state
-  const [showPaymentConfirm, setShowPaymentConfirm] = useState<boolean>(false);
-  const [paymentForm, setPaymentForm] = useState({
-    planId: "",
-    planName: "",
-    amount: 0,
-    phoneNumber: currentUserProfile?.phone_number || "",
-    fullName: currentUserProfile?.full_name || currentUserProfile?.username || ""
-  });
 
   // ------------------------------------------------------------------
   // Dashboard : statistiques réelles de l'utilisateur
@@ -86,64 +72,11 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
     loadDashboardStats();
     fetchOperators();
     fetchCountries();
-
-    // Realtime credits subscriber
-    const creditsSubName = `dashboard-credits-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
-    const creditsSub = supabase
-      .channel(creditsSubName)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "user_credits",
-          filter: `user_id=eq.${currentUser.id}`
-        },
-        (payload) => {
-          if (payload.new) {
-            setCredits((payload.new as any).balance);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(creditsSub);
-    };
   }, [currentUser]);
 
   const loadAccountStatus = async () => {
     try {
-      // 1. Fetch Credits Balance
-      const { data: creditsData } = await supabase
-        .from("user_credits")
-        .select("balance")
-        .eq("user_id", currentUser.id)
-        .single();
-      
-      if (creditsData) {
-        setCredits(creditsData.balance);
-      } else {
-        setCredits(0);
-      }
-
-      // 2. Fetch Active Profile Boost
-      const { data: boostData } = await supabase
-        .from("profile_boosts")
-        .select("ends_at")
-        .eq("user_id", currentUser.id)
-        .gt("ends_at", new Date().toISOString())
-        .order("ends_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (boostData?.ends_at) {
-        setActiveBoostEnd(boostData.ends_at);
-      } else {
-        setActiveBoostEnd(null);
-      }
-
-      // 3. Fetch Recent Payments
+      // Fetch Recent Payments
       const { data: paymentsData } = await supabase
         .from("payments")
         .select("*")
@@ -283,123 +216,6 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
     }
   };
 
-  const handlePurchaseBoost = async () => {
-    if (!currentUser) {
-      if (onAuthRequired) onAuthRequired();
-      return;
-    }
-    if (credits < 10) {
-      alert("Vous avez besoin de 10 crédits pour activer un Boost d'une heure. Veuillez recharger votre solde de crédits !");
-      return;
-    }
-    
-    setIsBoosting(true);
-    try {
-      // 1. Deduct 10 credits
-      const { error: deductErr } = await supabase
-        .from("user_credits")
-        .update({ balance: credits - 10 })
-        .eq("user_id", currentUser.id);
-
-      if (deductErr) throw deductErr;
-
-      // 2. Insert/add boost in profile_boosts
-      const startedAt = new Date();
-      const endsAt = new Date(startedAt.getTime() + 60 * 60 * 1000); // 1 hour
-      
-      const { error: boostErr } = await supabase
-        .from("profile_boosts")
-        .insert([
-          {
-            user_id: currentUser.id,
-            started_at: startedAt.toISOString(),
-            ends_at: endsAt.toISOString()
-          }
-        ]);
-
-      if (boostErr) throw boostErr;
-
-      // Update state
-      setCredits(prev => prev - 10);
-      setActiveBoostEnd(endsAt.toISOString());
-      alert("🚀 Votre profil est maintenant BOOSTÉ pour 1 heure ! Vous apparaitrez en priorité absolue dans le flux Discover des autres membres !");
-    } catch (err: any) {
-      console.error("Error activating boost:", err);
-      alert("Impossible d'activer le boost : " + err.message);
-    } finally {
-      setIsBoosting(false);
-    }
-  };
-
-  const handlePurchase = async (planId: string, planName: string, amount: number) => {
-    if (!currentUser) {
-      if (onAuthRequired) onAuthRequired();
-      return;
-    }
-    setPaymentForm({
-      planId,
-      planName,
-      amount,
-      phoneNumber: currentUserProfile?.phone_number || "",
-      fullName: currentUserProfile?.full_name || currentUserProfile?.username || ""
-    });
-    setShowPaymentConfirm(true);
-  };
-
-  const handleConfirmPaymentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const { planId, planName, amount, phoneNumber, fullName } = paymentForm;
-    
-    if (!phoneNumber.trim()) {
-      alert("Veuillez renseigner votre numéro de téléphone mobile money.");
-      return;
-    }
-    if (!fullName.trim()) {
-      alert("Veuillez renseigner votre nom complet.");
-      return;
-    }
-
-    setIsLoading(planId);
-    setShowPaymentConfirm(false);
-
-    try {
-      // Direct call to official moneyfusion-create-payment Edge Function
-      const { data, error } = await supabase.functions.invoke('moneyfusion-create-payment', {
-        body: {
-          plan_id: planId,
-          plan_name: planName,
-          montant: amount,
-          phone_number: phoneNumber,
-          full_name: fullName,
-          related_page_id: null,
-          related_post_id: null
-        }
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data?.payment_url) {
-        // Sauvegarde la référence AVANT la redirection : au retour sur l'app,
-        // PaymentSuccess.tsx la retrouve automatiquement et confirme le paiement
-        // sans aucune action manuelle de l'utilisateur.
-        if (data?.token) {
-          localStorage.setItem("last_payment_reference", data.token);
-        }
-        // Redirect user directly to the official Money Fusion gateway
-        window.location.href = data.payment_url;
-      } else {
-        throw new Error(data?.error || "Impossible d'initialiser l'URL de paiement.");
-      }
-    } catch (err: any) {
-      console.error("Payment initiation failed:", err);
-      alert("Erreur d'initialisation de paiement avec Money Fusion : " + (err.message || "Veuillez réessayer."));
-    } finally {
-      setIsLoading(null);
-    }
-  };
-
   const handleVerifyPayment = async (ref: string) => {
     setIsVerifyingRef(ref);
     try {
@@ -485,17 +301,6 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
     }
   };
 
-  const packages = [
-    {
-      id: "pack_bronze",
-      name: "Pack 10 Crédits",
-      credits: 10,
-      amount: 500,
-      badge: "Pack Standard",
-      description: "Permet d'envoyer 10 messages supplémentaires ou d'activer un boost de profil d'une heure."
-    }
-  ];
-
   // Taux d'engagement réel = interactions reçues / vues reçues sur les annonces.
   // C'est une donnée dérivée honnête (pas de note inventée) : 0 tant qu'il n'y a pas de vues.
   const engagementRate = totalViews > 0 ? Math.min(100, Math.round((totalInteractions / totalViews) * 100)) : 0;
@@ -534,7 +339,6 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
             accent="text-amber-600 bg-amber-50"
           />
           <StatCard icon={<Users size={16} />} label="Followers" value={followersCount.toLocaleString("fr-FR")} accent="text-indigo-600 bg-indigo-50" />
-          <StatCard icon={<Coins size={16} />} label="Solde disponible" value={`${credits} cr.`} accent="text-amber-600 bg-amber-50" />
           <StatCard icon={<TrendingUp size={16} />} label="Revenus générés" value={formatFcfa(totalRevenue)} accent="text-emerald-600 bg-emerald-50" />
           <StatCard icon={<Wallet size={16} />} label="Montant en attente" value={formatFcfa(amountAvailable)} accent="text-orange-600 bg-orange-50" />
           <StatCard icon={<ArrowDownCircle size={16} />} label="Déjà retiré" value={formatFcfa(amountWithdrawn)} accent="text-slate-700 bg-slate-100" />
@@ -631,129 +435,29 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
           </div>
           <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">Gérez votre activité</h2>
           <p className="text-slate-300 text-xs md:text-sm max-w-md leading-relaxed">
-            Suivez vos revenus, vos statistiques et boostez la visibilité de vos annonces pour attirer plus d'interactions.
+            Suivez vos revenus, vos statistiques et la performance de vos annonces.
           </p>
         </div>
 
         {/* Current status display card */}
         <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-5 w-full md:w-auto md:min-w-64 space-y-4 z-10 text-xs font-semibold text-slate-300">
-          <div className="flex justify-between items-center border-b border-white/5 pb-2">
-            <span>Solde de crédits :</span>
-            <span className="font-extrabold text-amber-400 text-sm flex items-center gap-1">
-              <Coins size={14} className="fill-amber-400" />
-              <span>{credits} crédits</span>
+          <div className="flex justify-between items-center">
+            <span>Revenus générés :</span>
+            <span className="font-extrabold text-emerald-400 text-sm">
+              {formatFcfa(totalRevenue)}
             </span>
           </div>
-          {activeBoostEnd && (
-            <div className="flex justify-between items-center border-t border-white/5 pt-2 text-[10px] text-amber-300">
-              <span className="flex items-center gap-1">
-                <Zap size={10} className="fill-amber-300 text-amber-400 animate-pulse" /> Boost actif :
-              </span>
-              <span className="font-bold">
-                Jusqu'à {new Date(activeBoostEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-          )}
+          <div className="flex justify-between items-center border-t border-white/5 pt-2">
+            <span>Montant disponible :</span>
+            <span className="font-extrabold text-amber-400 text-sm">
+              {formatFcfa(amountAvailable)}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Grid containing plans & packages */}
+      {/* Section paiements & retraits */}
       <div className="max-w-4xl mx-auto space-y-6">
-
-        {/* Section 1.5: Profile Boost */}
-        <div className="bg-white border border-slate-150 rounded-3xl p-6 md:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-4 max-w-xl text-left">
-            <div className="space-y-1">
-              <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-1.5">
-                <Zap className="text-amber-500 fill-amber-450" size={18} />
-                <span>Boost de profil (1 Heure)</span>
-              </h3>
-              <p className="text-xs text-slate-500">Dépassez la file d'attente ! Votre profil passe en priorité absolue dans le Discover de tous les membres de votre région.</p>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-3 pt-2 text-xs font-semibold text-slate-600">
-              <p className="flex items-center gap-2">🚀 Visibilité multipliée par 10</p>
-              <p className="flex items-center gap-2">💬 Plus de chances de matchs et de conversations</p>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center justify-center p-4 bg-amber-50/50 border border-amber-100 rounded-2xl md:min-w-56 text-center space-y-3">
-            <div>
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Activer avec vos crédits</p>
-              <p className="text-2xl font-black text-amber-600 flex items-center justify-center gap-1">
-                <Coins size={20} className="fill-amber-400 text-amber-500" /> 10 Crédits
-              </p>
-              <p className="text-[10px] text-slate-400">Boost actif instantanément pendant 1 heure</p>
-            </div>
-            
-            <button
-              onClick={handlePurchaseBoost}
-              disabled={isBoosting || credits < 10}
-              className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40"
-            >
-              {isBoosting ? (
-                <Loader2 className="animate-spin" size={12} />
-              ) : activeBoostEnd ? (
-                <span>Boost déjà actif !</span>
-              ) : (
-                <>
-                  <span>Activer le Boost (10 cr.)</span>
-                  <Zap size={11} className="fill-white" />
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Section 2: Credit packages */}
-        <div className="space-y-4">
-          <h3 className="font-extrabold text-slate-800 text-lg flex items-center space-x-1.5 px-1">
-            <Coins size={18} className="fill-amber-400 text-amber-500" />
-            <span>Packs de crédits d'échange</span>
-          </h3>
-
-          <div className="grid grid-cols-1 max-w-xl gap-6">
-            {packages.map(p => (
-              <div key={p.id} className="bg-white border border-slate-150 rounded-3xl p-5 flex flex-col justify-between space-y-5 hover:shadow-md transition">
-                <div className="space-y-3">
-                  {p.badge && (
-                    <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider">
-                      {p.badge}
-                    </span>
-                  )}
-                  <div className="space-y-1">
-                    <h4 className="font-extrabold text-slate-900 text-base">{p.name}</h4>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">{p.description}</p>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center space-x-1 text-amber-500">
-                    <Coins size={16} className="fill-amber-400" />
-                    <span className="text-lg font-black text-slate-800">+{p.credits} cr.</span>
-                  </div>
-                  <div>
-                    <p className="text-right text-xs font-bold text-rose-500">{p.amount} FCFA</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handlePurchase(p.id, p.name, p.amount)}
-                  disabled={isLoading !== null}
-                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 active:bg-black text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40"
-                >
-                  {isLoading === p.id ? (
-                    <Loader2 className="animate-spin" size={12} />
-                  ) : (
-                    <>
-                      <ShoppingBag size={12} />
-                      <span>Acheter ({p.amount} FCFA)</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
 
         {/* Recent Transactions & Manual Verification Section */}
         {recentPayments.length > 0 && (
@@ -834,86 +538,6 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
         </div>
 
       </div>
-
-      {/* Modern Billing Confirmation Modal */}
-      {showPaymentConfirm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl p-6 border border-slate-100 space-y-6 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-                <ShieldCheck className="text-rose-500 fill-rose-500/10" size={20} />
-                <span>Paiement Sécurisé</span>
-              </h3>
-              <button 
-                onClick={() => setShowPaymentConfirm(false)}
-                className="text-slate-400 hover:text-slate-600 transition p-1"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 space-y-2 text-center">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Achat sélectionné</p>
-              <h4 className="text-md font-extrabold text-slate-900">{paymentForm.planName}</h4>
-              <p className="text-3xl font-black text-rose-500">{paymentForm.amount} FCFA</p>
-            </div>
-
-            <form onSubmit={handleConfirmPaymentSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                  Nom Complet du Client
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Jean Dupont"
-                  value={paymentForm.fullName}
-                  onChange={(e) => setPaymentForm(p => ({ ...p, fullName: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                  Numéro de Téléphone Mobile Money
-                </label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="Ex: 677123456"
-                  value={paymentForm.phoneNumber}
-                  onChange={(e) => setPaymentForm(p => ({ ...p, phoneNumber: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
-                />
-                <span className="text-[10px] text-slate-400 block font-medium">
-                  Entrez le numéro associé à votre compte de paiement (Orange, MTN, Moov, Wave, etc.)
-                </span>
-              </div>
-
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowPaymentConfirm(false)}
-                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-rose-500/10 flex items-center justify-center gap-1.5 transition cursor-pointer"
-                >
-                  <span>Payer {paymentForm.amount} FCFA</span>
-                  <ArrowRight size={12} />
-                </button>
-              </div>
-            </form>
-
-            <p className="text-[9px] text-slate-400 text-center font-medium leading-relaxed">
-              En cliquant sur "Payer", vous serez redirigé vers l'interface officielle de Money Fusion pour effectuer votre transaction en toute sécurité.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Withdrawal request modal (retrait des gains d'annonces) */}
       {showWithdrawModal && (

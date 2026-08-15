@@ -10,39 +10,13 @@ export async function fulfillPayment(
 ) {
   console.log(`[LoveRose Payment Fulfill] Fulfilling payment. User: ${userId}, Plan: ${planId}, Amount: ${amount}`);
 
-  // A. STANDARD PACKS CREDITS
+  // A. (obsolète) Packs de crédits — retiré : LoveRose ne vend plus aucun
+  // service de mise en avant (boost) ni de crédit ; seuls les membres
+  // vendent des services entre eux via leurs annonces. Ce planId n'est
+  // plus émis par le frontend ; si jamais reçu (ancien lien), on le
+  // journalise sans rien fulfill.
   if (planId.startsWith("pack_")) {
-    let creditAmount = 10;
-    if (planId === "pack_argent") creditAmount = 50;
-    else if (planId === "pack_or") creditAmount = 100;
-
-    const { data: userCredits } = await supabaseAdmin
-      .from("user_credits")
-      .select("*")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    let newBalance = creditAmount;
-    if (userCredits) {
-      newBalance = (userCredits.balance || 0) + creditAmount;
-      await supabaseAdmin
-        .from("user_credits")
-        .update({ balance: newBalance, updated_at: new Date() })
-        .eq("user_id", userId);
-    } else {
-      await supabaseAdmin.from("user_credits").insert([{ user_id: userId, balance: creditAmount }]);
-    }
-
-    await supabaseAdmin.from("credit_transactions").insert([
-      {
-        user_id: userId,
-        amount: creditAmount,
-        type: "purchase",
-        description: `Achat Pack ${planName}`,
-        reference: reference,
-      },
-    ]);
-    console.log(`[Fulfill] Credited ${creditAmount} credits to user ${userId}`);
+    console.warn(`[Fulfill] planId "${planId}" reçu mais le système de crédits/boost a été retiré. Aucune action effectuée pour user ${userId}.`);
   }
   // B. (obsolète) Abonnement Premium — retiré : LoveRose ne propose plus de
   // système d'abonnement Premium. Ce planId n'est plus émis par le frontend ;

@@ -456,16 +456,7 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
         } as Post;
       });
 
-      // Annonces d'auteurs "boostés" (profile_boosts actif) en tête, le reste
-      // mélangé aléatoirement à chaque chargement pour un fil non chronologique.
-      const { data: boostsData, error: boostsErr } = await supabase
-        .from("profile_boosts")
-        .select("user_id, ends_at")
-        .gt("ends_at", new Date().toISOString());
-      const boostedUserIds = new Set<string>(
-        boostsErr ? [] : (boostsData || []).map((b: any) => b.user_id)
-      );
-
+      // Fil non chronologique : mélangé aléatoirement à chaque chargement.
       const shuffle = <T,>(arr: T[]): T[] => {
         const a = [...arr];
         for (let i = a.length - 1; i > 0; i--) {
@@ -475,9 +466,7 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
         return a;
       };
 
-      const boosted = populatedPosts.filter((p) => boostedUserIds.has(p.author_id));
-      const rest = shuffle(populatedPosts.filter((p) => !boostedUserIds.has(p.author_id)));
-      const orderedPosts = [...boosted, ...rest];
+      const orderedPosts = shuffle(populatedPosts);
 
       setPosts(orderedPosts);
       // Load interactions for loaded posts

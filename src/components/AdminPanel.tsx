@@ -9,7 +9,6 @@ import {
   Flag,
   Search,
   Trash2,
-  Gift,
   Send,
   X,
   Circle,
@@ -392,19 +391,6 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     }
   };
 
-  const grantBonus = async (user: Profile, days: number) => {
-    // Grant `days` of premium by inserting/extending a boost — simplest cross-cutting bonus
-    const endsAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
-    const { error } = await supabase.from("profile_boosts").insert({
-      user_id: user.uid,
-      ends_at: endsAt,
-    });
-    if (error) {
-      showToast("Erreur : " + error.message);
-    } else {
-      showToast(`Boost de ${days} jour(s) offert à ${user.full_name}`);
-    }
-  };
   const durationToUntil = (duration: "24h" | "7d" | "30d" | "perm"): string | null => {
     if (duration === "perm") return null;
     const hours = duration === "24h" ? 24 : duration === "7d" ? 24 * 7 : 24 * 30;
@@ -902,13 +888,6 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                     className="w-8 h-8 flex items-center justify-center bg-amber-100 text-amber-600 rounded-full cursor-pointer hover:bg-amber-200"
                   >
                     <Send size={14} />
-                  </button>
-                  <button
-                    onClick={() => grantBonus(u, 7)}
-                    title="Offrir 7 jours de boost (priorité dans le fil)"
-                    className="w-8 h-8 flex items-center justify-center bg-emerald-100 text-emerald-600 rounded-full cursor-pointer hover:bg-emerald-200"
-                  >
-                    <Gift size={14} />
                   </button>
                   {u.uid !== currentUser?.id && (
                     <>

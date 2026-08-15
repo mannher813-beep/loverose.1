@@ -1,5 +1,5 @@
 import React from "react";
-import { Heart, Sparkles, Shield, Compass, ArrowRight, Star, Users, CheckCircle, Coins } from "lucide-react";
+import { Heart, Sparkles, Shield, Compass, ArrowRight, Star, Users, CheckCircle } from "lucide-react";
 
 interface PublicHomeProps {
   onNavigate: (path: string) => void;
@@ -127,9 +127,8 @@ export default function PublicHome({ onNavigate }: PublicHomeProps) {
         </div>
 
         <p className="text-center text-[11px] text-slate-400 max-w-xl mx-auto">
-          <Coins size={12} className="inline -mt-0.5 mr-1" />
-          Des packs de crédits ponctuels (ex: 10 crédits pour 500 FCFA) sont disponibles pour booster la visibilité
-          de votre profil ou de vos annonces. Paiement sécurisé via Money Fusion (Mobile Money).
+          LoveRose ne vend aucun abonnement ni aucune option de mise en avant. Seuls les membres proposent des
+          services payants via leurs annonces, avec paiement direct et sécurisé via Money Fusion (Mobile Money).
         </p>
       </section>
 
