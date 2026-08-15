@@ -52,11 +52,6 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
   // Sync profile details if they load later
   useEffect(() => {
     if (currentUserProfile) {
-      setPaymentForm(prev => ({
-        ...prev,
-        phoneNumber: prev.phoneNumber || currentUserProfile.phone_number || "",
-        fullName: prev.fullName || currentUserProfile.full_name || currentUserProfile.username || ""
-      }));
       setWithdrawForm(prev => ({
         ...prev,
         fullName: prev.fullName || currentUserProfile.full_name || "",
