@@ -800,7 +800,7 @@ export default function App() {
                 </button>
               )}
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold text-slate-800">{profile?.full_name || currentUser.email.split("@")[0]}</p>
+                <p className="text-xs font-bold text-slate-800">{profile?.full_name || currentUser.email?.split("@")[0] || "Membre"}</p>
                 <p className="text-[10px] text-slate-400 font-medium">Membre LoveRose</p>
               </div>
               <img

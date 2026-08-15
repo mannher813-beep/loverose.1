@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type FormEvent } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { Heart, AlertCircle, Loader2, Mail, Lock, ShieldCheck, Sparkles, MessageCircleHeart, ArrowLeft } from "lucide-react";
+import { Heart, AlertCircle, Loader2, Mail, Lock, ShieldCheck, Sparkles, MessageCircleHeart, ArrowLeft, UserRound } from "lucide-react";
 
 declare global {
   interface Window {
@@ -111,6 +111,20 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
       onSuccess();
     } catch (err: any) {
       setErrorMsg(err.message || t("errors.googleFailed"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAnonymousLogin = async () => {
+    setErrorMsg("");
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
+      onSuccess();
+    } catch (err: any) {
+      setErrorMsg(err.message || t("errors.generic"));
     } finally {
       setIsLoading(false);
     }
@@ -377,6 +391,33 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
                 )}
               </button>
             </form>
+
+            <div className="flex items-center gap-3 pt-1">
+              <div className="flex-1 h-px bg-slate-200" />
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("or")}</span>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+
+            <div className="space-y-2">
+              <button
+                onClick={handleAnonymousLogin}
+                disabled={isLoading}
+                type="button"
+                className="w-full py-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 active:bg-slate-200 text-slate-600 font-bold text-xs rounded-2xl transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <Loader2 className="animate-spin text-slate-400" size={16} />
+                ) : (
+                  <>
+                    <UserRound size={15} />
+                    <span>{t("continueAsGuest")}</span>
+                  </>
+                )}
+              </button>
+              <p className="text-[10px] text-slate-400 leading-relaxed px-1">
+                {t("guestModeNote")}
+              </p>
+            </div>
 
             <p className="text-center text-[11px] text-slate-400 leading-relaxed pb-4">
               <Trans
