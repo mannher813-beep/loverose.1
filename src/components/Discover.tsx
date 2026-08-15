@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
 import AdSlot from "./AdSlot";
@@ -72,6 +72,13 @@ function renderOnlineStatus(profile: Profile) {
 export default function Discover({ currentUser, currentUserProfile, isPremium = false, onMatchDetected, onAuthRequired, onOpenShop }: DiscoverProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  // Mirrors currentIndex for use inside the async background-enrichment
+  // step of loadProfiles, which resolves after the render that closed over
+  // the stale currentIndex value.
+  const currentIndexRef = useRef(0);
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
   const [selectedIntentsFilter, setSelectedIntentsFilter] = useState<string[]>([]);
   // Advanced filters (Premium only — controls stay hidden/locked for free users)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -138,6 +145,17 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
     };
   }, []);
 
+  // Sort helper shared by the initial (fast) pass and the background
+  // enrichment pass below.
+  const shuffle = <T,>(arr: T[]): T[] => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
   const loadProfiles = async (retryAttempt: number = 0) => {
     setIsLoading(true);
     setLoadError(null);
@@ -175,9 +193,55 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
         query = query.overlaps('relationship_intents', selectedIntentsFilter);
       }
 
-      // Run all independent queries in parallel instead of one after another,
-      // to cut total loading time down to the slowest single request instead
-      // of the sum of all four.
+      // STEP 1 — fetch only the profiles themselves and show them right
+      // away. This used to wait behind likes/blocked/boosts/premium in a
+      // single Promise.all, so the very first card only appeared once the
+      // slowest of five queries had returned. Now the person sees a profile
+      // as soon as this one query resolves.
+      const { data: profilesData, error } = (await Promise.race([
+        query,
+        timeout,
+      ])) as any;
+
+      if (error) throw error;
+
+      const maxDist = currentUserProfile?.max_distance_km || 50;
+      const applyAdvancedFilters = isPremium;
+      const baseFiltered = ((profilesData || []) as Profile[]).filter((p) => {
+        if (currentUserProfile?.latitude && currentUserProfile?.longitude && p.latitude && p.longitude) {
+          const dist = calculateDistance(
+            currentUserProfile.latitude,
+            currentUserProfile.longitude,
+            p.latitude,
+            p.longitude
+          );
+          if (dist > maxDist) return false;
+        }
+        if (applyAdvancedFilters) {
+          if (ageFilterMin != null && p.age != null && p.age < ageFilterMin) return false;
+          if (ageFilterMax != null && p.age != null && p.age > ageFilterMax) return false;
+          if (verifiedOnlyFilter && p.verification_status !== "verified") return false;
+        }
+        return true;
+      });
+
+      // Provisional order — no likes/blocked/boosts/premium info yet, so
+      // this is refined a moment later once the background data lands.
+      const provisional = currentUser
+        ? [...baseFiltered].sort(
+            (a, b) => calculateCompatibility(currentUserProfile, b) - calculateCompatibility(currentUserProfile, a)
+          )
+        : shuffle(baseFiltered);
+
+      setProfiles(provisional);
+      setCurrentIndex(0);
+      setLastSwipe(null);
+      setIsLoading(false); // first card is visible now — stop blocking on the rest
+
+      // STEP 2 — enrich in the background: exclude already-liked/blocked
+      // profiles and push Boost/Premium users to the top. This only ever
+      // touches cards the person hasn't reached yet, so it can't yank away
+      // whatever is currently on screen.
       const safe = (p: PromiseLike<any>) =>
         Promise.resolve(p).catch((e) => ({ data: null, error: e }));
 
@@ -193,8 +257,6 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
               .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`)
           )
         : Promise.resolve({ data: null, error: null });
-
-      const profilesPromise = query;
 
       const boostsPromise = safe(
         supabase
@@ -212,15 +274,10 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       const [
         { data: likesData, error: likesErr },
         { data: blockedData, error: blockedErr },
-        { data: profilesData, error },
         { data: boostsData, error: boostsErr },
         { data: premiumData, error: premiumErr },
-      ] = await Promise.race([
-        Promise.all([likesPromise, blockedPromise, profilesPromise, boostsPromise, premiumPromise]),
-        timeout,
-      ]);
+      ] = await Promise.all([likesPromise, blockedPromise, boostsPromise, premiumPromise]);
 
-      // 1. Already liked profiles, to filter them out
       const likedSet = new Set<string>();
       if (!likesErr && likesData) {
         likesData.forEach((l: any) => likedSet.add(l.to_uid));
@@ -229,7 +286,6 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       }
       setLikedUids(likedSet);
 
-      // 1.5 Blocked users, to exclude them completely
       const blockedSet = new Set<string>();
       if (!blockedErr && blockedData) {
         blockedData.forEach((b: any) => {
@@ -240,10 +296,6 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
         console.warn("Could not load blocked_users, table may be missing:", blockedErr);
       }
 
-      // 2. Profiles themselves
-      if (error) throw error;
-
-      // Active profile boosts, to prioritize boosted users absolutely
       const boostedUserIds = new Set<string>();
       if (!boostsErr && boostsData) {
         boostsData.forEach((b: any) => boostedUserIds.add(b.user_id));
@@ -251,7 +303,6 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
         console.warn("Could not load profile_boosts, table may be missing:", boostsErr);
       }
 
-      // Active Premium subscribers, featured just below paid Boosts
       const premiumUserIds = new Set<string>();
       if (!premiumErr && premiumData) {
         premiumData.forEach((row: any) => premiumUserIds.add(row.user_id));
@@ -260,71 +311,34 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       }
       setPremiumUids(premiumUserIds);
 
-      let filteredProfiles = profilesData || [];
+      setProfiles(prev => {
+        const idx = Math.min(currentIndexRef.current, prev.length);
+        const seen = prev.slice(0, idx); // already shown/swiped — leave untouched
+        const rest = prev.slice(idx).filter(p => !likedSet.has(p.uid) && !blockedSet.has(p.uid));
 
-      // Filter out profiles already liked or with missing complete profiles or too far based on max_distance_km
-      const maxDist = currentUserProfile?.max_distance_km || 50;
-      const applyAdvancedFilters = isPremium;
-      const unswiped = filteredProfiles.filter(p => {
-        if (likedSet.has(p.uid)) return false;
-        if (blockedSet.has(p.uid)) return false;
-
-        if (currentUserProfile?.latitude && currentUserProfile?.longitude && p.latitude && p.longitude) {
-          const dist = calculateDistance(
-            currentUserProfile.latitude,
-            currentUserProfile.longitude,
-            p.latitude,
-            p.longitude
-          );
-          if (dist > maxDist) return false;
+        let reordered: Profile[];
+        if (currentUser) {
+          reordered = [...rest].sort((a, b) => {
+            const aBoosted = boostedUserIds.has(a.uid);
+            const bBoosted = boostedUserIds.has(b.uid);
+            if (aBoosted !== bBoosted) return aBoosted ? -1 : 1;
+            const aFeatured = premiumUserIds.has(a.uid);
+            const bFeatured = premiumUserIds.has(b.uid);
+            if (aFeatured !== bFeatured) return aFeatured ? -1 : 1;
+            return (
+              calculateCompatibility(currentUserProfile, b) -
+              calculateCompatibility(currentUserProfile, a)
+            );
+          });
+        } else {
+          const boosted = rest.filter(p => boostedUserIds.has(p.uid));
+          const featured = rest.filter(p => !boostedUserIds.has(p.uid) && premiumUserIds.has(p.uid));
+          const others = rest.filter(p => !boostedUserIds.has(p.uid) && !premiumUserIds.has(p.uid));
+          reordered = [...boosted, ...featured, ...others];
         }
 
-        if (applyAdvancedFilters) {
-          if (ageFilterMin != null && p.age != null && p.age < ageFilterMin) return false;
-          if (ageFilterMax != null && p.age != null && p.age > ageFilterMax) return false;
-          if (verifiedOnlyFilter && p.verification_status !== "verified") return false;
-        }
-
-        return true;
+        return [...seen, ...reordered];
       });
-      
-      // Sort with boosted users at the absolute top.
-      // Logged-in users: rank the rest by compatibility score.
-      // Guests: no real profile to compare against, so shuffle randomly instead.
-      const shuffle = <T,>(arr: T[]): T[] => {
-        const a = [...arr];
-        for (let i = a.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [a[i], a[j]] = [a[j], a[i]];
-        }
-        return a;
-      };
-
-      let scored: Profile[];
-      if (currentUser) {
-        scored = unswiped.map(p => {
-          const isBoosted = boostedUserIds.has(p.uid);
-          // Premium subscribers get featured placement too (marketed as "Mise
-          // en vedette de votre profil"), just below users with an active
-          // paid one-time Boost, which should always outrank it.
-          const isFeatured = premiumUserIds.has(p.uid);
-          const score = calculateCompatibility(currentUserProfile, p);
-          return { profile: p, score, isBoosted, isFeatured };
-        }).sort((a, b) => {
-          if (a.isBoosted !== b.isBoosted) return a.isBoosted ? -1 : 1;
-          if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
-          return b.score - a.score;
-        }).map(x => x.profile);
-      } else {
-        const boosted = unswiped.filter(p => boostedUserIds.has(p.uid));
-        const featured = unswiped.filter(p => !boostedUserIds.has(p.uid) && premiumUserIds.has(p.uid));
-        const rest = shuffle(unswiped.filter(p => !boostedUserIds.has(p.uid) && !premiumUserIds.has(p.uid)));
-        scored = [...boosted, ...featured, ...rest];
-      }
-
-      setProfiles(scored);
-      setCurrentIndex(0);
-      setLastSwipe(null);
     } catch (err: any) {
       console.warn("Could not load profiles from database (possibly offline or unmigrated):", err);
       if (err?.message === "TIMEOUT" && retryAttempt < 1) {
