@@ -8,6 +8,7 @@ import SupabaseSetupBanner from "./components/SupabaseSetupBanner";
 import PaymentSuccess from "./components/PaymentSuccess";
 import Auth from "./components/Auth";
 import Feed from "./components/Feed";
+import PublishListing from "./components/PublishListing";
 import Dashboard from "./components/Dashboard";
 import ProfileSettings from "./components/ProfileSettings";
 import SettingsView from "./components/Settings";
@@ -29,7 +30,7 @@ export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const isAdmin = profile?.role === 'admin';
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'discover' | 'dashboard' | 'profile' | 'settings' | 'notifications' | 'likes' | 'admin'>('discover');
+  const [activeTab, setActiveTab] = useState<'discover' | 'publier' | 'dashboard' | 'profile' | 'settings' | 'notifications' | 'likes' | 'admin'>('discover');
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   
   // Guest mode auth modal
@@ -60,7 +61,7 @@ export default function App() {
     // on redirige vers leurs équivalents actuels plutôt que d'ignorer le lien.
     if (requestedTab === "chat") requestedTab = "discover";
     if (requestedTab === "shop") requestedTab = "dashboard";
-    const validTabs = ["discover", "dashboard", "profile", "settings", "notifications"] as const;
+    const validTabs = ["discover", "publier", "dashboard", "profile", "settings", "notifications"] as const;
     if (requestedTab && (validTabs as readonly string[]).includes(requestedTab)) {
       setActiveTab(requestedTab as typeof activeTab);
       params.delete("tab");
@@ -740,11 +741,8 @@ export default function App() {
             <span>Annonces</span>
           </button>
           <button
-            onClick={() => {
-              setActiveTab('discover');
-              setTimeout(() => document.getElementById('composer-annonce')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-            }}
-            className="flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500"
+            onClick={() => setActiveTab('publier')}
+            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'publier' ? 'text-rose-500 font-extrabold' : ''}`}
           >
             <PlusCircle size={16} />
             <span>Publier</span>
@@ -916,6 +914,14 @@ export default function App() {
               onAuthRequired={() => triggerAuthRequired(true)}
             />
           </div>
+          <div className={activeTab === 'publier' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
+            <PublishListing
+              currentUser={currentUser}
+              currentUserProfile={profile}
+              onAuthRequired={() => triggerAuthRequired(true)}
+              onPublished={() => setActiveTab('discover')}
+            />
+          </div>
           <div className={activeTab === 'dashboard' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
             <Dashboard
               currentUser={currentUser}
@@ -978,14 +984,11 @@ export default function App() {
           <span className={`text-[9px] ${activeTab === 'discover' ? 'font-extrabold' : 'font-semibold'}`}>Annonces</span>
         </button>
         <button
-          onClick={() => {
-            setActiveTab('discover');
-            setTimeout(() => document.getElementById('composer-annonce')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-          }}
-          className="flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl text-slate-400 hover:text-slate-600"
+          onClick={() => setActiveTab('publier')}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'publier' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
         >
-          <PlusCircle size={19} strokeWidth={1.8} />
-          <span className="text-[9px] font-semibold">Publier</span>
+          <PlusCircle size={19} strokeWidth={activeTab === 'publier' ? 2.2 : 1.8} />
+          <span className={`text-[9px] ${activeTab === 'publier' ? 'font-extrabold' : 'font-semibold'}`}>Publier</span>
         </button>
         <button
           onClick={() => setActiveTab('dashboard')}
