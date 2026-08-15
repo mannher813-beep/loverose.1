@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import { Profile } from "./types";
-import { Heart, MessageSquare, ShoppingBag, Settings, Sparkles, User, LogOut, ArrowRight, X, Bell, ShieldAlert } from "lucide-react";
+import { Heart, MessageSquare, ShoppingBag, Settings, Sparkles, User, LogOut, ArrowRight, X, Bell, ShieldAlert, Newspaper } from "lucide-react";
 
 // Component imports
 import SupabaseSetupBanner from "./components/SupabaseSetupBanner";
 import PaymentSuccess from "./components/PaymentSuccess";
 import Auth from "./components/Auth";
-import Discover from "./components/Discover";
+import Feed from "./components/Feed";
 import Chat from "./components/Chat";
 import Shop from "./components/Shop";
 import ProfileSettings from "./components/ProfileSettings";
@@ -613,12 +613,12 @@ export default function App() {
   }
 
   // Public marketing/legal pages (CGU, politique de confidentialité, FAQ, etc.).
-  // PublicLayout existed and handled all of these paths correctly already,
-  // but was never actually mounted anywhere — so links to e.g.
-  // /conditions-d-utilisation had nowhere real to go and silently fell
-  // through to the guest Discover screen instead.
+  // PublicLayout existed and handled all of these paths correctly already.
+  // Note: "/" is intentionally NOT in this list — opening the site should
+  // drop guests straight into the live Discover feed (anonymous browsing),
+  // not a marketing splash page. "/accueil" is kept as an explicit marketing
+  // page for anyone who wants to link to it directly.
   const publicMarketingPaths = [
-    "/",
     "/accueil",
     "/a-propos",
     "/faq",
@@ -812,8 +812,8 @@ export default function App() {
             onClick={() => setActiveTab('discover')}
             className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'discover' ? 'text-rose-500 font-extrabold' : ''}`}
           >
-            <Heart size={16} />
-            <span>Découvrir</span>
+            <Newspaper size={16} />
+            <span>Annonces</span>
           </button>
           <button
             onClick={() => setActiveTab('chat')}
@@ -983,13 +983,12 @@ export default function App() {
         {/* Core Application Tabs switcher */}
         <>
           <div className={activeTab === 'discover' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
-            <Discover
+            <Feed
               currentUser={currentUser}
               currentUserProfile={profile}
               isPremium={isPremiumUser}
-              onMatchDetected={(partner) => setMatchedPartner(partner)}
+              onStartChat={(partnerId) => { setTargetChatPartnerId(partnerId); setActiveTab('chat'); }}
               onAuthRequired={() => triggerAuthRequired(true)}
-              onOpenShop={() => setActiveTab('shop')}
             />
           </div>
           <div className={activeTab === 'chat' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
@@ -1066,8 +1065,8 @@ export default function App() {
           onClick={() => setActiveTab('discover')}
           className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'discover' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
         >
-          <Heart size={19} fill={activeTab === 'discover' ? 'currentColor' : 'none'} strokeWidth={activeTab === 'discover' ? 1.5 : 1.8} />
-          <span className={`text-[9px] ${activeTab === 'discover' ? 'font-extrabold' : 'font-semibold'}`}>Découvrir</span>
+          <Newspaper size={19} strokeWidth={activeTab === 'discover' ? 2.2 : 1.8} />
+          <span className={`text-[9px] ${activeTab === 'discover' ? 'font-extrabold' : 'font-semibold'}`}>Annonces</span>
         </button>
         <button
           onClick={() => setActiveTab('chat')}

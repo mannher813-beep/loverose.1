@@ -161,6 +161,34 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
     };
   }, [status, planId]);
 
+  // Cas particulier : paiement d'une annonce publiée par un utilisateur
+  // (photo + prix + bouton payant). Une fois le paiement confirmé, on
+  // redirige automatiquement l'acheteur vers le WhatsApp du vendeur.
+  useEffect(() => {
+    if (status !== "success" || !planId || !planId.startsWith("listing_contact:")) return;
+
+    let cancelled = false;
+    const postId = planId.split(":")[1];
+
+    (async () => {
+      const { data } = await supabase
+        .from("posts")
+        .select("whatsapp_link")
+        .eq("id", postId)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (data?.whatsapp_link) {
+        setAnnouncementRedirectUrl(data.whatsapp_link);
+        setRedirectCountdown(3);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status, planId]);
+
   useEffect(() => {
     if (redirectCountdown === null || !announcementRedirectUrl) return;
     if (redirectCountdown <= 0) {

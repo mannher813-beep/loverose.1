@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import { compressImageIfNeeded } from "../lib/imageCompression";
 import { Post, Profile } from "../types";
 import AdSlot from "./AdSlot";
-import { Image, Send, MessageCircle, Heart, Share2, Sparkles, AlertCircle, Loader2 } from "lucide-react";
+import { Image, Send, MessageCircle, Heart, Share2, Sparkles, AlertCircle, Loader2, X, DollarSign, MessageSquare } from "lucide-react";
 import ProfileDetailModal from "./ProfileDetailModal";
 
 interface FeedProps {
@@ -11,17 +11,30 @@ interface FeedProps {
   currentUserProfile: Profile | null;
   isPremium?: boolean;
   onStartChat?: (partnerId: string) => void;
+  onAuthRequired?: () => void;
 }
 
-export default function Feed({ currentUser, currentUserProfile, isPremium = false, onStartChat }: FeedProps) {
+export default function Feed({ currentUser, currentUserProfile, isPremium = false, onStartChat, onAuthRequired }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [inputText, setInputText] = useState("");
-  const [mediaUrl, setMediaUrl] = useState("");
+  // Multiple photos per post/annonce. Each entry is the final Supabase Storage
+  // public URL (uploaded as soon as the file is picked), not a base64 blob.
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [mediaDimensions, setMediaDimensions] = useState<Array<{width: number; height: number; ratio: number}>>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPosting, setIsPosting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedViewProfile, setSelectedViewProfile] = useState<Profile | null>(null);
+
+  // Paid "annonce" composer fields
+  const [isListing, setIsListing] = useState(false);
+  const [listingPriceInput, setListingPriceInput] = useState("");
+  const [whatsappLinkInput, setWhatsappLinkInput] = useState("");
+
+  // post_id -> true once the current visitor has paid for that annonce
+  const [purchasedPostIds, setPurchasedPostIds] = useState<Set<string>>(new Set());
+  const [payingPostId, setPayingPostId] = useState<string | null>(null);
 
   const getAlphabeticCount = (text: string) => {
     const match = text.match(/[a-zA-ZÀ-ÿ]/g);
@@ -36,42 +49,67 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
   const containsNumbers = hasDigits(inputText);
   const isPostRestricted = !isPremium && (alphabeticCount > 100 || containsNumbers);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const MAX_LISTING_PHOTOS = 6;
 
-    try {
-      // Compress the image locally prior to rendering/uploading
-      const optimizedFile = await compressImageIfNeeded(file);
-
-      // Capture dimensions of the optimized image file
+  const getImageDimensions = (file: File): Promise<{ width: number; height: number; ratio: number }> => {
+    return new Promise((resolve) => {
       const img = new window.Image();
       img.onload = () => {
-        setMediaDimensions([{
-          width: img.naturalWidth,
-          height: img.naturalHeight,
-          ratio: img.naturalWidth / img.naturalHeight
-        }]);
+        resolve({ width: img.naturalWidth, height: img.naturalHeight, ratio: img.naturalWidth / img.naturalHeight });
+        URL.revokeObjectURL(img.src);
       };
-      img.src = URL.createObjectURL(optimizedFile);
+      img.src = URL.createObjectURL(file);
+    });
+  };
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === "string") {
-          setMediaUrl(reader.result);
-        }
-      };
-      reader.readAsDataURL(optimizedFile);
-    } catch (err) {
-      console.error("Failed to compress or preview image in feed:", err);
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files: File[] = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length === 0 || !currentUser) return;
+
+    const remainingSlots = MAX_LISTING_PHOTOS - mediaUrls.length;
+    if (remainingSlots <= 0) {
+      setErrorMessage(`Vous pouvez ajouter jusqu'à ${MAX_LISTING_PHOTOS} photos par publication.`);
+      return;
+    }
+
+    setErrorMessage("");
+    setIsUploadingMedia(true);
+    try {
+      const filesToUpload = files.slice(0, remainingSlots);
+      for (const file of filesToUpload) {
+        // Compress locally first, then upload straight to Supabase Storage —
+        // storing base64 blobs directly in the posts row doesn't scale to
+        // several photos per annonce.
+        const optimizedFile = await compressImageIfNeeded(file);
+        const dims = await getImageDimensions(optimizedFile);
+
+        const filePath = `posts/${currentUser.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from("loverose")
+          .upload(filePath, optimizedFile, { contentType: "image/jpeg", upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage.from("loverose").getPublicUrl(filePath);
+
+        setMediaUrls((prev) => [...prev, publicUrl]);
+        setMediaDimensions((prev) => [...prev, dims]);
+      }
+    } catch (err: any) {
+      console.error("Failed to upload photo(s) in feed:", err);
+      setErrorMessage(err.message || "Erreur lors de l'envoi d'une photo.");
+    } finally {
+      setIsUploadingMedia(false);
+      e.target.value = "";
     }
   };
 
+  const removeMediaAt = (index: number) => {
+    setMediaUrls((prev) => prev.filter((_, i) => i !== index));
+    setMediaDimensions((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const triggerImageUpload = () => {
-    if (!isPremium) {
-      setErrorMessage("L'upload de photos dans le fil d'actualité est réservé exclusivement aux membres abonnés Premium 🔒 ✨.");
-      return;
-    }
     setErrorMessage("");
     document.getElementById("feed-image-upload")?.click();
   };
@@ -85,12 +123,29 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
   const [shareToastMessage, setShareToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (currentUser) {
-      loadPosts();
-    } else {
-      setIsLoading(false);
+    // Posts are publicly readable (RLS allows anon SELECT), so the feed loads
+    // for guests too — browsing the annonces never requires an account.
+    loadPosts();
+  }, []);
+
+  // Which paid annonces has this visitor already unlocked (paid for)?
+  useEffect(() => {
+    if (!currentUser) {
+      setPurchasedPostIds(new Set());
+      return;
     }
-  }, [currentUser]);
+    supabase
+      .from("listing_purchases")
+      .select("post_id")
+      .eq("buyer_id", currentUser.id)
+      .then(({ data, error }) => {
+        if (error) {
+          console.warn("Could not load purchased listings:", error);
+          return;
+        }
+        setPurchasedPostIds(new Set((data || []).map((r: any) => r.post_id)));
+      });
+  }, [currentUser?.id]);
 
   const loadInteractionsForPosts = async (loadedPosts: Post[]) => {
     const postIds = loadedPosts.map(p => p.id);
@@ -223,7 +278,10 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
   };
 
   const handleLikeToggle = async (postId: string) => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      onAuthRequired?.();
+      return;
+    }
 
     const currentState = likesState[postId] || { count: 0, userLiked: false };
     const newUserLiked = !currentState.userLiked;
@@ -255,7 +313,11 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
   };
 
   const handleAddComment = async (postId: string) => {
-    if (!newCommentText.trim() || !currentUser) return;
+    if (!currentUser) {
+      onAuthRequired?.();
+      return;
+    }
+    if (!newCommentText.trim()) return;
 
     const commentText = newCommentText.trim();
     setNewCommentText("");
@@ -361,10 +423,6 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
   };
 
   const loadPosts = async () => {
-    if (!currentUser || !currentUser.id) {
-      setIsLoading(false);
-      return;
-    }
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -413,19 +471,42 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
     e.preventDefault();
     setErrorMessage("");
 
+    if (!currentUser) {
+      onAuthRequired?.();
+      return;
+    }
     if (!inputText.trim()) return;
+
+    // Validate the paid-annonce fields before hitting the DB
+    let listingPrice: number | null = null;
+    let whatsappLink: string | null = null;
+    if (isListing) {
+      const priceNum = Number(listingPriceInput);
+      if (!listingPriceInput || !Number.isFinite(priceNum) || priceNum <= 0) {
+        setErrorMessage("Indiquez un prix valide (FCFA) pour votre annonce.");
+        return;
+      }
+      if (!whatsappLinkInput.trim()) {
+        setErrorMessage("Indiquez votre lien WhatsApp (ex: https://wa.me/2376...) pour que l'acheteur puisse vous contacter après paiement.");
+        return;
+      }
+      listingPrice = priceNum;
+      whatsappLink = whatsappLinkInput.trim();
+    }
 
     setIsPosting(true);
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("posts")
         .insert([
           {
             author_id: currentUser.id,
             contenu: inputText.trim(),
-            medias: mediaUrl ? [mediaUrl] : [],
-            media_types: mediaUrl ? ['image'] : [],
-            media_dimensions: mediaUrl ? mediaDimensions : []
+            medias: mediaUrls,
+            media_types: mediaUrls.map(() => "image"),
+            media_dimensions: mediaDimensions,
+            listing_price: listingPrice,
+            whatsapp_link: whatsappLink,
           }
         ])
         .select();
@@ -433,8 +514,12 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
       if (error) throw error;
 
       setInputText("");
-      setMediaUrl("");
-      
+      setMediaUrls([]);
+      setMediaDimensions([]);
+      setIsListing(false);
+      setListingPriceInput("");
+      setWhatsappLinkInput("");
+
       // Reload posts
       await loadPosts();
     } catch (err: any) {
@@ -445,115 +530,220 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
     }
   };
 
+  const handlePayForListing = async (post: Post) => {
+    if (!currentUser) {
+      onAuthRequired?.();
+      return;
+    }
+    if (!post.listing_price) return;
+
+    // Already paid: skip straight to WhatsApp, no need to charge again.
+    if (purchasedPostIds.has(post.id) && post.whatsapp_link) {
+      window.open(post.whatsapp_link, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    setPayingPostId(post.id);
+    try {
+      const response = await fetch("/api/payments/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          planId: `listing_contact:${post.id}`,
+          planName: (post.contenu || "Annonce LoveRose").slice(0, 60),
+          amount: post.listing_price,
+          email: currentUser.email,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Impossible de générer le lien de paiement.");
+
+      const data = await response.json();
+      if (data.checkoutUrl) {
+        localStorage.setItem("last_payment_reference", data.reference);
+        window.location.href = data.checkoutUrl;
+      } else {
+        throw new Error("Impossible de générer le lien de paiement.");
+      }
+    } catch (err: any) {
+      console.error("Listing payment error:", err);
+      setErrorMessage(err.message || "Erreur lors du paiement de l'annonce.");
+    } finally {
+      setPayingPostId(null);
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto bg-slate-50 p-4 space-y-6 font-sans">
       
-      {/* Create Post Card */}
-      <div className="max-w-xl mx-auto bg-white border border-slate-150 rounded-3xl p-5 shadow-sm space-y-4">
-        <div className="flex items-start space-x-3">
-          <img
-            src={currentUserProfile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${currentUserProfile?.full_name || currentUser.id}`}
-            alt="Moi"
-            referrerPolicy="no-referrer"
-            className="w-10 h-10 rounded-full object-cover bg-slate-100 border border-slate-100"
-          />
-          <form onSubmit={handleCreatePost} className="flex-1 space-y-3">
-            <textarea
-              rows={3}
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Partagez quelque chose avec la communauté LoveRose... ✨"
-              className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:bg-white focus:outline-none rounded-2xl p-3.5 text-xs font-medium transition resize-none leading-relaxed"
+      {/* Create Post / Annonce Card */}
+      {currentUser ? (
+        <div className="max-w-xl mx-auto bg-white border border-slate-150 rounded-3xl p-5 shadow-sm space-y-4">
+          <div className="flex items-start space-x-3">
+            <img
+              src={currentUserProfile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${currentUserProfile?.full_name || currentUser.id}`}
+              alt="Moi"
+              referrerPolicy="no-referrer"
+              className="w-10 h-10 rounded-full object-cover bg-slate-100 border border-slate-100"
             />
-                  {/* Hidden file uploader for feed post media */}
-            <input
-              type="file"
-              id="feed-image-upload"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
+            <form onSubmit={handleCreatePost} className="flex-1 space-y-3">
+              <textarea
+                rows={3}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Décrivez votre publication ou votre annonce... ✨"
+                className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:bg-white focus:outline-none rounded-2xl p-3.5 text-xs font-medium transition resize-none leading-relaxed"
+              />
+                    {/* Hidden file uploader for feed post media, supports several photos */}
+              <input
+                type="file"
+                id="feed-image-upload"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileSelect}
+              />
 
-            {/* Preview of the uploaded image if any */}
-            {mediaUrl && (
-              <div className="relative rounded-2xl overflow-hidden h-36 bg-slate-100 border border-slate-200 mt-2">
-                <img src={mediaUrl} alt="Aperçu média" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => setMediaUrl("")}
-                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 text-xs px-2.5 font-bold transition cursor-pointer"
-                >
-                  Effacer
-                </button>
-              </div>
-            )}
+              {/* Preview grid of the uploaded photo(s) */}
+              {mediaUrls.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  {mediaUrls.map((url, i) => (
+                    <div key={url} className="relative rounded-xl overflow-hidden aspect-square bg-slate-100 border border-slate-200">
+                      <img src={url} alt={`Aperçu ${i + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeMediaAt(i)}
+                        className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition cursor-pointer"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-            {/* Real-time pre-validation for non-Premium users */}
-            {!isPremium && inputText.trim() && (
-              <div className="space-y-1.5 pt-1">
-                <div className="flex justify-between items-center text-[10px] font-bold">
-                  <span className={`${alphabeticCount > 100 ? "text-red-500 font-extrabold animate-pulse" : "text-slate-500"}`}>
-                    Lettres : {alphabeticCount} / 100 maximum
-                  </span>
-                  {containsNumbers && (
-                    <span className="text-red-500 font-extrabold flex items-center gap-1 animate-pulse">
-                      ⚠️ Contient des chiffres
+              {/* Real-time pre-validation for non-Premium users */}
+              {!isPremium && inputText.trim() && (
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex justify-between items-center text-[10px] font-bold">
+                    <span className={`${alphabeticCount > 100 ? "text-red-500 font-extrabold animate-pulse" : "text-slate-500"}`}>
+                      Lettres : {alphabeticCount} / 100 maximum
                     </span>
+                    {containsNumbers && (
+                      <span className="text-red-500 font-extrabold flex items-center gap-1 animate-pulse">
+                        ⚠️ Contient des chiffres
+                      </span>
+                    )}
+                  </div>
+                  {alphabeticCount > 100 && (
+                    <p className="text-[10px] text-red-500 font-semibold leading-normal bg-red-50 border border-red-100 p-2 rounded-xl">
+                      Les utilisateurs non-Premium sont limités à 100 caractères alphabétiques par publication. Passez Premium pour lever cette limite.
+                    </p>
+                  )}
+                  {containsNumbers && (
+                    <p className="text-[10px] text-red-500 font-semibold leading-normal bg-red-50 border border-red-100 p-2 rounded-xl">
+                      Les utilisateurs non-Premium ne peuvent pas publier de chiffres. Passez Premium pour lever cette limite.
+                    </p>
                   )}
                 </div>
-                {alphabeticCount > 100 && (
-                  <p className="text-[10px] text-red-500 font-semibold leading-normal bg-red-50 border border-red-100 p-2 rounded-xl">
-                    Les utilisateurs non-Premium sont limités à 100 caractères alphabétiques par publication. Passez Premium pour lever cette limite.
-                  </p>
-                )}
-                {containsNumbers && (
-                  <p className="text-[10px] text-red-500 font-semibold leading-normal bg-red-50 border border-red-100 p-2 rounded-xl">
-                    Les utilisateurs non-Premium ne peuvent pas publier de chiffres. Passez Premium pour lever cette limite.
-                  </p>
+              )}
+
+              {/* Toggle: turn this post into a paid annonce with WhatsApp contact */}
+              <div className="pt-1 border-t border-slate-100">
+                <label className="flex items-center justify-between gap-2 py-2 cursor-pointer select-none">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                    <DollarSign size={14} className="text-emerald-500" />
+                    Faire de cette publication une annonce payante
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsListing((v) => !v)}
+                    className={`w-11 h-6 rounded-full transition relative cursor-pointer flex-shrink-0 ${isListing ? "bg-emerald-500" : "bg-slate-200"}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition ${isListing ? "translate-x-5" : "translate-x-0"}`} />
+                  </button>
+                </label>
+
+                {isListing && (
+                  <div className="space-y-2.5 bg-emerald-50/40 border border-emerald-100 rounded-xl p-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Prix (FCFA)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={listingPriceInput}
+                        onChange={(e) => setListingPriceInput(e.target.value)}
+                        placeholder="5000"
+                        className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Votre lien WhatsApp</label>
+                      <input
+                        type="url"
+                        value={whatsappLinkInput}
+                        onChange={(e) => setWhatsappLinkInput(e.target.value)}
+                        placeholder="https://wa.me/2376XXXXXXXX"
+                        className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        L'acheteur sera redirigé ici automatiquement dès que son paiement est confirmé.
+                      </p>
+                    </div>
+                  </div>
                 )}
               </div>
-            )}
 
-            {errorMessage && (
-              <div className="bg-red-50 text-red-600 text-xs p-2 px-3 rounded-lg flex items-center gap-1">
-                <AlertCircle size={14} />
-                <p className="font-bold flex-1">{errorMessage}</p>
+              {errorMessage && (
+                <div className="bg-red-50 text-red-600 text-xs p-2 px-3 rounded-lg flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  <p className="font-bold flex-1">{errorMessage}</p>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={triggerImageUpload}
+                  disabled={isUploadingMedia || mediaUrls.length >= MAX_LISTING_PHOTOS}
+                  className="flex items-center gap-1.5 text-xs font-bold transition cursor-pointer px-2.5 py-1.5 rounded-xl text-slate-500 hover:text-rose-500 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {isUploadingMedia ? <Loader2 size={15} className="animate-spin" /> : <Image size={15} />}
+                  <span>{isUploadingMedia ? "Envoi..." : `Ajouter des Photos (${mediaUrls.length}/${MAX_LISTING_PHOTOS})`}</span>
+                </button>
+                <button
+                  id="create-post-btn"
+                  type="submit"
+                  disabled={isPosting || isUploadingMedia || !inputText.trim() || isPostRestricted}
+                  className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl px-4 py-2 text-xs font-extrabold shadow-md shadow-rose-500/10 flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                >
+                  {isPosting ? (
+                    <Loader2 className="animate-spin" size={12} />
+                  ) : (
+                    <>
+                      <Send size={12} />
+                      <span>Publier</span>
+                    </>
+                  )}
+                </button>
               </div>
-            )}
-
-            <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={triggerImageUpload}
-                className={`flex items-center gap-1.5 text-xs font-bold transition cursor-pointer px-2.5 py-1.5 rounded-xl ${
-                  isPremium
-                    ? "text-slate-500 hover:text-rose-500 hover:bg-slate-50"
-                    : "text-amber-500 bg-amber-50/50 border border-amber-200/50 hover:bg-amber-50"
-                }`}
-              >
-                <Image size={15} />
-                <span>Ajouter une Photo</span>
-                {!isPremium && <span className="text-[9px] font-black uppercase bg-amber-500 text-white px-1.5 py-0.5 rounded-md leading-none ml-1">🔒 PRO</span>}
-              </button>
-              <button
-                id="create-post-btn"
-                type="submit"
-                disabled={isPosting || !inputText.trim() || isPostRestricted}
-                className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl px-4 py-2 text-xs font-extrabold shadow-md shadow-rose-500/10 flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-              >
-                {isPosting ? (
-                  <Loader2 className="animate-spin" size={12} />
-                ) : (
-                  <>
-                    <Send size={12} />
-                    <span>Publier</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="max-w-xl mx-auto bg-white border border-slate-150 rounded-3xl p-5 shadow-sm flex items-center justify-between gap-3">
+          <p className="text-xs text-slate-500 font-medium leading-relaxed">
+            👀 Vous parcourez LoveRose sans compte. Inscrivez-vous gratuitement pour publier votre propre annonce.
+          </p>
+          <button
+            onClick={() => onAuthRequired?.()}
+            className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-md transition cursor-pointer flex-shrink-0"
+          >
+            S'inscrire
+          </button>
+        </div>
+      )}
 
       {/* Feed Posts List */}
       <div className="max-w-xl mx-auto space-y-4">
@@ -597,21 +787,59 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
                   <div className="space-y-3">
                     <p className="text-slate-700 text-xs md:text-sm leading-relaxed whitespace-pre-wrap">{p.contenu}</p>
                     
-                    {/* Post media */}
-                    {p.medias && p.medias.length > 0 && p.medias[0] && (
-                      <div className="rounded-2xl overflow-hidden bg-slate-950 border border-slate-100/5 flex items-center justify-center max-h-[80vh] w-full">
-                        <img
-                          src={p.medias[0]}
-                          alt="Illustration post"
-                          referrerPolicy="no-referrer"
-                          style={{
-                            width: '100%',
-                            aspectRatio: p.media_dimensions && p.media_dimensions[0] ? `${p.media_dimensions[0].ratio}` : 'auto',
-                            objectFit: 'contain',
-                            maxHeight: '80vh',
-                          }}
-                          className="hover:scale-[1.005] transition duration-300"
-                        />
+                    {/* Post media — single photo full-width, several photos as a grid */}
+                    {p.medias && p.medias.length > 0 && (
+                      p.medias.length === 1 ? (
+                        <div className="rounded-2xl overflow-hidden bg-slate-950 border border-slate-100/5 flex items-center justify-center max-h-[80vh] w-full">
+                          <img
+                            src={p.medias[0]}
+                            alt="Illustration post"
+                            referrerPolicy="no-referrer"
+                            style={{
+                              width: '100%',
+                              aspectRatio: p.media_dimensions && p.media_dimensions[0] ? `${p.media_dimensions[0].ratio}` : 'auto',
+                              objectFit: 'contain',
+                              maxHeight: '80vh',
+                            }}
+                            className="hover:scale-[1.005] transition duration-300"
+                          />
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-1.5 rounded-2xl overflow-hidden">
+                          {p.medias.map((url, i) => (
+                            <img
+                              key={url + i}
+                              src={url}
+                              alt={`Photo ${i + 1}`}
+                              referrerPolicy="no-referrer"
+                              className="w-full aspect-square object-cover bg-slate-950"
+                            />
+                          ))}
+                        </div>
+                      )
+                    )}
+
+                    {/* Paid annonce block: price + pay / contact button */}
+                    {!!p.listing_price && (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Annonce</p>
+                          <p className="text-sm font-black text-slate-900">{p.listing_price.toLocaleString("fr-FR")} FCFA</p>
+                        </div>
+                        <button
+                          onClick={() => handlePayForListing(p)}
+                          disabled={payingPostId === p.id}
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50 flex-shrink-0"
+                        >
+                          {payingPostId === p.id ? (
+                            <Loader2 size={13} className="animate-spin" />
+                          ) : purchasedPostIds.has(p.id) ? (
+                            <MessageSquare size={13} />
+                          ) : (
+                            <DollarSign size={13} />
+                          )}
+                          <span>{purchasedPostIds.has(p.id) ? "Contacter sur WhatsApp" : "Payer & Contacter"}</span>
+                        </button>
                       </div>
                     )}
                   </div>

@@ -74,6 +74,10 @@ export interface Post {
   media_dimensions?: Array<{ width: number; height: number; ratio: number }>;
   created_at: string;
   author_profile?: Profile;
+  // Paid "annonce" fields: when listing_price is set, the post is a service
+  // listing — buyer pays via MoneyFusion then is redirected to whatsapp_link.
+  listing_price?: number | null;
+  whatsapp_link?: string | null;
 }
 
 export interface Payment {

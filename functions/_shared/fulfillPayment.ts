@@ -247,6 +247,41 @@ export async function fulfillPayment(
     console.warn("[Fulfill] Referral commission logic execution skipped:", refErr);
   }
 
+  // H2. PAID ANNONCE / LISTING CONTACT (listing_contact:POST_ID)
+  // Any user's post can carry a price + a WhatsApp link. Once paid, we record
+  // who bought which listing (so the seller/admin know who to follow up with
+  // and pay out, since all money currently flows through the single admin
+  // MoneyFusion account) — the actual WhatsApp redirect happens client-side
+  // in PaymentSuccess.tsx once it sees this payment succeed.
+  if (planId.startsWith("listing_contact:")) {
+    const postId = planId.split(":")[1];
+
+    const { data: post, error: postFetchErr } = await supabaseAdmin
+      .from("posts")
+      .select("id, author_id")
+      .eq("id", postId)
+      .maybeSingle();
+
+    if (postFetchErr || !post) {
+      console.error("[Fulfill] Could not find post for listing_contact payment:", postId, postFetchErr);
+    } else {
+      const { error: purchaseErr } = await supabaseAdmin.from("listing_purchases").insert([
+        {
+          post_id: postId,
+          buyer_id: userId,
+          seller_id: post.author_id,
+          amount: amount,
+        },
+      ]);
+
+      if (purchaseErr) {
+        console.error("[Fulfill] Error recording listing purchase:", purchaseErr);
+      } else {
+        console.log(`[Fulfill] Listing ${postId} paid by user ${userId}, seller ${post.author_id} notified via listing_purchases`);
+      }
+    }
+  }
+
   // I. ADMIN ANNOUNCEMENT PAID UNLOCK (announcement_unlock:ANNOUNCEMENT_ID)
   if (planId.startsWith("announcement_unlock:")) {
     const announcementId = planId.split(":")[1];
