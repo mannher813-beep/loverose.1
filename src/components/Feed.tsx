@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent } from "react";
+import React, { useState, useEffect, useRef, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { compressImageIfNeeded } from "../lib/imageCompression";
 import { Post, Profile } from "../types";
@@ -35,6 +35,13 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
   // post_id -> true once the current visitor has paid for that annonce
   const [purchasedPostIds, setPurchasedPostIds] = useState<Set<string>>(new Set());
   const [payingPostId, setPayingPostId] = useState<string | null>(null);
+
+  // When someone opens a link shared from the feed (/?tab=feed&post=ID),
+  // scroll straight to that publication and highlight it briefly.
+  const [highlightedPostId, setHighlightedPostId] = useState<string | null>(() =>
+    new URLSearchParams(window.location.search).get("post")
+  );
+  const highlightedPostRef = useRef<HTMLDivElement | null>(null);
 
   const getAlphabeticCount = (text: string) => {
     const match = text.match(/[a-zA-ZÀ-ÿ]/g);
@@ -127,6 +134,13 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
     // for guests too — browsing the annonces never requires an account.
     loadPosts();
   }, []);
+
+  useEffect(() => {
+    if (!highlightedPostId || isLoading || posts.length === 0) return;
+    highlightedPostRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const clearTimer = setTimeout(() => setHighlightedPostId(null), 4000);
+    return () => clearTimeout(clearTimer);
+  }, [highlightedPostId, isLoading, posts.length]);
 
   // Which paid annonces has this visitor already unlocked (paid for)?
   useEffect(() => {
@@ -755,9 +769,15 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
         ) : posts.length > 0 ? (
           posts.map((p, index) => {
             const author = p.author_profile;
+            const isSharedTarget = p.id === highlightedPostId;
             return (
               <React.Fragment key={p.id}>
-                <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-xs space-y-4">
+                <div
+                  ref={isSharedTarget ? highlightedPostRef : undefined}
+                  className={`bg-white border rounded-3xl p-5 shadow-xs space-y-4 transition-all duration-700 ${
+                    isSharedTarget ? "border-rose-400 ring-2 ring-rose-200" : "border-slate-150"
+                  }`}
+                >
                   {/* Post Header */}
                   <div 
                     onClick={() => author && setSelectedViewProfile(author)}
