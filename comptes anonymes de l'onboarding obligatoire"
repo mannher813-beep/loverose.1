@@ -1,0 +1,19 @@
+[1mdiff --git a/src/App.tsx b/src/App.tsx[m
+[1mindex ff47903..3263f97 100644[m
+[1m--- a/src/App.tsx[m
+[1m+++ b/src/App.tsx[m
+[36m@@ -664,8 +664,12 @@[m [mexport default function App() {[m
+     }[m
+   }[m
+ [m
+[31m-  // Check if logged in user profile is incomplete[m
+[31m-  if (currentUser) {[m
+[32m+[m[32m  // Check if logged in user profile is incomplete.[m
+[32m+[m[32m  // Les comptes anonymes (connexion invité) ne sont jamais forcés dans ce[m
+[32m+[m[32m  // parcours : ils ont accès à toutes les fonctionnalités (annonces, photo[m
+[32m+[m[32m  // de profil, etc.) dès la connexion, et peuvent compléter leur profil[m
+[32m+[m[32m  // plus tard, s'ils le souhaitent, depuis les Réglages.[m
+[32m+[m[32m  if (currentUser && !currentUser.is_anonymous) {[m
+     const isProfileIncomplete = !profile || [m
+       !profile.full_name || [m
+       !profile.age || [m
