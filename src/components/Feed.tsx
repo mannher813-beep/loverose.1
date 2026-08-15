@@ -5,6 +5,9 @@ import { Post, Profile } from "../types";
 import AdSlot from "./AdSlot";
 import { Image, Send, MessageCircle, Heart, Share2, Sparkles, AlertCircle, Loader2, X, DollarSign, MessageSquare } from "lucide-react";
 import ProfileDetailModal from "./ProfileDetailModal";
+import CountryDialSelect from "./CountryDialSelect";
+import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js";
+import { detectUserCountry } from "../lib/countries";
 
 interface FeedProps {
   currentUser: any;
@@ -29,7 +32,11 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
   const [isListing, setIsListing] = useState(false);
   const [isFreeListing, setIsFreeListing] = useState(false);
   const [listingPriceInput, setListingPriceInput] = useState("");
-  const [whatsappLinkInput, setWhatsappLinkInput] = useState("");
+  // Le lien WhatsApp de l'annonce est généré automatiquement à partir de
+  // l'indicatif pays + numéro local choisis ici (plus de saisie manuelle
+  // d'URL wa.me, source d'erreurs de format).
+  const [whatsappCountryIso, setWhatsappCountryIso] = useState<CountryCode | null>(null);
+  const [whatsappPhoneLocal, setWhatsappPhoneLocal] = useState("");
 
   // post_id -> true once the current visitor has paid for that annonce
   const [purchasedPostIds, setPurchasedPostIds] = useState<Set<string>>(new Set());
@@ -146,6 +153,19 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
         setPurchasedPostIds(new Set((data || []).map((r: any) => r.post_id)));
       });
   }, [currentUser?.id]);
+
+  // Pré-remplit l'indicatif pays du champ WhatsApp dès l'activation du mode
+  // "annonce payante" : d'abord depuis le profil (numéro déjà vérifié), sinon
+  // via la géolocalisation du navigateur.
+  useEffect(() => {
+    if (!isListing || whatsappCountryIso) return;
+    const profileIso = currentUserProfile?.phone_country_code as CountryCode | undefined;
+    if (profileIso) {
+      setWhatsappCountryIso(profileIso);
+      return;
+    }
+    detectUserCountry("CM").then((iso) => setWhatsappCountryIso(iso));
+  }, [isListing, whatsappCountryIso, currentUserProfile?.phone_country_code]);
 
   const loadInteractionsForPosts = async (loadedPosts: Post[]) => {
     const postIds = loadedPosts.map(p => p.id);
@@ -493,11 +513,16 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
     let listingPrice: number | null = null;
     let whatsappLink: string | null = null;
     if (isListing) {
-      if (!whatsappLinkInput.trim()) {
-        setErrorMessage("Indiquez votre lien WhatsApp (ex: https://wa.me/2376...) pour que l'acheteur puisse vous contacter.");
+      if (!whatsappCountryIso || !whatsappPhoneLocal.trim()) {
+        setErrorMessage("Indiquez votre numéro WhatsApp (indicatif + numéro) pour que l'acheteur puisse vous contacter.");
         return;
       }
-      whatsappLink = whatsappLinkInput.trim();
+      const parsedWhatsapp = parsePhoneNumberFromString(whatsappPhoneLocal.trim(), whatsappCountryIso);
+      if (!parsedWhatsapp?.isValid()) {
+        setErrorMessage("Le numéro WhatsApp saisi est invalide. Vérifiez l'indicatif et le format.");
+        return;
+      }
+      whatsappLink = `https://wa.me/${parsedWhatsapp.number.replace("+", "")}`;
 
       if (!isFreeListing) {
         const priceNum = Number(listingPriceInput);
@@ -535,7 +560,7 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
       setIsListing(false);
       setIsFreeListing(false);
       setListingPriceInput("");
-      setWhatsappLinkInput("");
+      setWhatsappPhoneLocal("");
 
       // Reload posts
       await loadPosts();
@@ -683,14 +708,37 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
                       </div>
                     )}
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Votre lien WhatsApp</label>
-                      <input
-                        type="url"
-                        value={whatsappLinkInput}
-                        onChange={(e) => setWhatsappLinkInput(e.target.value)}
-                        placeholder="https://wa.me/2376XXXXXXXX"
-                        className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
-                      />
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Votre numéro WhatsApp</label>
+                      <div className="flex gap-2 mt-1">
+                        <div className="w-2/5">
+                          <CountryDialSelect value={whatsappCountryIso} onChange={setWhatsappCountryIso} locale="fr" />
+                        </div>
+                        <div className="w-3/5">
+                          <input
+                            type="tel"
+                            value={whatsappPhoneLocal}
+                            onChange={(e) => setWhatsappPhoneLocal(e.target.value)}
+                            placeholder="Votre numéro"
+                            className="w-full h-[42px] bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                          />
+                        </div>
+                      </div>
+                      {(() => {
+                        if (!whatsappCountryIso || !whatsappPhoneLocal.trim()) return null;
+                        const parsed = parsePhoneNumberFromString(whatsappPhoneLocal.trim(), whatsappCountryIso);
+                        if (parsed?.isValid()) {
+                          return (
+                            <p className="text-[10px] font-bold text-emerald-600 mt-1.5">
+                              ✓ Lien généré : wa.me/{parsed.number.replace("+", "")}
+                            </p>
+                          );
+                        }
+                        return (
+                          <p className="text-[10px] font-bold text-slate-400 mt-1.5">
+                            Numéro incomplet ou invalide
+                          </p>
+                        );
+                      })()}
                       <p className="text-[10px] text-slate-400 mt-1">
                         {isFreeListing
                           ? "Le bouton WhatsApp sera visible immédiatement, sans paiement. Comme aucun achat n'est enregistré, ces contacts ne donnent pas lieu à un avis noté."
