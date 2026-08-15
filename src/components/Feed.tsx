@@ -303,7 +303,33 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
     });
     localStorage.setItem(`feed_shares_${postId}`, String(newShares));
 
-    const postLink = `${window.location.origin}/?tab=feed&post=${postId}`;
+    const longLink = `${window.location.origin}/?tab=feed&post=${postId}`;
+
+    // On essaie d'obtenir un lien court (https://…/s/XXXXXXX) à la place du
+    // long lien ?tab=feed&post=<uuid>. En cas de lenteur ou d'échec réseau,
+    // on retombe sur le long lien : le partage ne casse jamais, il est
+    // juste moins court dans ce cas précis.
+    let postLink = longLink;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch("/api/short-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = (await res.json()) as { success: boolean; code?: string };
+        if (data.success && data.code) {
+          postLink = `${window.location.origin}/s/${data.code}`;
+        }
+      }
+    } catch (e) {
+      console.warn("Short link creation failed, falling back to long link:", e);
+    }
+
     const triggerShareAction = () => {
       if (navigator.share) {
         navigator.share({

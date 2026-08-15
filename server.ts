@@ -679,6 +679,109 @@ async function startServer() {
     }
   });
 
+  // Raccourcisseur de lien pour les annonces — équivalents dev de
+  // functions/api/short-link.ts et functions/s/[code].ts (Cloudflare Pages
+  // Functions), pour que le bouton "Partager" fonctionne aussi via
+  // `npm run dev`, pas seulement en production.
+  const SHORT_CODE_CHARS = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const SHORT_CODE_LENGTH = 7;
+  function generateShortCode(): string {
+    let code = "";
+    for (let i = 0; i < SHORT_CODE_LENGTH; i++) {
+      code += SHORT_CODE_CHARS[Math.floor(Math.random() * SHORT_CODE_CHARS.length)];
+    }
+    return code;
+  }
+
+  app.post("/api/short-link", async (req, res) => {
+    try {
+      const { postId } = req.body || {};
+      if (!postId || typeof postId !== "string") {
+        return res.status(400).json({ success: false, error: "postId requis." });
+      }
+      if (!supabaseAdmin) {
+        return res.status(500).json({ success: false, error: "Service momentanément indisponible." });
+      }
+
+      const { data: existing } = await supabaseAdmin
+        .from("short_links")
+        .select("code")
+        .eq("post_id", postId)
+        .maybeSingle();
+      if (existing?.code) {
+        return res.json({ success: true, code: existing.code });
+      }
+
+      const { data: post } = await supabaseAdmin
+        .from("posts")
+        .select("id")
+        .eq("id", postId)
+        .maybeSingle();
+      if (!post) {
+        return res.status(404).json({ success: false, error: "Annonce introuvable." });
+      }
+
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const code = generateShortCode();
+        const { error: insertErr } = await supabaseAdmin
+          .from("short_links")
+          .insert({ code, post_id: postId });
+        if (!insertErr) {
+          return res.json({ success: true, code });
+        }
+        if (insertErr.code === "23505") {
+          const { data: raceWinner } = await supabaseAdmin
+            .from("short_links")
+            .select("code")
+            .eq("post_id", postId)
+            .maybeSingle();
+          if (raceWinner?.code) {
+            return res.json({ success: true, code: raceWinner.code });
+          }
+          continue;
+        }
+        console.error("Error creating short link:", insertErr);
+        return res.status(500).json({ success: false, error: "Impossible de créer le lien court." });
+      }
+
+      return res.status(500).json({ success: false, error: "Impossible de générer un code unique." });
+    } catch (err: any) {
+      console.error("Error handling /api/short-link:", err);
+      return res.status(500).json({ success: false, error: "Erreur interne du serveur." });
+    }
+  });
+
+  app.get("/s/:code", async (req, res) => {
+    const homeUrl = "/";
+    try {
+      const code = req.params.code || "";
+      if (!code || !supabaseAdmin) {
+        return res.redirect(302, homeUrl);
+      }
+
+      const { data: link } = await supabaseAdmin
+        .from("short_links")
+        .select("id, post_id, clicks")
+        .eq("code", code)
+        .maybeSingle();
+
+      if (!link) {
+        return res.redirect(302, homeUrl);
+      }
+
+      supabaseAdmin
+        .from("short_links")
+        .update({ clicks: (link.clicks || 0) + 1, last_clicked_at: new Date().toISOString() })
+        .eq("id", link.id)
+        .then(() => {}, () => {});
+
+      return res.redirect(302, `/?tab=feed&post=${link.post_id}`);
+    } catch (err) {
+      console.error("Error handling /s/:code redirect:", err);
+      return res.redirect(302, homeUrl);
+    }
+  });
+
   // Serve static files in production or hook Vite in dev
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
