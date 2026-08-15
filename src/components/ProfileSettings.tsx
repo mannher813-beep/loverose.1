@@ -27,7 +27,6 @@ import { toPng } from "html-to-image";
 interface ProfileSettingsProps {
   currentUser: any;
   profile: Profile | null;
-  isPremium?: boolean;
   onProfileUpdated: () => void;
   onGoToSettings?: () => void;
   onAuthRequired?: () => void;
@@ -36,7 +35,6 @@ interface ProfileSettingsProps {
 export default function ProfileSettings({ 
   currentUser, 
   profile, 
-  isPremium = false, 
   onProfileUpdated, 
   onGoToSettings,
   onAuthRequired
@@ -44,40 +42,11 @@ export default function ProfileSettings({
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
-  const [subscription, setSubscription] = useState<any>(null);
-  const [isPremiumActive, setIsPremiumActive] = useState<boolean>(isPremium);
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [generatingCard, setGeneratingCard] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const loadSub = async () => {
-      try {
-        const { data: isPremiumRpc } = await supabase.rpc('is_user_premium', { check_user_id: currentUser.id });
-        setIsPremiumActive(!!isPremiumRpc);
-
-        const { data } = await supabase
-          .from("subscriptions")
-          .select("*")
-          .eq("user_id", currentUser.id)
-          .maybeSingle();
-        setSubscription(data);
-      } catch (err) {
-        console.error("Error loading subscription in ProfileSettings:", err);
-      }
-    };
-    if (currentUser) {
-      loadSub();
-    }
-  }, [currentUser]);
-
-  const getRemainingDays = () => {
-    if (!subscription || !subscription.end_date) return 0;
-    const diff = new Date(subscription.end_date).getTime() - new Date().getTime();
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  };
 
   const handleCopyLink = async () => {
     if (!profile) return;
@@ -276,20 +245,6 @@ export default function ProfileSettings({
                   </span>
                 )}
 
-                {/* Premium badge */}
-                {isPremiumActive && (
-                  subscription?.status === 'trial' ? (
-                    <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                      <Sparkles size={11} className="text-amber-500 fill-amber-500 animate-pulse" />
-                      <span>Essai Premium — {getRemainingDays()} jours restants</span>
-                    </span>
-                  ) : (
-                    <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                      <Sparkles size={11} className="text-amber-500 fill-amber-500 animate-pulse" />
-                      <span>Premium</span>
-                    </span>
-                  )
-                )}
               </div>
               <p className="text-xs text-slate-400 font-extrabold mt-0.5">
                 @{profile.username || "username"}

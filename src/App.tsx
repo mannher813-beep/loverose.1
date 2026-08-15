@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import { Profile } from "./types";
-import { Heart, MessageSquare, ShoppingBag, Settings, Sparkles, User, LogOut, ArrowRight, X, Bell, ShieldAlert, Newspaper } from "lucide-react";
+import { Heart, MessageSquare, LayoutDashboard, Settings, Sparkles, User, LogOut, X, Bell, ShieldAlert, Newspaper } from "lucide-react";
 
 // Component imports
 import SupabaseSetupBanner from "./components/SupabaseSetupBanner";
@@ -9,7 +9,7 @@ import PaymentSuccess from "./components/PaymentSuccess";
 import Auth from "./components/Auth";
 import Feed from "./components/Feed";
 import Chat from "./components/Chat";
-import Shop from "./components/Shop";
+import Dashboard from "./components/Dashboard";
 import ProfileSettings from "./components/ProfileSettings";
 import SettingsView from "./components/Settings";
 import NotificationsView from "./components/Notifications";
@@ -20,7 +20,6 @@ import PublicLayout from "./components/public/PublicLayout";
 import AdminPanel from "./components/AdminPanel";
 import AdminAnnouncementToast from "./components/AdminAnnouncementToast";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { usePremiumStatus } from "./hooks/usePremiumStatus";
 import { isPushSupported, getNotificationPermission, subscribeToPushNotifications } from "./lib/push";
 
 export default function App() {
@@ -29,14 +28,9 @@ export default function App() {
   const [currentSearch, setCurrentSearch] = useState(window.location.search);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [subscription, setSubscription] = useState<any>(null);
-  const [isPremium, setIsPremium] = useState<boolean>(false);
-  const { entitlements } = usePremiumStatus(currentUser?.id);
-  const isPremiumUser = isPremium || entitlements.premium;
   const isAdmin = profile?.role === 'admin';
-  const [showConversionPopup, setShowConversionPopup] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'shop' | 'profile' | 'settings' | 'notifications' | 'likes' | 'admin'>('discover');
+  const [activeTab, setActiveTab] = useState<'discover' | 'chat' | 'dashboard' | 'profile' | 'settings' | 'notifications' | 'likes' | 'admin'>('discover');
   const [targetChatPartnerId, setTargetChatPartnerId] = useState<string | null>(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   
@@ -78,7 +72,7 @@ export default function App() {
     if (!currentUser) return;
     const params = new URLSearchParams(window.location.search);
     const requestedTab = params.get("tab");
-    const validTabs = ["discover", "chat", "shop", "profile", "settings", "notifications"] as const;
+    const validTabs = ["discover", "chat", "dashboard", "profile", "settings", "notifications"] as const;
     if (requestedTab && (validTabs as readonly string[]).includes(requestedTab)) {
       setActiveTab(requestedTab as typeof activeTab);
       params.delete("tab");
@@ -364,26 +358,7 @@ export default function App() {
     window.addEventListener("beforeunload", setOffline);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // 3. Realtime subscription to the user's subscription record
-    const subChannelName = `user-subscriptions-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
-    const subChannel = supabase
-      .channel(subChannelName)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "subscriptions",
-          filter: `user_id=eq.${currentUser.id}`
-        },
-        async () => {
-          // Re-evaluate premium status
-          loadProfile(currentUser.id);
-        }
-      )
-      .subscribe();
-
-    // 4. Realtime subscription to the user's profile changes (online status / updates)
+    // 3. Realtime subscription to the user's profile changes (online status / updates)
     const profileChannelName = `user-profile-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
     const profileChannel = supabase
       .channel(profileChannelName)
@@ -411,7 +386,6 @@ export default function App() {
       if (geoWatchId !== null && navigator.geolocation) {
         navigator.geolocation.clearWatch(geoWatchId);
       }
-      supabase.removeChannel(subChannel);
       supabase.removeChannel(profileChannel);
       setOffline();
     };
@@ -480,37 +454,7 @@ export default function App() {
 
   const loadProfile = async (uid: string) => {
     try {
-      // 1. Fetch subscription status from subscriptions table directly
-      const { data: subData } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", uid)
-        .maybeSingle();
-
-      setSubscription(subData);
-
-      // Check premium status via official RPC
-      const { data: isPremiumRpc } = await supabase.rpc('is_user_premium', { check_user_id: uid });
-      const isCurrentlyPremium = !!isPremiumRpc;
-      setIsPremium(isCurrentlyPremium);
-
-      if (subData) {
-        const now = new Date();
-        const endDate = new Date(subData.end_date);
-
-        // Pop-up de conversion à J-3 avant expiration
-        if (isCurrentlyPremium && subData.status === 'trial') {
-          const diffTime = endDate.getTime() - now.getTime();
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          // If 3 days or fewer remaining, and not yet seen in session
-          if (diffDays <= 3 && !sessionStorage.getItem("conversion_popup_seen")) {
-            setShowConversionPopup(true);
-            sessionStorage.setItem("conversion_popup_seen", "true");
-          }
-        }
-      }
-
-      // 2. Fetch profile data
+      // Fetch profile data
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
@@ -782,12 +726,6 @@ export default function App() {
     );
   }
 
-  const getRemainingDays = () => {
-    if (!subscription || !subscription.end_date) return 0;
-    const diff = new Date(subscription.end_date).getTime() - new Date().getTime();
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  };
-
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col h-screen h-[100dvh] overflow-hidden font-sans text-slate-800 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       
@@ -823,11 +761,11 @@ export default function App() {
             <span>Messagerie</span>
           </button>
           <button
-            onClick={() => setActiveTab('shop')}
-            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'shop' ? 'text-rose-500 font-extrabold' : ''}`}
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'dashboard' ? 'text-rose-500 font-extrabold' : ''}`}
           >
-            <ShoppingBag size={16} />
-            <span>Boutique</span>
+            <LayoutDashboard size={16} />
+            <span>Dashboard</span>
           </button>
           <button
             onClick={() => setActiveTab('notifications')}
@@ -986,7 +924,6 @@ export default function App() {
             <Feed
               currentUser={currentUser}
               currentUserProfile={profile}
-              isPremium={isPremiumUser}
               onStartChat={(partnerId) => { setTargetChatPartnerId(partnerId); setActiveTab('chat'); }}
               onAuthRequired={() => triggerAuthRequired(true)}
             />
@@ -995,18 +932,16 @@ export default function App() {
             <Chat
               currentUser={currentUser}
               currentUserProfile={profile}
-              isPremium={isPremiumUser}
-              onOpenShop={() => setActiveTab('shop')}
+              onOpenShop={() => setActiveTab('dashboard')}
               targetChatPartnerId={targetChatPartnerId}
               onClearTargetChatPartner={() => setTargetChatPartnerId(null)}
               onAuthRequired={() => triggerAuthRequired(true)}
             />
           </div>
-          <div className={activeTab === 'shop' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
-            <Shop
+          <div className={activeTab === 'dashboard' ? 'flex flex-col flex-1 min-h-0' : 'hidden'}>
+            <Dashboard
               currentUser={currentUser}
               currentUserProfile={profile}
-              isPremium={isPremiumUser}
               onAuthRequired={() => triggerAuthRequired(true)}
             />
           </div>
@@ -1014,7 +949,6 @@ export default function App() {
             <ProfileSettings
               currentUser={currentUser}
               profile={profile}
-              isPremium={isPremiumUser}
               onProfileUpdated={() => loadProfile(currentUser.id)}
               onGoToSettings={() => setActiveTab('settings')}
               onAuthRequired={() => triggerAuthRequired(true)}
@@ -1024,7 +958,6 @@ export default function App() {
             <SettingsView
               currentUser={currentUser}
               profile={profile}
-              isPremium={isPremiumUser}
               onBackToProfile={() => setActiveTab('profile')}
               onLogout={handleLogout}
               onProfileUpdated={() => loadProfile(currentUser.id)}
@@ -1043,10 +976,9 @@ export default function App() {
             <WhoLikedMe
               currentUser={currentUser}
               currentUserProfile={profile}
-              isPremium={isPremiumUser}
               onStartChat={startChatWithUser}
               onAuthRequired={() => triggerAuthRequired(true)}
-              onGoToShop={() => setActiveTab('shop')}
+              onGoToShop={() => setActiveTab('dashboard')}
             />
           </div>
           {isAdmin && activeTab === 'admin' && (
@@ -1076,11 +1008,11 @@ export default function App() {
           <span className={`text-[9px] ${activeTab === 'chat' ? 'font-extrabold' : 'font-semibold'}`}>Messagerie</span>
         </button>
         <button
-          onClick={() => setActiveTab('shop')}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'shop' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'dashboard' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
         >
-          <ShoppingBag size={19} strokeWidth={activeTab === 'shop' ? 2.2 : 1.8} />
-          <span className={`text-[9px] ${activeTab === 'shop' ? 'font-extrabold' : 'font-semibold'}`}>Boutique</span>
+          <LayoutDashboard size={19} strokeWidth={activeTab === 'dashboard' ? 2.2 : 1.8} />
+          <span className={`text-[9px] ${activeTab === 'dashboard' ? 'font-extrabold' : 'font-semibold'}`}>Dashboard</span>
         </button>
         <button
           onClick={() => setActiveTab('notifications')}
@@ -1194,54 +1126,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Pop-up de conversion à J-3 avant expiration */}
-      {showConversionPopup && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex flex-col justify-center items-center p-4 z-50 animate-fade-in font-sans">
-          <div className="max-w-sm w-full text-center space-y-5 p-8 bg-white rounded-3xl border border-slate-100 shadow-2xl relative">
-            <button
-              onClick={() => setShowConversionPopup(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer"
-            >
-              <X size={18} />
-            </button>
-            
-            <div className="mx-auto bg-amber-50 w-14 h-14 rounded-full flex items-center justify-center text-amber-500">
-              <Sparkles size={28} className="fill-amber-400 animate-pulse" />
-            </div>
-
-            <div className="space-y-2">
-              <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider inline-block">
-                Essai Premium bientôt terminé ⏳
-              </span>
-              <h2 className="text-lg font-black text-slate-900 tracking-tight">
-                Plus que {getRemainingDays()} jours d'essai gratuit !
-              </h2>
-              <p className="text-slate-500 text-[11px] leading-relaxed px-1">
-                Ne perdez pas l'accès à vos fonctionnalités exclusives LoveRose Premium ! Discutez en illimité, swipez sans limite et découvrez qui a liké votre profil.
-              </p>
-            </div>
-
-            <div className="space-y-2 pt-1">
-              <button
-                onClick={() => {
-                  setShowConversionPopup(false);
-                  setActiveTab('shop');
-                }}
-                className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-rose-500/10 flex items-center justify-center gap-1.5 transition cursor-pointer"
-              >
-                <span>Passer au Premium Permanent</span>
-                <ArrowRight size={14} />
-              </button>
-              <button
-                onClick={() => setShowConversionPopup(false)}
-                className="w-full py-2 text-slate-400 hover:text-slate-600 font-bold text-[10px] transition cursor-pointer"
-              >
-                Continuer l'essai pour l'instant
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

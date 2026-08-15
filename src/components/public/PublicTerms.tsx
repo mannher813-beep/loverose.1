@@ -52,7 +52,6 @@ export default function PublicTerms() {
           <ul className="list-disc pl-5 space-y-1.5 text-xs">
             <li>Un service de rencontre géolocalisé permettant aux membres de découvrir d'autres profils, de s'envoyer des "likes", de "matcher" et d'échanger des messages textuels confidentiels.</li>
             <li>Un espace d'expression pour les créateurs de contenu indépendants ("Espace Créateurs") leur permettant de publier des photos, vidéos et articles dans un fil d'actualité public ou à destination de leurs abonnés.</li>
-            <li>Des formules d'abonnements "Premium" payantes destinées à débloquer des avantages exclusifs sur la plateforme.</li>
           </ul>
         </section>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, MapPin, Sparkles, CheckCircle, Heart, MessageCircle, Lock, X, Flag, ExternalLink, Star, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, Sparkles, CheckCircle, Heart, MessageCircle, X, Flag, ExternalLink, Star, Loader2 } from "lucide-react";
 import { Profile, PostReview } from "../types";
 import { supabase } from "../lib/supabase";
 
@@ -7,7 +7,6 @@ interface ProfileDetailModalProps {
   profile: Profile;
   currentUserProfile: Profile | null;
   currentUser?: any;
-  isPremium?: boolean;
   onClose: () => void;
   onStartChat?: () => void;
   onAuthRequired?: () => void;
@@ -30,7 +29,6 @@ export default function ProfileDetailModal({
   profile,
   currentUserProfile,
   currentUser,
-  isPremium = false,
   onClose,
   onStartChat,
   onAuthRequired,
@@ -327,7 +325,7 @@ export default function ProfileDetailModal({
           <div className="space-y-1.5">
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">À propos de moi</h4>
             {profile.bio ? (
-              <p className={`text-slate-600 text-sm leading-relaxed whitespace-pre-wrap ${!isPremium ? "blur-xs select-none pointer-events-none opacity-50 max-h-12 overflow-hidden" : ""}`}>
+              <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
                 {profile.bio}
               </p>
             ) : (
@@ -352,7 +350,7 @@ export default function ProfileDetailModal({
           {/* Relationship Intents tags */}
           <div className="space-y-2">
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Intentions de rencontre</h4>
-            <div className={`flex flex-wrap gap-1.5 ${!isPremium ? "blur-xs select-none pointer-events-none opacity-40" : ""}`}>
+            <div className="flex flex-wrap gap-1.5">
               {profile.relationship_intents && profile.relationship_intents.length > 0 ? (
                 profile.relationship_intents.map((intent) => {
                   const isShared = sharedIntents.includes(intent);
@@ -461,18 +459,6 @@ export default function ProfileDetailModal({
             )}
           </div>
 
-          {/* Premium Lock Call-To-Action */}
-          {!isPremium && (
-            <div className="bg-gradient-to-r from-amber-500 to-yellow-600 rounded-2xl p-4 text-white text-center shadow-lg shadow-amber-500/10 space-y-1.5">
-              <div className="flex items-center justify-center gap-1">
-                <Lock size={14} className="text-amber-200 fill-amber-200" />
-                <span className="text-[10px] font-black uppercase tracking-wider">Abonnement Premium Requis 👑</span>
-              </div>
-              <p className="text-[10px] text-amber-50 font-medium leading-relaxed">
-                Les photos secondaires (jusqu'à 20), la description et les intentions de rencontre précises de ce profil sont réservées aux abonnés Premium.
-              </p>
-            </div>
-          )}
         </div>
       </div>
 

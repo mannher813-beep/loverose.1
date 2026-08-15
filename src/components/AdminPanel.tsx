@@ -82,7 +82,6 @@ interface AdminStats {
   suspended: number;
   verified: number;
   pending_verification: number;
-  premium_active: number;
   total_matches: number;
   messages_24h: number;
   reports_pending: number;
@@ -126,7 +125,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   const [annCtaEnabled, setAnnCtaEnabled] = useState(false);
   const [annCtaLabel, setAnnCtaLabel] = useState("");
   const [annCtaType, setAnnCtaType] = useState<"route" | "url" | "paid">("route");
-  const [annCtaRoute, setAnnCtaRoute] = useState<"discover" | "chat" | "shop" | "profile" | "settings" | "notifications" | "likes">("discover");
+  const [annCtaRoute, setAnnCtaRoute] = useState<"discover" | "chat" | "dashboard" | "profile" | "settings" | "notifications" | "likes">("discover");
   const [annCtaUrl, setAnnCtaUrl] = useState("");
   const [annPriceAmount, setAnnPriceAmount] = useState("");
   const [annPaidPlanName, setAnnPaidPlanName] = useState("");
@@ -406,7 +405,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
   };
 
   const grantBonus = async (user: Profile, days: number) => {
-    // Grant `days` of premium by inserting/extending a boost — simplest cross-cutting bonus
+    // Offre un Boost de mise en avant du profil pour `days` jours
     const endsAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
     const { error } = await supabase.from("profile_boosts").insert({
       user_id: user.uid,
@@ -1234,7 +1233,6 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
               { label: "Suspendus", value: stats.suspended, color: "text-red-500" },
               { label: "Vérifiés ✓", value: stats.verified, color: "text-sky-500" },
               { label: "Vérif. en attente", value: stats.pending_verification, color: "text-amber-500" },
-              { label: "Premium actifs", value: stats.premium_active, color: "text-fuchsia-500" },
               { label: "Matches créés", value: stats.total_matches, color: "text-rose-500" },
               { label: "Messages (24h)", value: stats.messages_24h, color: "text-cyan-500" },
               { label: "Signalements en attente", value: stats.reports_pending, color: "text-orange-500" },
@@ -1514,7 +1512,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                     >
                       <option value="discover">Découvrir</option>
                       <option value="chat">Messages</option>
-                      <option value="shop">Boutique / Premium</option>
+                      <option value="dashboard">Dashboard</option>
                       <option value="likes">Qui m'a aimé</option>
                       <option value="notifications">Notifications</option>
                       <option value="profile">Mon profil</option>
@@ -1816,7 +1814,6 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
           profile={viewProfile}
           currentUserProfile={null}
           currentUser={currentUser}
-          isPremium={true}
           onClose={() => setViewProfile(null)}
         />
       )}

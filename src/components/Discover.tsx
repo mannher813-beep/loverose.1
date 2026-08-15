@@ -1,8 +1,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
-import AdSlot from "./AdSlot";
-import { Heart, X, Sparkles, MapPin, CheckCircle, ShieldAlert, Filter, Send, MessageCircle, Info, Star, Lock, RotateCcw } from "lucide-react";
+import { Heart, X, Sparkles, MapPin, CheckCircle, ShieldAlert, Filter, Send, MessageCircle, Info, Star, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ProfileDetailModal from "./ProfileDetailModal";
 import AdaptiveImage from "./AdaptiveImage";
@@ -11,7 +10,6 @@ import { isActuallyOnline } from "../lib/presence";
 interface DiscoverProps {
   currentUser: any;
   currentUserProfile: Profile | null;
-  isPremium?: boolean;
   onMatchDetected: (partner: Profile) => void;
   onAuthRequired?: () => void;
   onOpenShop?: () => void;
@@ -69,23 +67,22 @@ function renderOnlineStatus(profile: Profile) {
   return null;
 }
 
-export default function Discover({ currentUser, currentUserProfile, isPremium = false, onMatchDetected, onAuthRequired, onOpenShop }: DiscoverProps) {
+export default function Discover({ currentUser, currentUserProfile, onMatchDetected, onAuthRequired, onOpenShop }: DiscoverProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedIntentsFilter, setSelectedIntentsFilter] = useState<string[]>([]);
-  // Advanced filters (Premium only — controls stay hidden/locked for free users)
+  // Filtres avancés (débloqués pour tous depuis la suppression de Premium)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [ageFilterMin, setAgeFilterMin] = useState<number | null>(null);
   const [ageFilterMax, setAgeFilterMax] = useState<number | null>(null);
   const [verifiedOnlyFilter, setVerifiedOnlyFilter] = useState(false);
-  // Rewind (Premium): remembers only the very last swipe, and only when it's
-  // safely undoable — a like that produced an instant match is never stored
-  // here, since unmatching is a much bigger action than a simple rewind.
+  // Rewind : mémorise uniquement le tout dernier swipe, et seulement quand il
+  // est annulable en toute sécurité — un like ayant produit un match instantané
+  // n'est jamais stocké ici, car annuler un match est une action bien plus lourde.
   const [lastSwipe, setLastSwipe] = useState<{ profile: Profile; wasLiked: boolean } | null>(null);
   const [isRewinding, setIsRewinding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [likedUids, setLikedUids] = useState<Set<string>>(new Set());
-  const [premiumUids, setPremiumUids] = useState<Set<string>>(new Set());
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportSuccess, setReportSuccess] = useState(false);
@@ -203,20 +200,13 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
           .gt("ends_at", new Date().toISOString())
       );
 
-      // Which candidates currently have an active Premium subscription — used
-      // to fulfil the "Mise en vedette de votre profil" perk promised in the
-      // Boutique. RLS blocks reading other users' subscriptions directly, so
-      // this goes through a SECURITY DEFINER RPC that only exposes the uid.
-      const premiumPromise = safe(supabase.rpc("get_active_premium_user_ids"));
-
       const [
         { data: likesData, error: likesErr },
         { data: blockedData, error: blockedErr },
         { data: profilesData, error },
         { data: boostsData, error: boostsErr },
-        { data: premiumData, error: premiumErr },
       ] = await Promise.race([
-        Promise.all([likesPromise, blockedPromise, profilesPromise, boostsPromise, premiumPromise]),
+        Promise.all([likesPromise, blockedPromise, profilesPromise, boostsPromise]),
         timeout,
       ]);
 
@@ -251,20 +241,12 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
         console.warn("Could not load profile_boosts, table may be missing:", boostsErr);
       }
 
-      // Active Premium subscribers, featured just below paid Boosts
-      const premiumUserIds = new Set<string>();
-      if (!premiumErr && premiumData) {
-        premiumData.forEach((row: any) => premiumUserIds.add(row.user_id));
-      } else if (premiumErr) {
-        console.warn("Could not load premium user ids:", premiumErr);
-      }
-      setPremiumUids(premiumUserIds);
-
       let filteredProfiles = profilesData || [];
 
       // Filter out profiles already liked or with missing complete profiles or too far based on max_distance_km
       const maxDist = currentUserProfile?.max_distance_km || 50;
-      const applyAdvancedFilters = isPremium;
+      // Filtres avancés débloqués pour tous (Premium supprimé)
+      const applyAdvancedFilters = true;
       const unswiped = filteredProfiles.filter(p => {
         if (likedSet.has(p.uid)) return false;
         if (blockedSet.has(p.uid)) return false;
@@ -304,22 +286,16 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
       if (currentUser) {
         scored = unswiped.map(p => {
           const isBoosted = boostedUserIds.has(p.uid);
-          // Premium subscribers get featured placement too (marketed as "Mise
-          // en vedette de votre profil"), just below users with an active
-          // paid one-time Boost, which should always outrank it.
-          const isFeatured = premiumUserIds.has(p.uid);
           const score = calculateCompatibility(currentUserProfile, p);
-          return { profile: p, score, isBoosted, isFeatured };
+          return { profile: p, score, isBoosted };
         }).sort((a, b) => {
           if (a.isBoosted !== b.isBoosted) return a.isBoosted ? -1 : 1;
-          if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
           return b.score - a.score;
         }).map(x => x.profile);
       } else {
         const boosted = unswiped.filter(p => boostedUserIds.has(p.uid));
-        const featured = unswiped.filter(p => !boostedUserIds.has(p.uid) && premiumUserIds.has(p.uid));
-        const rest = shuffle(unswiped.filter(p => !boostedUserIds.has(p.uid) && !premiumUserIds.has(p.uid)));
-        scored = [...boosted, ...featured, ...rest];
+        const rest = shuffle(unswiped.filter(p => !boostedUserIds.has(p.uid)));
+        scored = [...boosted, ...rest];
       }
 
       setProfiles(scored);
@@ -425,15 +401,10 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
     return didMatch;
   };
 
-  // Rewind (Premium): undo the very last swipe and bring that profile back.
+  // Rewind : annule le tout dernier swipe et refait apparaître ce profil.
   const handleRewind = async () => {
     if (!currentUser) {
       if (onAuthRequired) onAuthRequired();
-      return;
-    }
-    if (!isPremium) {
-      alert("Le Rewind (annuler un swipe) est réservé aux membres Premium. Rendez-vous dans la Boutique pour en profiter !");
-      if (onOpenShop) onOpenShop();
       return;
     }
     if (!lastSwipe || isRewinding) return;
@@ -467,28 +438,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
     const candidate = profiles[currentIndex];
 
     try {
-      if (!isPremium) {
-        // Fetch current credits
-        const { data: creditData } = await supabase
-          .from("user_credits")
-          .select("balance")
-          .eq("user_id", currentUser.id)
-          .single();
-
-        const balance = creditData?.balance || 0;
-        if (balance < 5) {
-          alert("Le Super Like coûte 5 crédits pour les membres gratuits. Vous n'avez pas assez de crédits. Veuillez recharger votre solde dans la boutique !");
-          return;
-        }
-
-        // Deduct 5 credits
-        const { error: deductErr } = await supabase
-          .from("user_credits")
-          .update({ balance: balance - 5 })
-          .eq("user_id", currentUser.id);
-
-        if (deductErr) throw deductErr;
-      }
+      // Super Like gratuit et illimité pour tous (Premium supprimé)
 
       // Create the super_like
       const { error: insertErr } = await supabase
@@ -612,22 +562,13 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                {isPremium ? <Sparkles size={13} /> : <Lock size={13} />}
+                {<Sparkles size={13} />}
                 <span>Filtres avancés</span>
               </button>
 
               {showAdvancedFilters && (
                 <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-30 space-y-4">
-                  {!isPremium ? (
-                    <div className="text-center space-y-3 py-2">
-                      <Lock size={24} className="mx-auto text-rose-400" />
-                      <p className="text-xs font-bold text-slate-700">Filtres avancés réservés aux membres Premium</p>
-                      <p className="text-[11px] text-slate-400 leading-relaxed">
-                        Filtrez par tranche d'âge et n'affichez que les profils vérifiés.
-                      </p>
-                    </div>
-                  ) : (
-                    <>
+                  <>
                       <div>
                         <p className="text-[10px] font-extrabold text-slate-500 uppercase mb-2">Tranche d'âge</p>
                         <div className="flex items-center gap-2">
@@ -677,7 +618,6 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                         Réinitialiser
                       </button>
                     </>
-                  )}
                 </div>
               )}
             </div>
@@ -797,18 +737,12 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                   </div>
                 )}
 
-                {/* Verification + Premium Status Badges */}
+                {/* Verification Status Badge */}
                 <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1.5">
                   {activeProfile.verification_status === "verified" && (
                     <div className="bg-emerald-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[9px] font-bold shadow-md uppercase tracking-wider">
                       <CheckCircle size={10} fill="white" className="text-emerald-500" />
                       <span>Vérifié</span>
-                    </div>
-                  )}
-                  {premiumUids.has(activeProfile.uid) && (
-                    <div className="bg-gradient-to-r from-amber-400 to-amber-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[9px] font-bold shadow-md uppercase tracking-wider">
-                      <Sparkles size={10} fill="white" className="text-amber-500" />
-                      <span>Premium</span>
                     </div>
                   )}
                 </div>
@@ -876,15 +810,15 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
               <button
                 id="swipe-rewind-btn"
                 onClick={handleRewind}
-                disabled={isRewinding || (isPremium && !lastSwipe)}
+                disabled={isRewinding || !lastSwipe}
                 className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center transition cursor-pointer border border-slate-150 ${
-                  isPremium && !lastSwipe
+                  !lastSwipe
                     ? "bg-slate-50 text-slate-300 cursor-not-allowed"
                     : "bg-white hover:bg-amber-50 text-amber-500 hover:scale-105 active:scale-95"
                 }`}
-                title={isPremium ? "Annuler le dernier swipe" : "Rewind (Premium)"}
+                title="Annuler le dernier swipe"
               >
-                {isPremium ? <RotateCcw size={16} /> : <Lock size={14} />}
+                <RotateCcw size={16} />
               </button>
 
               <button
@@ -914,13 +848,6 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                 <Heart size={28} fill="currentColor" />
               </button>
             </div>
-
-            {/* AdSlot when active suggestions are shown — hidden for Premium (ad-free perk) */}
-            {!isPremium && (
-              <div className="w-full max-w-md mx-auto pt-1 pb-2 hidden sm:block flex-shrink-0">
-                <AdSlot slot="discovery_feed_1" userId={currentUser?.id} />
-              </div>
-            )}
           </div>
         ) : (
           <div className="flex flex-col items-center space-y-4">
@@ -939,13 +866,6 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                 Réinitialiser le filtre
               </button>
             </div>
-
-            {/* AdSlot when suggestions are finished — hidden for Premium (ad-free perk) */}
-            {!isPremium && (
-              <div className="w-full max-w-sm mx-auto">
-                <AdSlot slot="discovery_feed_empty" userId={currentUser?.id} />
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -1004,7 +924,6 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
           profile={selectedViewProfile}
           currentUserProfile={currentUserProfile}
           currentUser={currentUser}
-          isPremium={isPremium}
           onClose={() => setSelectedViewProfile(null)}
           onAuthRequired={onAuthRequired}
           onReport={() => {

@@ -2,12 +2,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 import { Profile } from "../types";
 import ProfileDetailModal from "./ProfileDetailModal";
-import { Heart, Star, Sparkles, Lock, Loader2, MapPin, MessageCircle, Eye } from "lucide-react";
+import { Heart, Star, Sparkles, Loader2, MapPin, MessageCircle, Eye } from "lucide-react";
 
 interface WhoLikedMeProps {
   currentUser: any;
   currentUserProfile: Profile | null;
-  isPremium: boolean;
   onStartChat: (uid: string) => void;
   onAuthRequired: () => void;
   onGoToShop: () => void;
@@ -42,7 +41,6 @@ const withTimeout = <T,>(promise: PromiseLike<T>, ms = 12000): Promise<T> =>
 export default function WhoLikedMe({
   currentUser,
   currentUserProfile,
-  isPremium,
   onStartChat,
   onAuthRequired,
   onGoToShop,
@@ -56,7 +54,7 @@ export default function WhoLikedMe({
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
-    if (!currentUser || !isPremium) {
+    if (!currentUser) {
       setLoading(false);
       return;
     }
@@ -157,7 +155,7 @@ export default function WhoLikedMe({
     };
 
     load();
-  }, [currentUser?.id, isPremium]);
+  }, [currentUser?.id]);
 
   if (!currentUser) {
     return (
@@ -172,31 +170,6 @@ export default function WhoLikedMe({
           className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
         >
           Se connecter / S'inscrire
-        </button>
-      </div>
-    );
-  }
-
-  if (!isPremium) {
-    return (
-      <div className="max-w-md mx-auto my-12 p-8 bg-white border border-rose-100 rounded-3xl shadow-sm text-center space-y-4">
-        <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto">
-          <Lock size={30} />
-        </div>
-        <div className="space-y-1">
-          <h2 className="text-xl font-black text-slate-900 flex items-center justify-center gap-1.5">
-            <Sparkles size={18} className="text-rose-500" />
-            Réservé aux membres Premium
-          </h2>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Découvrez qui vous a aimé, super liké, qui a visité votre profil, et retrouvez tous vos matchs en un seul endroit.
-          </p>
-        </div>
-        <button
-          onClick={onGoToShop}
-          className="w-full py-3.5 bg-rose-500 hover:bg-rose-600 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
-        >
-          Passer Premium
         </button>
       </div>
     );
@@ -356,7 +329,6 @@ export default function WhoLikedMe({
           profile={selectedProfile}
           currentUserProfile={currentUserProfile}
           currentUser={currentUser}
-          isPremium={isPremium}
           onClose={() => setSelectedProfile(null)}
           onStartChat={() => {
             const uid = selectedProfile.uid;

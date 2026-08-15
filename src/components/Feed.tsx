@@ -9,12 +9,11 @@ import ProfileDetailModal from "./ProfileDetailModal";
 interface FeedProps {
   currentUser: any;
   currentUserProfile: Profile | null;
-  isPremium?: boolean;
   onStartChat?: (partnerId: string) => void;
   onAuthRequired?: () => void;
 }
 
-export default function Feed({ currentUser, currentUserProfile, isPremium = false, onStartChat, onAuthRequired }: FeedProps) {
+export default function Feed({ currentUser, currentUserProfile, onStartChat, onAuthRequired }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [inputText, setInputText] = useState("");
   // Multiple photos per post/annonce. Each entry is the final Supabase Storage
@@ -55,7 +54,8 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
 
   const alphabeticCount = getAlphabeticCount(inputText);
   const containsNumbers = hasDigits(inputText);
-  const isPostRestricted = !isPremium && (alphabeticCount > 100 || containsNumbers);
+  // Restriction de longueur/chiffres supprimée : débloquée pour tous (Premium supprimé)
+  const isPostRestricted = false;
 
   const MAX_LISTING_PHOTOS = 6;
 
@@ -666,32 +666,6 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
                 </div>
               )}
 
-              {/* Real-time pre-validation for non-Premium users */}
-              {!isPremium && inputText.trim() && (
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex justify-between items-center text-[10px] font-bold">
-                    <span className={`${alphabeticCount > 100 ? "text-red-500 font-extrabold animate-pulse" : "text-slate-500"}`}>
-                      Lettres : {alphabeticCount} / 100 maximum
-                    </span>
-                    {containsNumbers && (
-                      <span className="text-red-500 font-extrabold flex items-center gap-1 animate-pulse">
-                        ⚠️ Contient des chiffres
-                      </span>
-                    )}
-                  </div>
-                  {alphabeticCount > 100 && (
-                    <p className="text-[10px] text-red-500 font-semibold leading-normal bg-red-50 border border-red-100 p-2 rounded-xl">
-                      Les utilisateurs non-Premium sont limités à 100 caractères alphabétiques par publication. Passez Premium pour lever cette limite.
-                    </p>
-                  )}
-                  {containsNumbers && (
-                    <p className="text-[10px] text-red-500 font-semibold leading-normal bg-red-50 border border-red-100 p-2 rounded-xl">
-                      Les utilisateurs non-Premium ne peuvent pas publier de chiffres. Passez Premium pour lever cette limite.
-                    </p>
-                  )}
-                </div>
-              )}
-
               {/* Toggle: turn this post into a paid annonce with WhatsApp contact */}
               <div className="pt-1 border-t border-slate-100">
                 <label className="flex items-center justify-between gap-2 py-2 cursor-pointer select-none">
@@ -1033,7 +1007,6 @@ export default function Feed({ currentUser, currentUserProfile, isPremium = fals
         <ProfileDetailModal
           profile={selectedViewProfile}
           currentUserProfile={currentUserProfile}
-          isPremium={isPremium}
           onClose={() => setSelectedViewProfile(null)}
           onStartChat={() => {
             if (onStartChat) {

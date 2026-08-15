@@ -21,7 +21,6 @@ export const DOMAIN_TABLES = {
   chat: ["matches", "messages", "notifications"],
   payments: [
     "payments",
-    "subscriptions",
     "user_credits",
     "credit_transactions",
     "platform_settings",
@@ -55,7 +54,6 @@ export const DOMAIN_TABLES = {
  * plutôt que réimplémentées (ex: calcul de statut premium, geoloc, etc.).
  */
 export const EXISTING_RPCS = {
-  isUserPremium: "is_user_premium",
   requestPayout: "request_payout",
   updateMyLocation: "update_my_location",
   updateMyPresence: "update_my_presence",

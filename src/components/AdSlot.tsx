@@ -107,7 +107,7 @@ export default function AdSlot({ slot, className = "", userId, countryCode }: Ad
             LR
           </div>
           <div className="flex-1">
-            <h4 className="text-xs font-black text-slate-800">LoveRose Premium</h4>
+            <h4 className="text-xs font-black text-slate-800">LoveRose</h4>
             <p className="text-[10px] text-slate-400 leading-normal">
               Trouvez l'amour véritable aujourd'hui. Rencontres 100% vérifiées en Afrique Francophone.
             </p>

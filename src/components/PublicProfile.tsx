@@ -16,7 +16,6 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [generatingCard, setGeneratingCard] = useState(false);
-  const [isPremiumUser, setIsPremiumUser] = useState(false);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
 
   // Preload all gallery images in background to avoid flashes and delays when navigation is clicked
@@ -50,10 +49,6 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
           setError("Ce profil n'existe pas ou a été désactivé.");
         } else {
           setProfile(data);
-          
-          // Check if this profile's user is premium
-          const { data: premiumActive } = await supabase.rpc('is_user_premium', { check_user_id: data.uid });
-          setIsPremiumUser(!!premiumActive);
         }
       } catch (err: any) {
         console.error("Error loading public profile:", err);
@@ -220,13 +215,6 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
                     <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full flex items-center gap-0.5">
                       <CheckCircle size={10} fill="white" className="text-emerald-500" />
                       <span>Vérifié</span>
-                    </span>
-                  )}
-
-                  {isPremiumUser && (
-                    <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                      <Sparkles size={11} className="text-amber-500 fill-amber-500" />
-                      <span>Premium</span>
                     </span>
                   )}
                 </div>
