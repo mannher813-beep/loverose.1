@@ -93,16 +93,63 @@ export interface Post {
   listing_quantity?: number | null;
 }
 
-export type ListingCategory = "cadeaux" | "coaching" | "contenu_exclusif" | "evenements" | "offre_service" | "autre";
+export type ListingCategory =
+  | "cadeaux"
+  | "coaching"
+  | "contenu_exclusif"
+  | "evenements"
+  | "livraison"
+  | "reparation_bricolage"
+  | "beaute_coiffure"
+  | "cours_particuliers"
+  | "transport"
+  | "autre";
 
 export const LISTING_CATEGORIES: { value: ListingCategory; label: string; emoji: string }[] = [
   { value: "cadeaux", label: "Cadeaux", emoji: "🎁" },
   { value: "coaching", label: "Coaching", emoji: "🧠" },
   { value: "contenu_exclusif", label: "Contenu exclusif", emoji: "🔒" },
   { value: "evenements", label: "Événements", emoji: "🎉" },
-  { value: "offre_service", label: "Offre de service", emoji: "🛠️" },
+  { value: "livraison", label: "Livraison", emoji: "🚚" },
+  { value: "reparation_bricolage", label: "Réparation & bricolage", emoji: "🔧" },
+  { value: "beaute_coiffure", label: "Beauté & coiffure", emoji: "💇" },
+  { value: "cours_particuliers", label: "Cours particuliers", emoji: "📚" },
+  { value: "transport", label: "Transport", emoji: "🚗" },
   { value: "autre", label: "Autre", emoji: "✨" },
 ];
+
+// Configure, par catégorie, quels champs l'éditeur d'annonce doit proposer
+// une fois le type d'annonce choisi. Permet à PublishListing.tsx d'afficher
+// des options pertinentes (ex : pas de "neuf/occasion" pour un cours
+// particulier, pas de "quantité" pour du contenu exclusif).
+export interface ListingFieldConfig {
+  location: boolean;
+  locationLabel: string;
+  condition: boolean;
+  quantity: boolean;
+  quantityLabel: string;
+}
+
+const DEFAULT_FIELD_CONFIG: ListingFieldConfig = {
+  location: true,
+  locationLabel: "Ville / lieu",
+  condition: false,
+  quantity: false,
+  quantityLabel: "Quantité disponible",
+};
+
+export const LISTING_FIELD_CONFIG: Record<ListingCategory, ListingFieldConfig> = {
+  cadeaux: { ...DEFAULT_FIELD_CONFIG, condition: true, quantity: true, quantityLabel: "Quantité disponible" },
+  coaching: { ...DEFAULT_FIELD_CONFIG, quantity: true, quantityLabel: "Places disponibles" },
+  contenu_exclusif: { ...DEFAULT_FIELD_CONFIG, location: false },
+  evenements: { ...DEFAULT_FIELD_CONFIG, quantity: true, quantityLabel: "Places disponibles" },
+  livraison: { ...DEFAULT_FIELD_CONFIG },
+  reparation_bricolage: { ...DEFAULT_FIELD_CONFIG },
+  beaute_coiffure: { ...DEFAULT_FIELD_CONFIG, quantity: true, quantityLabel: "Créneaux disponibles" },
+  cours_particuliers: { ...DEFAULT_FIELD_CONFIG, quantity: true, quantityLabel: "Places disponibles" },
+  transport: { ...DEFAULT_FIELD_CONFIG },
+  autre: { ...DEFAULT_FIELD_CONFIG, condition: true, quantity: true },
+};
 
 export interface PostReview {
   id: string;

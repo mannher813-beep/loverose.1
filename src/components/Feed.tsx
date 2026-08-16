@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
-import { Post, Profile } from "../types";
+import { Post, Profile, ListingCategory } from "../types";
 import AdSlot from "./AdSlot";
 import { Send, MessageCircle, Heart, Share2, Sparkles, Loader2, DollarSign, MessageSquare, MapPin, Tag, Boxes, Clock } from "lucide-react";
 import { LISTING_CATEGORIES } from "../types";
@@ -17,6 +17,11 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedViewProfile, setSelectedViewProfile] = useState<Profile | null>(null);
+
+  // Filtre de catégorie du fil : null = toutes les annonces confondues,
+  // sinon on n'affiche que les publications de ce type d'annonce précis.
+  const [categoryFilter, setCategoryFilter] = useState<ListingCategory | null>(null);
+  const visiblePosts = categoryFilter ? posts.filter((p) => p.listing_category === categoryFilter) : posts;
 
   // post_id -> true once the current visitor has paid for that annonce
   const [purchasedPostIds, setPurchasedPostIds] = useState<Set<string>>(new Set());
@@ -480,6 +485,38 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
         </div>
       )}
 
+      {/* Filtre de catégorie : toutes les annonces, ou une catégorie précise */}
+      <div className="max-w-xl mx-auto -mb-2 overflow-x-auto">
+        <div className="flex items-center gap-1.5 w-max pb-1">
+          <button
+            type="button"
+            onClick={() => setCategoryFilter(null)}
+            className={`flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 rounded-full transition cursor-pointer whitespace-nowrap border ${
+              categoryFilter === null
+                ? "bg-rose-500 border-rose-500 text-white"
+                : "bg-white border-slate-200 text-slate-600 hover:border-rose-300"
+            }`}
+          >
+            Toutes les annonces
+          </button>
+          {LISTING_CATEGORIES.map((cat) => (
+            <button
+              key={cat.value}
+              type="button"
+              onClick={() => setCategoryFilter((prev) => (prev === cat.value ? null : cat.value))}
+              className={`flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 rounded-full transition cursor-pointer whitespace-nowrap border ${
+                categoryFilter === cat.value
+                  ? "bg-rose-500 border-rose-500 text-white"
+                  : "bg-white border-slate-200 text-slate-600 hover:border-rose-300"
+              }`}
+            >
+              <span>{cat.emoji}</span>
+              <span>{cat.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Feed Posts List */}
       <div className="max-w-xl mx-auto space-y-4">
         {isLoading ? (
@@ -487,8 +524,8 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
             <Loader2 className="animate-spin mx-auto mb-2 text-rose-500" size={24} />
             <span>Chargement des posts...</span>
           </div>
-        ) : posts.length > 0 ? (
-          posts.map((p, index) => {
+        ) : visiblePosts.length > 0 ? (
+          visiblePosts.map((p, index) => {
             const author = p.author_profile;
             const isSharedTarget = p.id === highlightedPostId;
             return (
@@ -744,8 +781,17 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
         ) : (
           <div className="text-center p-12 bg-white border border-slate-150 rounded-3xl space-y-3">
             <Sparkles className="mx-auto text-rose-400" size={32} />
-            <h4 className="font-extrabold text-slate-800 text-sm">Le fil d'actualité est vide</h4>
-            <p className="text-slate-400 text-xs max-w-xs mx-auto leading-relaxed">Soyez la première personne à publier un mot doux, une photo ou une pensée bienveillante sur LoveRose !</p>
+            {categoryFilter ? (
+              <>
+                <h4 className="font-extrabold text-slate-800 text-sm">Aucune annonce dans cette catégorie</h4>
+                <p className="text-slate-400 text-xs max-w-xs mx-auto leading-relaxed">Essayez une autre catégorie, ou revenez à "Toutes les annonces".</p>
+              </>
+            ) : (
+              <>
+                <h4 className="font-extrabold text-slate-800 text-sm">Le fil d'actualité est vide</h4>
+                <p className="text-slate-400 text-xs max-w-xs mx-auto leading-relaxed">Soyez la première personne à publier un mot doux, une photo ou une pensée bienveillante sur LoveRose !</p>
+              </>
+            )}
           </div>
         )}
       </div>

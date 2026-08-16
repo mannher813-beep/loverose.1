@@ -1,7 +1,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { compressImageIfNeeded } from "../lib/imageCompression";
-import { Profile, ListingCategory, LISTING_CATEGORIES } from "../types";
+import { Profile, ListingCategory, LISTING_CATEGORIES, LISTING_FIELD_CONFIG } from "../types";
 import { Image, Send, AlertCircle, Loader2, X, DollarSign, MapPin, Tag, Clock, Boxes } from "lucide-react";
 import CountryDialSelect from "./CountryDialSelect";
 import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js";
@@ -55,6 +55,21 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
   const [listingNegotiable, setListingNegotiable] = useState(false);
   const [listingDurationDays, setListingDurationDays] = useState<number | null>(7);
   const [listingQuantityInput, setListingQuantityInput] = useState("");
+
+  // Les options proposées plus bas (localisation, état, quantité...)
+  // dépendent de la catégorie choisie en premier. Quand l'utilisateur change
+  // de catégorie, on réinitialise les champs devenus non pertinents pour
+  // éviter d'enregistrer une valeur orpheline (ex: "neuf" gardé alors que
+  // la nouvelle catégorie ne propose plus ce champ).
+  const activeFieldConfig = listingCategory ? LISTING_FIELD_CONFIG[listingCategory] : null;
+
+  const handleSelectCategory = (cat: ListingCategory) => {
+    setListingCategory(cat);
+    const config = LISTING_FIELD_CONFIG[cat];
+    if (!config.location) setListingLocation("");
+    if (!config.condition) setListingCondition(null);
+    if (!config.quantity) setListingQuantityInput("");
+  };
 
   // Pré-remplit l'indicatif pays du champ WhatsApp dès l'activation du mode
   // "annonce payante" : d'abord depuis le profil (numéro déjà vérifié), sinon
@@ -174,7 +189,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
       if (listingQuantityInput.trim()) {
         const qtyNum = Number(listingQuantityInput);
         if (!Number.isFinite(qtyNum) || qtyNum < 0) {
-          setErrorMessage("La quantité disponible doit être un nombre positif.");
+          setErrorMessage(`${LISTING_FIELD_CONFIG[listingCategory].quantityLabel} doit être un nombre positif.`);
           return;
         }
         listingQuantity = qtyNum;
@@ -302,97 +317,112 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                 {isListing && (
                   <div className="space-y-2.5 bg-emerald-50/40 border border-emerald-100 rounded-xl p-3">
                     {/* Type d'annonce : choisi par l'utilisateur, affiché ensuite comme
-                        badge de catégorie dans le fil (Feed.tsx). */}
+                        badge de catégorie dans le fil (Feed.tsx). Les options ci-dessous
+                        s'adaptent ensuite à ce choix (voir LISTING_FIELD_CONFIG). */}
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
                         <Tag size={11} /> Type d'annonce
                       </label>
-                      <div className="grid grid-cols-3 gap-1.5 mt-1">
+                      <div className="grid grid-cols-2 gap-1.5 mt-1">
                         {LISTING_CATEGORIES.map((cat) => (
                           <button
                             key={cat.value}
                             type="button"
-                            onClick={() => setListingCategory(cat.value)}
-                            className={`py-2 px-1.5 rounded-lg text-[10px] font-bold transition flex flex-col items-center gap-0.5 cursor-pointer border ${
+                            onClick={() => handleSelectCategory(cat.value)}
+                            className={`py-2 px-2 rounded-lg text-[10px] font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                               listingCategory === cat.value
                                 ? "bg-emerald-500 border-emerald-500 text-white"
                                 : "bg-white border-slate-200 text-slate-600 hover:border-emerald-300"
                             }`}
                           >
                             <span className="text-sm leading-none">{cat.emoji}</span>
-                            <span className="leading-tight text-center">{cat.label}</span>
+                            <span className="leading-tight text-left">{cat.label}</span>
                           </button>
                         ))}
                       </div>
                     </div>
 
-                    {/* Localisation + état de l'annonce */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                          <MapPin size={11} /> Ville / lieu
-                        </label>
-                        <input
-                          type="text"
-                          value={listingLocation}
-                          onChange={(e) => setListingLocation(e.target.value)}
-                          placeholder="Douala, Yaoundé..."
-                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                          <Boxes size={11} /> État
-                        </label>
-                        <div className="flex gap-1.5 mt-1">
-                          {(["neuf", "occasion"] as const).map((c) => (
-                            <button
-                              key={c}
-                              type="button"
-                              onClick={() => setListingCondition((prev) => (prev === c ? null : c))}
-                              className={`flex-1 py-2.5 rounded-xl text-[10px] font-bold capitalize transition cursor-pointer border ${
-                                listingCondition === c
-                                  ? "bg-emerald-500 border-emerald-500 text-white"
-                                  : "bg-white border-slate-200 text-slate-600 hover:border-emerald-300"
-                              }`}
-                            >
-                              {c}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                    {!listingCategory && (
+                      <p className="text-[10px] text-slate-400 italic">
+                        Choisissez d'abord un type d'annonce pour voir les options adaptées.
+                      </p>
+                    )}
 
-                    {/* Durée de publication + quantité disponible */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                          <Clock size={11} /> Durée
-                        </label>
-                        <select
-                          value={listingDurationDays === null ? "none" : listingDurationDays}
-                          onChange={(e) => setListingDurationDays(e.target.value === "none" ? null : Number(e.target.value))}
-                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
-                        >
-                          {LISTING_DURATIONS.map((d) => (
-                            <option key={d.label} value={d.value === null ? "none" : d.value}>
-                              {d.label}
-                            </option>
-                          ))}
-                        </select>
+                    {activeFieldConfig && (activeFieldConfig.location || activeFieldConfig.condition) && (
+                      <div className={`grid gap-2 ${activeFieldConfig.location && activeFieldConfig.condition ? "grid-cols-2" : "grid-cols-1"}`}>
+                        {activeFieldConfig.location && (
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                              <MapPin size={11} /> {activeFieldConfig.locationLabel}
+                            </label>
+                            <input
+                              type="text"
+                              value={listingLocation}
+                              onChange={(e) => setListingLocation(e.target.value)}
+                              placeholder="Douala, Yaoundé..."
+                              className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                            />
+                          </div>
+                        )}
+                        {activeFieldConfig.condition && (
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                              <Boxes size={11} /> État
+                            </label>
+                            <div className="flex gap-1.5 mt-1">
+                              {(["neuf", "occasion"] as const).map((c) => (
+                                <button
+                                  key={c}
+                                  type="button"
+                                  onClick={() => setListingCondition((prev) => (prev === c ? null : c))}
+                                  className={`flex-1 py-2.5 rounded-xl text-[10px] font-bold capitalize transition cursor-pointer border ${
+                                    listingCondition === c
+                                      ? "bg-emerald-500 border-emerald-500 text-white"
+                                      : "bg-white border-slate-200 text-slate-600 hover:border-emerald-300"
+                                  }`}
+                                >
+                                  {c}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Quantité dispo.</label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={listingQuantityInput}
-                          onChange={(e) => setListingQuantityInput(e.target.value)}
-                          placeholder="Illimité"
-                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
-                        />
+                    )}
+
+                    {listingCategory && (
+                      <div className={`grid gap-2 ${activeFieldConfig?.quantity ? "grid-cols-2" : "grid-cols-1"}`}>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                            <Clock size={11} /> Durée
+                          </label>
+                          <select
+                            value={listingDurationDays === null ? "none" : listingDurationDays}
+                            onChange={(e) => setListingDurationDays(e.target.value === "none" ? null : Number(e.target.value))}
+                            className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                          >
+                            {LISTING_DURATIONS.map((d) => (
+                              <option key={d.label} value={d.value === null ? "none" : d.value}>
+                                {d.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {activeFieldConfig?.quantity && (
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase">{activeFieldConfig.quantityLabel}</label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={listingQuantityInput}
+                              onChange={(e) => setListingQuantityInput(e.target.value)}
+                              placeholder="Illimité"
+                              className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                            />
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    )}
 
                     <label className="flex items-center justify-between gap-2 py-1 cursor-pointer select-none">
                       <span className="text-[10px] font-bold text-slate-500 uppercase">Contact WhatsApp gratuit</span>
