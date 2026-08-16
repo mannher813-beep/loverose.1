@@ -311,10 +311,10 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
 
     const longLink = `${window.location.origin}/?tab=feed&post=${postId}`;
 
-    // On essaie d'obtenir un lien court via Cutt.ly (https://cutt.ly/xxxxx)
-    // à la place du long lien ?tab=feed&post=<uuid>. En cas de lenteur ou
-    // d'échec (réseau, quota Cutt.ly...), on retombe sur le long lien : le
-    // partage ne casse jamais, il est juste moins court dans ce cas précis.
+    // On essaie d'obtenir un lien court natif Loverose (/p/xxxxx) à la
+    // place du long lien ?tab=feed&post=<uuid>. En cas de lenteur ou
+    // d'échec (réseau...), on retombe sur le long lien : le partage ne
+    // casse jamais, il est juste moins court dans ce cas précis.
     let postLink = longLink;
     try {
       const controller = new AbortController();

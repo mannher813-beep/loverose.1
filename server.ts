@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
+import crypto from "crypto";
 
 dotenv.config();
 
@@ -679,11 +680,23 @@ async function startServer() {
     }
   });
 
-  // Raccourcisseur de lien pour les annonces — équivalent dev de
+  // Raccourcisseur de lien natif pour les annonces — équivalent dev de
   // functions/api/short-link.ts (Cloudflare Pages Functions), pour que le
   // bouton "Partager" fonctionne aussi via `npm run dev`, pas juste en prod.
-  // Utilise l'API Cutt.ly (gratuite avec clé API) : le lien partagé devient
-  // cutt.ly/xxxxx au lieu d'un lien loverose.pages.dev.
+  // Aucun service externe : le code est généré et stocké dans Supabase
+  // (table short_links), le lien partagé devient "<origin>/p/<code>".
+  const SHORT_CODE_ALPHABET =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const SHORT_CODE_LENGTH = 6;
+
+  function generateShortCode(): string {
+    let code = "";
+    for (let i = 0; i < SHORT_CODE_LENGTH; i++) {
+      code += SHORT_CODE_ALPHABET[crypto.randomInt(SHORT_CODE_ALPHABET.length)];
+    }
+    return code;
+  }
+
   app.post("/api/short-link", async (req, res) => {
     try {
       const { postId } = req.body || {};
@@ -694,19 +707,16 @@ async function startServer() {
         return res.status(500).json({ success: false, error: "Service momentanément indisponible." });
       }
 
+      const origin = `${req.protocol}://${req.get("host")}`;
+
+      // Déjà raccourci pour cette annonce ? On réutilise le même code.
       const { data: existing } = await supabaseAdmin
         .from("short_links")
-        .select("external_short_url")
+        .select("code")
         .eq("post_id", postId)
         .maybeSingle();
-      if (existing?.external_short_url) {
-        return res.json({ success: true, shortUrl: existing.external_short_url });
-      }
-
-      const cuttlyApiKey = process.env.CUTTLY_API_KEY || "";
-      if (!cuttlyApiKey) {
-        console.error("CUTTLY_API_KEY manquante dans les variables d'environnement.");
-        return res.status(500).json({ success: false, error: "Raccourcisseur non configuré." });
+      if (existing?.code) {
+        return res.json({ success: true, code: existing.code, shortUrl: `${origin}/p/${existing.code}` });
       }
 
       const { data: post } = await supabaseAdmin
@@ -718,36 +728,69 @@ async function startServer() {
         return res.status(404).json({ success: false, error: "Annonce introuvable." });
       }
 
-      const longUrl = `${req.protocol}://${req.get("host")}/?tab=feed&post=${postId}`;
-      const cuttlyEndpoint =
-        `https://cutt.ly/api/api.php?key=${encodeURIComponent(cuttlyApiKey)}` +
-        `&short=${encodeURIComponent(longUrl)}`;
+      // Génère un code unique, avec retry en cas de collision (rare) ou de
+      // course entre deux requêtes simultanées pour la même annonce.
+      let lastError: any = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const code = generateShortCode();
+        const { data: inserted, error: insertErr } = await supabaseAdmin
+          .from("short_links")
+          .insert({ post_id: postId, code })
+          .select("code")
+          .single();
 
-      const cuttlyRes = await fetch(cuttlyEndpoint);
-      if (!cuttlyRes.ok) {
-        console.error("Cutt.ly API HTTP error:", cuttlyRes.status);
-        return res.status(502).json({ success: false, error: "Raccourcisseur momentanément indisponible." });
+        if (!insertErr && inserted) {
+          return res.json({ success: true, code: inserted.code, shortUrl: `${origin}/p/${inserted.code}` });
+        }
+
+        lastError = insertErr;
+
+        if (insertErr?.code === "23505") {
+          const { data: raceExisting } = await supabaseAdmin
+            .from("short_links")
+            .select("code")
+            .eq("post_id", postId)
+            .maybeSingle();
+          if (raceExisting?.code) {
+            return res.json({ success: true, code: raceExisting.code, shortUrl: `${origin}/p/${raceExisting.code}` });
+          }
+          continue;
+        }
+
+        break;
       }
 
-      const cuttlyData: any = await cuttlyRes.json();
-      if (cuttlyData?.url?.status !== 7 || !cuttlyData.url.shortLink) {
-        console.error("Cutt.ly API a renvoyé une erreur:", cuttlyData);
-        return res.status(502).json({ success: false, error: "Impossible de raccourcir ce lien." });
-      }
-
-      const shortUrl: string = cuttlyData.url.shortLink;
-
-      const { error: upsertErr } = await supabaseAdmin
-        .from("short_links")
-        .upsert({ post_id: postId, external_short_url: shortUrl }, { onConflict: "post_id" });
-      if (upsertErr) {
-        console.warn("Échec de mise en cache du lien court (non bloquant) :", upsertErr);
-      }
-
-      return res.json({ success: true, shortUrl });
+      console.error("Impossible de générer un lien court:", lastError);
+      return res.status(500).json({ success: false, error: "Impossible de générer le lien court." });
     } catch (err: any) {
       console.error("Error handling /api/short-link:", err);
       return res.status(500).json({ success: false, error: "Erreur interne du serveur." });
+    }
+  });
+
+  // Résolution des liens courts natifs — équivalent dev de
+  // functions/p/[code].ts (Cloudflare Pages Functions).
+  app.get("/p/:code", async (req, res) => {
+    try {
+      const { code } = req.params;
+      if (!code || !supabaseAdmin) {
+        return res.status(404).send("Lien introuvable.");
+      }
+
+      const { data } = await supabaseAdmin
+        .from("short_links")
+        .select("post_id")
+        .eq("code", code)
+        .maybeSingle();
+
+      if (!data?.post_id) {
+        return res.status(404).send("Lien introuvable.");
+      }
+
+      return res.redirect(302, `/?tab=feed&post=${data.post_id}`);
+    } catch (err: any) {
+      console.error("Error handling /p/:code:", err);
+      return res.status(500).send("Erreur interne du serveur.");
     }
   });
 
