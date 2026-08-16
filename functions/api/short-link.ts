@@ -58,42 +58,26 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return json({ success: false, error: "Annonce introuvable." }, 404);
     }
 
-    // Génère un code court unique. En cas de collision (code déjà pris, ou
-    // partages simultanés pour la même annonce), on réessaie plutôt que
-    // d'échouer : c'est rare (espace de ~5.6e10 codes) mais on gère quand
-    // même la contrainte unique proprement.
+    // Génère un code court unique et l'attribue via une fonction Postgres
+    // atomique (get_or_create_short_link) : elle crée la ligne si besoin,
+    // complète le code s'il manque (lignes héritées), et ne l'écrase jamais
+    // si un code existe déjà (gère aussi les partages simultanés).
     let lastError: any = null;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const code = generateShortCode();
-      const { data: inserted, error: insertErr } = await supabaseAdmin
-        .from("short_links")
-        .insert({ post_id: postId, code })
-        .select("code")
-        .single();
+      const { data: resultCode, error: rpcErr } = await supabaseAdmin.rpc(
+        "get_or_create_short_link",
+        { p_post_id: postId, p_code: code }
+      );
 
-      if (!insertErr && inserted) {
-        return json({ success: true, code: inserted.code, shortUrl: `${origin}/p/${inserted.code}` });
+      if (!rpcErr && resultCode) {
+        return json({ success: true, code: resultCode, shortUrl: `${origin}/p/${resultCode}` });
       }
 
-      lastError = insertErr;
-
-      // 23505 = violation de contrainte unique. Deux cas possibles :
-      // - une requête concurrente vient d'insérer le lien pour ce post_id
-      //   (on récupère et renvoie ce code, on ne duplique pas) ;
-      // - collision sur "code" seul (extrêmement rare) -> on réessaie avec
-      //   un nouveau code généré.
-      if (insertErr?.code === "23505") {
-        const { data: raceExisting } = await supabaseAdmin
-          .from("short_links")
-          .select("code")
-          .eq("post_id", postId)
-          .maybeSingle();
-        if (raceExisting?.code) {
-          return json({ success: true, code: raceExisting.code, shortUrl: `${origin}/p/${raceExisting.code}` });
-        }
-        continue;
-      }
-
+      lastError = rpcErr;
+      // 23505 = collision sur "code" (extrêmement rare) -> on réessaie avec
+      // un nouveau code généré.
+      if (rpcErr?.code === "23505") continue;
       break;
     }
 

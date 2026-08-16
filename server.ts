@@ -728,35 +728,24 @@ async function startServer() {
         return res.status(404).json({ success: false, error: "Annonce introuvable." });
       }
 
-      // Génère un code unique, avec retry en cas de collision (rare) ou de
-      // course entre deux requêtes simultanées pour la même annonce.
+      // Génère un code unique et l'attribue via la fonction Postgres
+      // atomique get_or_create_short_link (gère les lignes héritées sans
+      // code et les partages simultanés sans jamais écraser un code déjà
+      // attribué). Retry en cas de collision rare sur le code lui-même.
       let lastError: any = null;
       for (let attempt = 0; attempt < 5; attempt++) {
         const code = generateShortCode();
-        const { data: inserted, error: insertErr } = await supabaseAdmin
-          .from("short_links")
-          .insert({ post_id: postId, code })
-          .select("code")
-          .single();
+        const { data: resultCode, error: rpcErr } = await supabaseAdmin.rpc(
+          "get_or_create_short_link",
+          { p_post_id: postId, p_code: code }
+        );
 
-        if (!insertErr && inserted) {
-          return res.json({ success: true, code: inserted.code, shortUrl: `${origin}/p/${inserted.code}` });
+        if (!rpcErr && resultCode) {
+          return res.json({ success: true, code: resultCode, shortUrl: `${origin}/p/${resultCode}` });
         }
 
-        lastError = insertErr;
-
-        if (insertErr?.code === "23505") {
-          const { data: raceExisting } = await supabaseAdmin
-            .from("short_links")
-            .select("code")
-            .eq("post_id", postId)
-            .maybeSingle();
-          if (raceExisting?.code) {
-            return res.json({ success: true, code: raceExisting.code, shortUrl: `${origin}/p/${raceExisting.code}` });
-          }
-          continue;
-        }
-
+        lastError = rpcErr;
+        if (rpcErr?.code === "23505") continue;
         break;
       }
 
