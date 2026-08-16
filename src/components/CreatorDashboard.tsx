@@ -29,6 +29,7 @@ import {
   Briefcase
 } from "lucide-react";
 import AdSlot from "./AdSlot";
+import KycVerificationModal from "./KycVerificationModal";
 
 interface CreatorDashboardProps {
   currentUser: any;
@@ -87,14 +88,8 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
   const [newPostUnlockPrice, setNewPostUnlockPrice] = useState("500");
   const [isPublishingPost, setIsPublishingPost] = useState(false);
 
-  // Page Certification Request
+  // Page Certification Request (form state now lives inside KycVerificationModal)
   const [showCertifyModal, setShowCertifyModal] = useState<boolean>(false);
-  const [certificationForm, setCertificationForm] = useState({
-    fullName: currentUserProfile?.full_name || "",
-    idNumber: "",
-    city: currentUserProfile?.location || ""
-  });
-  const [isSubmittingCertify, setIsSubmittingCertify] = useState(false);
 
   // Loading indicator for tabs
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -410,43 +405,10 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
     }
   };
 
-  // Submit Certification
-  const handleCertifySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!certificationForm.fullName || !certificationForm.idNumber) {
-      alert("Tous les champs sont obligatoires.");
-      return;
-    }
-
-    setIsSubmittingCertify(true);
-    try {
-      const { error } = await supabase
-        .from("creator_verification_requests")
-        .insert([{
-          user_id: currentUser.id,
-          page_id: page.id,
-          full_name: certificationForm.fullName,
-          id_number: certificationForm.idNumber,
-          city: certificationForm.city,
-          documents: [
-            "https://placeholder-doc.com/id.png",
-            "https://placeholder-doc.com/selfie.png"
-          ],
-          status: "pending"
-        }]);
-
-      if (error) throw error;
-
-      alert("🎉 Demande de certification envoyée ! Notre équipe va l'examiner d'ici 24h.");
-      setShowCertifyModal(false);
-      fetchVerificationStatus();
-    } catch (err: any) {
-      console.error("Certification submit error:", err);
-      alert("Erreur lors de la soumission : " + err.message);
-    } finally {
-      setIsSubmittingCertify(false);
-    }
-  };
+  // Certification (KYC) submission is now fully handled by
+  // <KycVerificationModal /> — see the render below. It uploads real
+  // documents to private storage instead of placeholder URLs, and also
+  // gates on upgrading an anonymous account first.
 
   // Archive Referral Earnings View filter
   const isCertified = verificationRequest?.status === "approved";
@@ -1246,79 +1208,18 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
         </div>
       )}
 
-      {/* MODAL: SUBMIT CERTIFICATION */}
+      {/* MODAL: SUBMIT CERTIFICATION (compte réel + KYC) */}
       {showCertifyModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 text-left space-y-4 shadow-2xl animate-fadeIn">
-            <h3 className="text-base font-black text-white flex items-center gap-1.5 uppercase tracking-wide">
-              <CheckCircle className="text-amber-500" size={18} />
-              <span>Demande de Certification</span>
-            </h3>
-
-            <p className="text-[11px] text-slate-400 leading-normal">
-              Afin de débloquer la possibilité d'initier des retraits de gains réels vers votre compte Mobile Money, veuillez renseigner vos informations réelles de carte d'identité ou passeport.
-            </p>
-
-            <form onSubmit={handleCertifySubmit} className="space-y-4 text-xs">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 block uppercase">Nom Complet (Identique à la CNI)</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Jean Paul"
-                  value={certificationForm.fullName}
-                  onChange={(e) => setCertificationForm(c => ({ ...c, fullName: e.target.value }))}
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-xl p-3 text-white font-semibold"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 block uppercase">Numéro de Pièce d'Identité (CNI / Passeport)</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: 100982736"
-                  value={certificationForm.idNumber}
-                  onChange={(e) => setCertificationForm(c => ({ ...c, idNumber: e.target.value }))}
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-xl p-3 text-white font-semibold"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 block uppercase">Ville de résidence</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Yaoundé"
-                  value={certificationForm.city}
-                  onChange={(e) => setCertificationForm(c => ({ ...c, city: e.target.value }))}
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-xl p-3 text-white font-semibold"
-                />
-              </div>
-
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-[10px] text-slate-500 leading-relaxed">
-                ℹ️ <strong>Photos d'identité :</strong> En soumettant ce formulaire, vous confirmez l'exactitude des informations. Nos équipes peuvent demander une preuve physique supplémentaire lors de la validation.
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCertifyModal(false)}
-                  className="flex-1 py-3 border border-slate-800 hover:bg-slate-800 text-slate-400 font-bold rounded-xl transition cursor-pointer text-center"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingCertify}
-                  className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl transition cursor-pointer text-center disabled:opacity-50"
-                >
-                  {isSubmittingCertify ? <Loader2 className="animate-spin mx-auto" size={16} /> : "Soumettre la demande"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <KycVerificationModal
+          currentUser={currentUser}
+          page={page}
+          verificationRequest={verificationRequest}
+          onClose={() => setShowCertifyModal(false)}
+          onSubmitted={() => {
+            setShowCertifyModal(false);
+            fetchVerificationStatus();
+          }}
+        />
       )}
     </div>
   );

@@ -85,12 +85,21 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ currentUser }: AdminPanelProps) {
-  const [tab, setTab] = useState<"users" | "reports" | "stats" | "messages" | "campaign" | "announce" | "reviews">("users");
+  const [tab, setTab] = useState<"users" | "reports" | "stats" | "messages" | "campaign" | "announce" | "reviews" | "kyc">("users");
   const [users, setUsers] = useState<Profile[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [reviews, setReviews] = useState<PostReviewAdmin[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewProfiles, setReviewProfiles] = useState<Record<string, Profile>>({});
+
+  // Vérifications KYC + retraits en attente
+  const [kycRequests, setKycRequests] = useState<any[]>([]);
+  const [payoutRequests, setPayoutRequests] = useState<any[]>([]);
+  const [kycPayoutProfiles, setKycPayoutProfiles] = useState<Record<string, Profile>>({});
+  const [kycLoading, setKycLoading] = useState(false);
+  const [kycDocUrls, setKycDocUrls] = useState<Record<string, Record<string, string | null>>>({});
+  const [loadingDocsFor, setLoadingDocsFor] = useState<string | null>(null);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [reportProfiles, setReportProfiles] = useState<Record<string, Profile>>({});
   const [viewProfile, setViewProfile] = useState<Profile | null>(null);
   const [search, setSearch] = useState("");
@@ -496,6 +505,110 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     }
   };
 
+  const loadKycQueue = async () => {
+    setKycLoading(true);
+    try {
+      const [kycRes, payoutRes] = await Promise.all([
+        supabase
+          .from("creator_verification_requests")
+          .select("*")
+          .eq("status", "pending")
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("payout_requests")
+          .select("*")
+          .eq("status", "pending")
+          .order("created_at", { ascending: true }),
+      ]);
+
+      if (kycRes.error) throw kycRes.error;
+      if (payoutRes.error) throw payoutRes.error;
+
+      setKycRequests(kycRes.data || []);
+      setPayoutRequests(payoutRes.data || []);
+
+      const userIds = Array.from(
+        new Set([
+          ...(kycRes.data || []).map((r: any) => r.user_id),
+          ...(payoutRes.data || []).map((r: any) => r.user_id),
+        ])
+      );
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase.from("profiles").select("*").in("uid", userIds);
+        const map: Record<string, Profile> = {};
+        (profs || []).forEach((p: any) => { map[p.uid] = p; });
+        setKycPayoutProfiles(map);
+      }
+    } catch (err: any) {
+      showToast("Erreur chargement des vérifications : " + err.message);
+    } finally {
+      setKycLoading(false);
+    }
+  };
+
+  // Charge les 5 photos d'une demande KYC via URLs signées temporaires
+  // (jamais de bucket public — voir functions/api/admin/kyc-signed-urls.ts).
+  const viewKycDocuments = async (request: any) => {
+    setLoadingDocsFor(request.id);
+    try {
+      const paths = [request.photo_id_front, request.photo_id_back, request.selfie_face, request.selfie_left, request.selfie_right].filter(Boolean);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Session admin invalide");
+
+      const res = await fetch("/api/admin/kyc-signed-urls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ paths }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Erreur serveur");
+      setKycDocUrls((prev) => ({ ...prev, [request.id]: data.urls }));
+    } catch (err: any) {
+      showToast("Erreur chargement des documents : " + err.message);
+    } finally {
+      setLoadingDocsFor(null);
+    }
+  };
+
+  const reviewKyc = async (request: any, decision: "approved" | "rejected") => {
+    let reason: string | null = null;
+    if (decision === "rejected") {
+      reason = prompt("Motif du rejet (visible par le créateur) :", "") || null;
+      if (reason === null) return; // annulé
+    }
+    setReviewingId(request.id);
+    try {
+      const { error } = await supabase.rpc("admin_review_kyc", { request_id: request.id, decision, reason });
+      if (error) throw error;
+      showToast(decision === "approved" ? "✅ Identité validée" : "Identité rejetée");
+      setKycRequests((prev) => prev.filter((r) => r.id !== request.id));
+    } catch (err: any) {
+      showToast("Erreur : " + err.message);
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  const reviewPayout = async (payout: any, decision: "approved" | "rejected") => {
+    let reason: string | null = null;
+    if (decision === "rejected") {
+      reason = prompt("Motif du rejet (les fonds seront recrédités) :", "") || null;
+      if (reason === null) return;
+    }
+    setReviewingId(payout.id);
+    try {
+      const { error } = await supabase.rpc("admin_review_payout", { payout_id: payout.id, decision, reason });
+      if (error) throw error;
+      showToast(decision === "approved" ? "✅ Retrait validé" : "Retrait rejeté, fonds recrédités");
+      setPayoutRequests((prev) => prev.filter((p) => p.id !== payout.id));
+    } catch (err: any) {
+      showToast("Erreur : " + err.message);
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
   const toggleShadowBan = async (user: Profile) => {
     const next = !user.is_hidden_from_feed;
     const { error } = await supabase.from("profiles").update({ is_hidden_from_feed: next }).eq("uid", user.uid);
@@ -744,6 +857,18 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
             </button>
             <button onClick={() => setTab("campaign")} className={tabButtonClass(tab === "campaign")}>
               <HeartHandshake size={14} /> Campagne
+            </button>
+            <button
+              onClick={() => {
+                setTab("kyc");
+                if (kycRequests.length === 0 && payoutRequests.length === 0) loadKycQueue();
+              }}
+              className={tabButtonClass(tab === "kyc")}
+            >
+              <ShieldCheck size={14} /> Vérifications
+              {kycRequests.length + payoutRequests.length > 0 && (
+                <span className={countBadgeClass(tab === "kyc")}>{kycRequests.length + payoutRequests.length}</span>
+              )}
             </button>
             <button
               onClick={() => {
@@ -1253,6 +1378,132 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                   </>
                 )}
               </div>
+            )}
+          </div>
+        ) : tab === "kyc" ? (
+          <div className="space-y-5">
+            {kycLoading ? (
+              <div className="flex items-center gap-2 text-slate-400 text-sm pt-10 justify-center">
+                <Loader2 size={16} className="animate-spin" /> Chargement...
+              </div>
+            ) : (
+              <>
+                {/* Demandes de vérification d'identité */}
+                <div className="space-y-2">
+                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-wide px-1">
+                    Identités à vérifier ({kycRequests.length})
+                  </h3>
+                  {kycRequests.length === 0 ? (
+                    <p className="text-center text-slate-400 text-sm py-6 bg-white rounded-2xl">Aucune demande en attente.</p>
+                  ) : (
+                    kycRequests.map((r) => {
+                      const profile = kycPayoutProfiles[r.user_id];
+                      const docs = kycDocUrls[r.id];
+                      const docSlots: { key: string; label: string }[] = [
+                        { key: r.photo_id_front, label: "ID recto" },
+                        { key: r.photo_id_back, label: "ID verso" },
+                        { key: r.selfie_face, label: "Selfie face" },
+                        { key: r.selfie_left, label: "Selfie gauche" },
+                        { key: r.selfie_right, label: "Selfie droite" },
+                      ].filter((d) => d.key);
+                      return (
+                        <div key={r.id} className="bg-white rounded-2xl p-3.5 shadow-sm space-y-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <div>
+                              <p className="text-xs font-bold text-slate-800">{r.full_name} <span className="text-slate-400 font-normal">— {profile?.username || "?"}</span></p>
+                              <p className="text-[10px] text-slate-400">Pièce n° {r.id_number} · {r.city}</p>
+                            </div>
+                            <span className="text-[9px] font-bold uppercase bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex-shrink-0">En attente</span>
+                          </div>
+
+                          {!docs ? (
+                            <button
+                              onClick={() => viewKycDocuments(r)}
+                              disabled={loadingDocsFor === r.id}
+                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                            >
+                              {loadingDocsFor === r.id ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />}
+                              Voir les {docSlots.length} documents
+                            </button>
+                          ) : (
+                            <div className="grid grid-cols-5 gap-1.5">
+                              {docSlots.map((d) => (
+                                <a key={d.key} href={docs[d.key] || "#"} target="_blank" rel="noreferrer" className="block">
+                                  {docs[d.key] ? (
+                                    <img src={docs[d.key]!} alt={d.label} className="w-full aspect-[3/4] object-cover rounded-lg border border-slate-200" />
+                                  ) : (
+                                    <div className="w-full aspect-[3/4] rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center text-[8px] text-slate-400 text-center p-1">
+                                      Indisponible
+                                    </div>
+                                  )}
+                                  <p className="text-[7px] text-slate-400 text-center mt-0.5">{d.label}</p>
+                                </a>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => reviewKyc(r, "rejected")}
+                              disabled={reviewingId === r.id}
+                              className="flex-1 py-2 border border-slate-200 hover:bg-slate-50 text-slate-500 font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 disabled:opacity-50"
+                            >
+                              <XCircle size={13} /> Rejeter
+                            </button>
+                            <button
+                              onClick={() => reviewKyc(r, "approved")}
+                              disabled={reviewingId === r.id}
+                              className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 disabled:opacity-50"
+                            >
+                              {reviewingId === r.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} Valider
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Demandes de retrait */}
+                <div className="space-y-2">
+                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-wide px-1">
+                    Retraits à valider ({payoutRequests.length})
+                  </h3>
+                  {payoutRequests.length === 0 ? (
+                    <p className="text-center text-slate-400 text-sm py-6 bg-white rounded-2xl">Aucune demande en attente.</p>
+                  ) : (
+                    payoutRequests.map((p) => {
+                      const profile = kycPayoutProfiles[p.user_id];
+                      return (
+                        <div key={p.id} className="bg-white rounded-2xl p-3.5 shadow-sm flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                              <DollarSign size={12} className="text-emerald-500" /> {p.requested_amount} FCFA
+                            </p>
+                            <p className="text-[10px] text-slate-400">{profile?.full_name || "?"} · {profile?.username || p.user_id?.slice(0, 8)}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => reviewPayout(p, "rejected")}
+                              disabled={reviewingId === p.id}
+                              className="p-2 border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-full disabled:opacity-50"
+                            >
+                              <XCircle size={14} />
+                            </button>
+                            <button
+                              onClick={() => reviewPayout(p, "approved")}
+                              disabled={reviewingId === p.id}
+                              className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full disabled:opacity-50"
+                            >
+                              {reviewingId === p.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </>
             )}
           </div>
         ) : tab === "reviews" ? (
