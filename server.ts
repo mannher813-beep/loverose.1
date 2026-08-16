@@ -679,20 +679,11 @@ async function startServer() {
     }
   });
 
-  // Raccourcisseur de lien pour les annonces — équivalents dev de
-  // functions/api/short-link.ts et functions/s/[code].ts (Cloudflare Pages
-  // Functions), pour que le bouton "Partager" fonctionne aussi via
-  // `npm run dev`, pas seulement en production.
-  const SHORT_CODE_CHARS = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const SHORT_CODE_LENGTH = 7;
-  function generateShortCode(): string {
-    let code = "";
-    for (let i = 0; i < SHORT_CODE_LENGTH; i++) {
-      code += SHORT_CODE_CHARS[Math.floor(Math.random() * SHORT_CODE_CHARS.length)];
-    }
-    return code;
-  }
-
+  // Raccourcisseur de lien pour les annonces — équivalent dev de
+  // functions/api/short-link.ts (Cloudflare Pages Functions), pour que le
+  // bouton "Partager" fonctionne aussi via `npm run dev`, pas juste en prod.
+  // Utilise l'API Cutt.ly (gratuite avec clé API) : le lien partagé devient
+  // cutt.ly/xxxxx au lieu d'un lien loverose.pages.dev.
   app.post("/api/short-link", async (req, res) => {
     try {
       const { postId } = req.body || {};
@@ -705,11 +696,17 @@ async function startServer() {
 
       const { data: existing } = await supabaseAdmin
         .from("short_links")
-        .select("code")
+        .select("external_short_url")
         .eq("post_id", postId)
         .maybeSingle();
-      if (existing?.code) {
-        return res.json({ success: true, code: existing.code });
+      if (existing?.external_short_url) {
+        return res.json({ success: true, shortUrl: existing.external_short_url });
+      }
+
+      const cuttlyApiKey = process.env.CUTTLY_API_KEY || "";
+      if (!cuttlyApiKey) {
+        console.error("CUTTLY_API_KEY manquante dans les variables d'environnement.");
+        return res.status(500).json({ success: false, error: "Raccourcisseur non configuré." });
       }
 
       const { data: post } = await supabaseAdmin
@@ -721,64 +718,36 @@ async function startServer() {
         return res.status(404).json({ success: false, error: "Annonce introuvable." });
       }
 
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const code = generateShortCode();
-        const { error: insertErr } = await supabaseAdmin
-          .from("short_links")
-          .insert({ code, post_id: postId });
-        if (!insertErr) {
-          return res.json({ success: true, code });
-        }
-        if (insertErr.code === "23505") {
-          const { data: raceWinner } = await supabaseAdmin
-            .from("short_links")
-            .select("code")
-            .eq("post_id", postId)
-            .maybeSingle();
-          if (raceWinner?.code) {
-            return res.json({ success: true, code: raceWinner.code });
-          }
-          continue;
-        }
-        console.error("Error creating short link:", insertErr);
-        return res.status(500).json({ success: false, error: "Impossible de créer le lien court." });
+      const longUrl = `${req.protocol}://${req.get("host")}/?tab=feed&post=${postId}`;
+      const cuttlyEndpoint =
+        `https://cutt.ly/api/api.php?key=${encodeURIComponent(cuttlyApiKey)}` +
+        `&short=${encodeURIComponent(longUrl)}`;
+
+      const cuttlyRes = await fetch(cuttlyEndpoint);
+      if (!cuttlyRes.ok) {
+        console.error("Cutt.ly API HTTP error:", cuttlyRes.status);
+        return res.status(502).json({ success: false, error: "Raccourcisseur momentanément indisponible." });
       }
 
-      return res.status(500).json({ success: false, error: "Impossible de générer un code unique." });
+      const cuttlyData: any = await cuttlyRes.json();
+      if (cuttlyData?.url?.status !== 7 || !cuttlyData.url.shortLink) {
+        console.error("Cutt.ly API a renvoyé une erreur:", cuttlyData);
+        return res.status(502).json({ success: false, error: "Impossible de raccourcir ce lien." });
+      }
+
+      const shortUrl: string = cuttlyData.url.shortLink;
+
+      const { error: upsertErr } = await supabaseAdmin
+        .from("short_links")
+        .upsert({ post_id: postId, external_short_url: shortUrl }, { onConflict: "post_id" });
+      if (upsertErr) {
+        console.warn("Échec de mise en cache du lien court (non bloquant) :", upsertErr);
+      }
+
+      return res.json({ success: true, shortUrl });
     } catch (err: any) {
       console.error("Error handling /api/short-link:", err);
       return res.status(500).json({ success: false, error: "Erreur interne du serveur." });
-    }
-  });
-
-  app.get("/s/:code", async (req, res) => {
-    const homeUrl = "/";
-    try {
-      const code = req.params.code || "";
-      if (!code || !supabaseAdmin) {
-        return res.redirect(302, homeUrl);
-      }
-
-      const { data: link } = await supabaseAdmin
-        .from("short_links")
-        .select("id, post_id, clicks")
-        .eq("code", code)
-        .maybeSingle();
-
-      if (!link) {
-        return res.redirect(302, homeUrl);
-      }
-
-      supabaseAdmin
-        .from("short_links")
-        .update({ clicks: (link.clicks || 0) + 1, last_clicked_at: new Date().toISOString() })
-        .eq("id", link.id)
-        .then(() => {}, () => {});
-
-      return res.redirect(302, `/?tab=feed&post=${link.post_id}`);
-    } catch (err) {
-      console.error("Error handling /s/:code redirect:", err);
-      return res.redirect(302, homeUrl);
     }
   });
 

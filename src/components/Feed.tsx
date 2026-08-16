@@ -305,14 +305,14 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
 
     const longLink = `${window.location.origin}/?tab=feed&post=${postId}`;
 
-    // On essaie d'obtenir un lien court (https://…/s/XXXXXXX) à la place du
-    // long lien ?tab=feed&post=<uuid>. En cas de lenteur ou d'échec réseau,
-    // on retombe sur le long lien : le partage ne casse jamais, il est
-    // juste moins court dans ce cas précis.
+    // On essaie d'obtenir un lien court via Cutt.ly (https://cutt.ly/xxxxx)
+    // à la place du long lien ?tab=feed&post=<uuid>. En cas de lenteur ou
+    // d'échec (réseau, quota Cutt.ly...), on retombe sur le long lien : le
+    // partage ne casse jamais, il est juste moins court dans ce cas précis.
     let postLink = longLink;
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
       const res = await fetch("/api/short-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -321,9 +321,9 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
       });
       clearTimeout(timeoutId);
       if (res.ok) {
-        const data = (await res.json()) as { success: boolean; code?: string };
-        if (data.success && data.code) {
-          postLink = `${window.location.origin}/s/${data.code}`;
+        const data = (await res.json()) as { success: boolean; shortUrl?: string };
+        if (data.success && data.shortUrl) {
+          postLink = data.shortUrl;
         }
       }
     } catch (e) {

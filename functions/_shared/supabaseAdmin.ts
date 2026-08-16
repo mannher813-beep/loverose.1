@@ -14,6 +14,7 @@ export interface Env {
   USE_LIVE_PAYMENT?: string;
   VITE_TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET?: string;
+  CUTTLY_API_KEY?: string;
 }
 
 export function getSupabaseAdmin(env: Env) {

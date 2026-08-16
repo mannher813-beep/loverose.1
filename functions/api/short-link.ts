@@ -1,22 +1,12 @@
 import { getSupabaseAdmin, json, type Env } from "../_shared/supabaseAdmin";
 
-// Alphabet without visually ambiguous characters (0/O, 1/l/I).
-const CODE_CHARS = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const CODE_LENGTH = 7;
-
-function generateCode(): string {
-  let code = "";
-  for (let i = 0; i < CODE_LENGTH; i++) {
-    code += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
-  }
-  return code;
-}
-
-// POST /api/short-link { postId } -> { success, code }
+// POST /api/short-link { postId } -> { success, shortUrl }
 //
-// Returns a short code that redirects to a given annonce (see
-// functions/s/[code].ts). Codes are reused: calling this twice for the same
-// postId returns the same code instead of minting a new row every time.
+// Raccourcit le lien d'une annonce via l'API Cutt.ly (gratuite avec une clé
+// API — cutt.ly -> compte -> API) plutôt que d'héberger notre propre
+// redirection : le lien partagé devient cutt.ly/xxxxx au lieu d'un lien
+// loverose.pages.dev. Le résultat est mis en cache dans short_links (un seul
+// appel Cutt.ly par annonce — le plan gratuit est limité à 3 requêtes/60s).
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
   try {
@@ -30,61 +20,63 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return json({ success: false, error: "Service momentanément indisponible." }, 500);
     }
 
-    // Un code existe déjà pour cette annonce ? On le réutilise.
+    // Déjà raccourci pour cette annonce ? On réutilise plutôt que de
+    // resolliciter l'API Cutt.ly (limitée en requêtes/minute côté gratuit).
     const { data: existing } = await supabaseAdmin
       .from("short_links")
-      .select("code")
+      .select("external_short_url")
       .eq("post_id", postId)
       .maybeSingle();
 
-    if (existing?.code) {
-      return json({ success: true, code: existing.code });
+    if (existing?.external_short_url) {
+      return json({ success: true, shortUrl: existing.external_short_url });
     }
 
-    // On vérifie que l'annonce existe avant de générer un code pour elle.
+    if (!env.CUTTLY_API_KEY) {
+      console.error("CUTTLY_API_KEY manquante dans les variables d'environnement.");
+      return json({ success: false, error: "Raccourcisseur non configuré." }, 500);
+    }
+
     const { data: post } = await supabaseAdmin
       .from("posts")
       .select("id")
       .eq("id", postId)
       .maybeSingle();
-
     if (!post) {
       return json({ success: false, error: "Annonce introuvable." }, 404);
     }
 
-    // Quelques tentatives avec un code aléatoire : les collisions sont
-    // astronomiquement rares vu l'alphabet/la longueur choisis, mais on
-    // gère le cas proprement (unique_violation = 23505 en Postgres).
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const code = generateCode();
-      const { error: insertErr } = await supabaseAdmin
-        .from("short_links")
-        .insert({ code, post_id: postId });
+    const longUrl = new URL(`/?tab=feed&post=${postId}`, request.url).toString();
+    const cuttlyEndpoint =
+      `https://cutt.ly/api/api.php?key=${encodeURIComponent(env.CUTTLY_API_KEY)}` +
+      `&short=${encodeURIComponent(longUrl)}`;
 
-      if (!insertErr) {
-        return json({ success: true, code });
-      }
-
-      if (insertErr.code === "23505") {
-        // Soit le code généré existait déjà, soit une requête concurrente
-        // vient de créer le lien de cette même annonce entre-temps : dans
-        // ce second cas, on récupère et renvoie ce code plutôt que d'échouer.
-        const { data: raceWinner } = await supabaseAdmin
-          .from("short_links")
-          .select("code")
-          .eq("post_id", postId)
-          .maybeSingle();
-        if (raceWinner?.code) {
-          return json({ success: true, code: raceWinner.code });
-        }
-        continue;
-      }
-
-      console.error("Error creating short link:", insertErr);
-      return json({ success: false, error: "Impossible de créer le lien court." }, 500);
+    const cuttlyRes = await fetch(cuttlyEndpoint);
+    if (!cuttlyRes.ok) {
+      console.error("Cutt.ly API HTTP error:", cuttlyRes.status);
+      return json({ success: false, error: "Raccourcisseur momentanément indisponible." }, 502);
     }
 
-    return json({ success: false, error: "Impossible de générer un code unique." }, 500);
+    const cuttlyData: any = await cuttlyRes.json();
+    // status 7 = succès côté API Cutt.ly ; tout le reste (clé invalide,
+    // quota dépassé, URL rejetée...) est traité comme un échec récupérable.
+    if (cuttlyData?.url?.status !== 7 || !cuttlyData.url.shortLink) {
+      console.error("Cutt.ly API a renvoyé une erreur:", cuttlyData);
+      return json({ success: false, error: "Impossible de raccourcir ce lien." }, 502);
+    }
+
+    const shortUrl: string = cuttlyData.url.shortLink;
+
+    // Cache best-effort : si l'upsert échoue, le lien Cutt.ly obtenu reste
+    // valide quand même, on le renvoie sans bloquer sur l'écriture DB.
+    const { error: upsertErr } = await supabaseAdmin
+      .from("short_links")
+      .upsert({ post_id: postId, external_short_url: shortUrl }, { onConflict: "post_id" });
+    if (upsertErr) {
+      console.warn("Échec de mise en cache du lien court (non bloquant) :", upsertErr);
+    }
+
+    return json({ success: true, shortUrl });
   } catch (err: any) {
     console.error("Error handling /api/short-link:", err);
     return json({ success: false, error: "Erreur interne du serveur." }, 500);
