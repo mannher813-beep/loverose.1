@@ -84,7 +84,25 @@ export interface Post {
   // true = annonce avec contact WhatsApp gratuit (pas de paiement, pas de
   // ligne listing_purchases créée — donc pas d'avis possible sur ce contact).
   is_free_listing?: boolean;
+  // Type d'annonce choisi par l'utilisateur depuis l'éditeur (PublishListing).
+  listing_category?: ListingCategory | null;
+  listing_location?: string | null;
+  listing_condition?: "neuf" | "occasion" | null;
+  listing_negotiable?: boolean;
+  listing_expires_at?: string | null;
+  listing_quantity?: number | null;
 }
+
+export type ListingCategory = "cadeaux" | "coaching" | "contenu_exclusif" | "evenements" | "offre_service" | "autre";
+
+export const LISTING_CATEGORIES: { value: ListingCategory; label: string; emoji: string }[] = [
+  { value: "cadeaux", label: "Cadeaux", emoji: "🎁" },
+  { value: "coaching", label: "Coaching", emoji: "🧠" },
+  { value: "contenu_exclusif", label: "Contenu exclusif", emoji: "🔒" },
+  { value: "evenements", label: "Événements", emoji: "🎉" },
+  { value: "offre_service", label: "Offre de service", emoji: "🛠️" },
+  { value: "autre", label: "Autre", emoji: "✨" },
+];
 
 export interface PostReview {
   id: string;

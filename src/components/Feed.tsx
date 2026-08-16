@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { Post, Profile } from "../types";
 import AdSlot from "./AdSlot";
-import { Send, MessageCircle, Heart, Share2, Sparkles, Loader2, DollarSign, MessageSquare } from "lucide-react";
+import { Send, MessageCircle, Heart, Share2, Sparkles, Loader2, DollarSign, MessageSquare, MapPin, Tag, Boxes, Clock } from "lucide-react";
+import { LISTING_CATEGORIES } from "../types";
 import ProfileDetailModal from "./ProfileDetailModal";
 
 interface FeedProps {
@@ -525,6 +526,51 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
 
                   {/* Post Content */}
                   <div className="space-y-3">
+                    {/* Badges d'annonce : type choisi par l'auteur + infos complémentaires */}
+                    {p.listing_category && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {(() => {
+                          const cat = LISTING_CATEGORIES.find((c) => c.value === p.listing_category);
+                          return cat ? (
+                            <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 text-[10px] font-bold px-2 py-1 rounded-full">
+                              <Tag size={10} />
+                              {cat.emoji} {cat.label}
+                            </span>
+                          ) : null;
+                        })()}
+                        {p.listing_location && (
+                          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded-full">
+                            <MapPin size={10} />
+                            {p.listing_location}
+                          </span>
+                        )}
+                        {p.listing_condition && (
+                          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded-full capitalize">
+                            <Boxes size={10} />
+                            {p.listing_condition}
+                          </span>
+                        )}
+                        {p.listing_negotiable && (
+                          <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-600 text-[10px] font-bold px-2 py-1 rounded-full">
+                            <DollarSign size={10} />
+                            Négociable
+                          </span>
+                        )}
+                        {typeof p.listing_quantity === "number" && (
+                          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded-full">
+                            {p.listing_quantity > 0 ? `${p.listing_quantity} dispo.` : "Épuisé"}
+                          </span>
+                        )}
+                        {p.listing_expires_at && (
+                          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-1 rounded-full">
+                            <Clock size={10} />
+                            {new Date(p.listing_expires_at) < new Date()
+                              ? "Expirée"
+                              : `Jusqu'au ${new Date(p.listing_expires_at).toLocaleDateString([], { day: "numeric", month: "short" })}`}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <p className="text-slate-700 text-xs md:text-sm leading-relaxed whitespace-pre-wrap">{p.contenu}</p>
                     
                     {/* Post media — single photo full-width, several photos as a grid */}

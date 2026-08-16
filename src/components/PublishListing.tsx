@@ -1,11 +1,19 @@
 import { useState, useEffect, FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import { compressImageIfNeeded } from "../lib/imageCompression";
-import { Profile } from "../types";
-import { Image, Send, AlertCircle, Loader2, X, DollarSign } from "lucide-react";
+import { Profile, ListingCategory, LISTING_CATEGORIES } from "../types";
+import { Image, Send, AlertCircle, Loader2, X, DollarSign, MapPin, Tag, Clock, Boxes } from "lucide-react";
 import CountryDialSelect from "./CountryDialSelect";
 import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js";
 import { detectUserCountry } from "../lib/countries";
+
+// Durées de publication proposées pour une annonce. `null` = pas d'expiration.
+const LISTING_DURATIONS: { value: number | null; label: string }[] = [
+  { value: 3, label: "3 jours" },
+  { value: 7, label: "7 jours" },
+  { value: 30, label: "30 jours" },
+  { value: null, label: "Sans limite" },
+];
 
 interface PublishListingProps {
   currentUser: any;
@@ -37,6 +45,16 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
   // d'URL wa.me, source d'erreurs de format).
   const [whatsappCountryIso, setWhatsappCountryIso] = useState<CountryCode | null>(null);
   const [whatsappPhoneLocal, setWhatsappPhoneLocal] = useState("");
+
+  // Nouvelles fonctionnalités de l'éditeur d'annonce : type d'annonce (choisi
+  // par l'utilisateur), localisation, état, prix négociable, durée de
+  // publication et quantité disponible.
+  const [listingCategory, setListingCategory] = useState<ListingCategory | null>(null);
+  const [listingLocation, setListingLocation] = useState("");
+  const [listingCondition, setListingCondition] = useState<"neuf" | "occasion" | null>(null);
+  const [listingNegotiable, setListingNegotiable] = useState(false);
+  const [listingDurationDays, setListingDurationDays] = useState<number | null>(7);
+  const [listingQuantityInput, setListingQuantityInput] = useState("");
 
   // Pré-remplit l'indicatif pays du champ WhatsApp dès l'activation du mode
   // "annonce payante" : d'abord depuis le profil (numéro déjà vérifié), sinon
@@ -127,7 +145,12 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
     // Validation des champs d'annonce payante avant l'écriture en base
     let listingPrice: number | null = null;
     let whatsappLink: string | null = null;
+    let listingQuantity: number | null = null;
     if (isListing) {
+      if (!listingCategory) {
+        setErrorMessage("Choisissez le type d'annonce.");
+        return;
+      }
       if (!whatsappCountryIso || !whatsappPhoneLocal.trim()) {
         setErrorMessage("Indiquez votre numéro WhatsApp (indicatif + numéro) pour que l'acheteur puisse vous contacter.");
         return;
@@ -147,7 +170,21 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
         }
         listingPrice = priceNum;
       }
+
+      if (listingQuantityInput.trim()) {
+        const qtyNum = Number(listingQuantityInput);
+        if (!Number.isFinite(qtyNum) || qtyNum < 0) {
+          setErrorMessage("La quantité disponible doit être un nombre positif.");
+          return;
+        }
+        listingQuantity = qtyNum;
+      }
     }
+
+    const listingExpiresAt =
+      isListing && listingDurationDays
+        ? new Date(Date.now() + listingDurationDays * 24 * 60 * 60 * 1000).toISOString()
+        : null;
 
     setIsPosting(true);
     try {
@@ -163,6 +200,12 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
             listing_price: listingPrice,
             whatsapp_link: whatsappLink,
             is_free_listing: isListing && isFreeListing,
+            listing_category: isListing ? listingCategory : null,
+            listing_location: isListing && listingLocation.trim() ? listingLocation.trim() : null,
+            listing_condition: isListing ? listingCondition : null,
+            listing_negotiable: isListing ? listingNegotiable : false,
+            listing_expires_at: listingExpiresAt,
+            listing_quantity: listingQuantity,
           }
         ])
         .select();
@@ -176,6 +219,12 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
       setIsFreeListing(false);
       setListingPriceInput("");
       setWhatsappPhoneLocal("");
+      setListingCategory(null);
+      setListingLocation("");
+      setListingCondition(null);
+      setListingNegotiable(false);
+      setListingDurationDays(7);
+      setListingQuantityInput("");
 
       onPublished?.();
     } catch (err: any) {
@@ -252,6 +301,99 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
 
                 {isListing && (
                   <div className="space-y-2.5 bg-emerald-50/40 border border-emerald-100 rounded-xl p-3">
+                    {/* Type d'annonce : choisi par l'utilisateur, affiché ensuite comme
+                        badge de catégorie dans le fil (Feed.tsx). */}
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                        <Tag size={11} /> Type d'annonce
+                      </label>
+                      <div className="grid grid-cols-3 gap-1.5 mt-1">
+                        {LISTING_CATEGORIES.map((cat) => (
+                          <button
+                            key={cat.value}
+                            type="button"
+                            onClick={() => setListingCategory(cat.value)}
+                            className={`py-2 px-1.5 rounded-lg text-[10px] font-bold transition flex flex-col items-center gap-0.5 cursor-pointer border ${
+                              listingCategory === cat.value
+                                ? "bg-emerald-500 border-emerald-500 text-white"
+                                : "bg-white border-slate-200 text-slate-600 hover:border-emerald-300"
+                            }`}
+                          >
+                            <span className="text-sm leading-none">{cat.emoji}</span>
+                            <span className="leading-tight text-center">{cat.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Localisation + état de l'annonce */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                          <MapPin size={11} /> Ville / lieu
+                        </label>
+                        <input
+                          type="text"
+                          value={listingLocation}
+                          onChange={(e) => setListingLocation(e.target.value)}
+                          placeholder="Douala, Yaoundé..."
+                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                          <Boxes size={11} /> État
+                        </label>
+                        <div className="flex gap-1.5 mt-1">
+                          {(["neuf", "occasion"] as const).map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => setListingCondition((prev) => (prev === c ? null : c))}
+                              className={`flex-1 py-2.5 rounded-xl text-[10px] font-bold capitalize transition cursor-pointer border ${
+                                listingCondition === c
+                                  ? "bg-emerald-500 border-emerald-500 text-white"
+                                  : "bg-white border-slate-200 text-slate-600 hover:border-emerald-300"
+                              }`}
+                            >
+                              {c}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Durée de publication + quantité disponible */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                          <Clock size={11} /> Durée
+                        </label>
+                        <select
+                          value={listingDurationDays === null ? "none" : listingDurationDays}
+                          onChange={(e) => setListingDurationDays(e.target.value === "none" ? null : Number(e.target.value))}
+                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                        >
+                          {LISTING_DURATIONS.map((d) => (
+                            <option key={d.label} value={d.value === null ? "none" : d.value}>
+                              {d.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Quantité dispo.</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={listingQuantityInput}
+                          onChange={(e) => setListingQuantityInput(e.target.value)}
+                          placeholder="Illimité"
+                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                        />
+                      </div>
+                    </div>
+
                     <label className="flex items-center justify-between gap-2 py-1 cursor-pointer select-none">
                       <span className="text-[10px] font-bold text-slate-500 uppercase">Contact WhatsApp gratuit</span>
                       <button
@@ -265,7 +407,19 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
 
                     {!isFreeListing && (
                       <div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Prix (FCFA)</label>
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Prix (FCFA)</label>
+                          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                            <span className="text-[10px] font-bold text-slate-500">Négociable</span>
+                            <button
+                              type="button"
+                              onClick={() => setListingNegotiable((v) => !v)}
+                              className={`w-9 h-5 rounded-full transition relative cursor-pointer flex-shrink-0 ${listingNegotiable ? "bg-emerald-500" : "bg-slate-200"}`}
+                            >
+                              <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition ${listingNegotiable ? "translate-x-4" : "translate-x-0"}`} />
+                            </button>
+                          </label>
+                        </div>
                         <input
                           type="number"
                           min={1}
