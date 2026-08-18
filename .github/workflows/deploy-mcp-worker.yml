@@ -47,9 +47,3 @@ jobs:
         run: |
           sleep 5
           curl -sf "${{ vars.MCP_WORKER_URL }}/health" || echo "Health check failed (non-blocking)"
-YAMLEOFcat .github/workflows/deploy-mcp-worker.yml
-git add .github/workflows
-git commit -m "ci: deploy MCP worker"
-git push origin main
-
-
