@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import { Profile } from "./types";
-import { Heart, LayoutDashboard, PlusCircle, Settings, Sparkles, User, LogOut, X, Bell, ShieldAlert, Newspaper } from "lucide-react";
+import { Heart, LayoutDashboard, PlusCircle, Settings, Sparkles, User, LogOut, X, Bell, ShieldAlert, Newspaper, Bot } from "lucide-react";
 
 // Component imports
 import SupabaseSetupBanner from "./components/SupabaseSetupBanner";
@@ -784,6 +784,18 @@ export default function App() {
 
         {/* Quick User details or Auth Buttons for Guest */}
         <div className="flex items-center space-x-3">
+          {/* Guide : utiliser LoveRose depuis ChatGPT / Claude (connecteur MCP) */}
+          <a
+            href="/mcp"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Utiliser LoveRose depuis ChatGPT ou Claude (guide)"
+            aria-label="Utiliser LoveRose depuis ChatGPT ou Claude"
+            className="flex items-center gap-1.5 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white border border-rose-100 transition-all px-3 h-9 rounded-xl text-xs font-bold cursor-pointer flex-shrink-0"
+          >
+            <Bot size={16} />
+            <span className="hidden sm:inline">Chatbot IA</span>
+          </a>
           {currentUser ? (
             <>
               {isAdmin && (
