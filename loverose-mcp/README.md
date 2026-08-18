@@ -22,7 +22,60 @@ npm start              # stdio — à brancher dans Claude Desktop / client MCP
 # test : node scripts/smoke-test.mjs  (liste les 92 outils via le protocole)
 ```
 
-Client MCP (ex. Claude Desktop, `claude_desktop_config.json`) :
+Deux transports (`MCP_TRANSPORT` dans .env) :
+
+| Mode | Commande | Usage |
+|---|---|---|
+| `stdio` (défaut) | `node dist/index.js` | Clients **locaux** : Claude Desktop, Claude Code, Cursor, VS Code |
+| `http` | `MCP_TRANSPORT=http node dist/index.js` (port `MCP_HTTP_PORT`, défaut 8787) | **Connecteurs distants** : claude.ai, ChatGPT, n'importe quel client via `POST /mcp` (Streamable HTTP, stateless) |
+
+Vérification rapide du mode HTTP :
+
+```bash
+curl -X POST http://localhost:8787/mcp \
+  -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+## Connecter le MCP aux chatbots
+
+### 🖥️ Claude Desktop (le plus simple — stdio local)
+
+1. Ouvrir le fichier de config :
+   - macOS : `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - Windows : `%APPDATA%\Claude\claude_desktop_config.json`
+2. Ajouter :
+
+```json
+{
+  "mcpServers": {
+    "loverose": {
+      "command": "node",
+      "args": ["/chemin/absolu/vers/loverose-mcp/dist/index.js"],
+      "env": {
+        "SUPABASE_URL": "https://iqoceeaqwfdqiucrsicm.supabase.co",
+        "SUPABASE_ANON_KEY": "votre-anon-key",
+        "SUPABASE_SERVICE_ROLE_KEY": "votre-service-role-key",
+        "APP_URL": "https://loverose.pages.dev"
+      }
+    }
+  }
+}
+```
+
+3. Relancer Claude Desktop → l'icône outils 🛠️ affiche les 92 outils LoveRose.
+4. Dans la conversation : *« Connecte-toi à LoveRose : mon email est X, mon mot de passe Y »* → l'agent appelle `login`, garde le token, puis tout le reste.
+
+### 💻 Claude Code (CLI)
+
+```bash
+claude mcp add loverose \
+  -e SUPABASE_URL=https://iqoceeaqwfdqiucrsicm.supabase.co \
+  -e SUPABASE_ANON_KEY=xxx -e SUPABASE_SERVICE_ROLE_KEY=xxx \
+  -- node /chemin/vers/loverose-mcp/dist/index.js
+```
+
+### 🖱️ Cursor — `.cursor/mcp.json` (à la racine du projet)
 
 ```json
 {
@@ -30,16 +83,49 @@ Client MCP (ex. Claude Desktop, `claude_desktop_config.json`) :
     "loverose": {
       "command": "node",
       "args": ["/chemin/vers/loverose-mcp/dist/index.js"],
-      "env": {
-        "SUPABASE_URL": "https://iqoceeaqwfdqiucrsicm.supabase.co",
-        "SUPABASE_ANON_KEY": "...",
-        "SUPABASE_SERVICE_ROLE_KEY": "...",
-        "APP_URL": "https://loverose.pages.dev"
-      }
+      "env": { "SUPABASE_URL": "...", "SUPABASE_ANON_KEY": "...", "SUPABASE_SERVICE_ROLE_KEY": "..." }
     }
   }
 }
 ```
+
+### 🧩 VS Code (Copilot Chat, mode agent) — `.vscode/mcp.json`
+
+```json
+{
+  "servers": {
+    "loverose": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/chemin/vers/loverose-mcp/dist/index.js"],
+      "env": { "SUPABASE_URL": "...", "SUPABASE_ANON_KEY": "...", "SUPABASE_SERVICE_ROLE_KEY": "..." }
+    }
+  }
+}
+```
+
+### 🌐 Claude.ai et ChatGPT (web) — connecteurs distants
+
+Ces interfaces **n'acceptent pas stdio local** : il faut une URL **HTTPS publique** servie par le mode `http`.
+
+1. Lancer le serveur en mode HTTP (sur votre machine ou un serveur) :
+   ```bash
+   MCP_TRANSPORT=http node dist/index.js
+   ```
+2. L'exposer en HTTPS, au choix :
+   - **Cloudflare Tunnel (gratuit, recommandé)** : `cloudflared tunnel --url http://localhost:8787` → vous obtenez `https://xxx.trycloudflare.com`
+   - **ngrok** : `ngrok http 8787`
+   - Ou déployer `dist/` sur un hébergeur Node (Render, Railway, Fly.io, VPS...)
+3. Brancher le connecteur :
+   - **claude.ai** : Paramètres → Connecteurs → *Ajouter un connecteur* → URL `https://votre-tunnel/mcp`
+   - **ChatGPT** : Paramètres → Connecteurs (activer le mode développeur si nécessaire) → *Créer* → URL `https://votre-tunnel/mcp`
+4. Dans la conversation : *« Utilise LoveRose : connecte-moi »* → l'agent appelle `login` puis les outils.
+
+⚠️ **Sécurité avant d'exposer publiquement** : chaque outil exige le JWT du membre (RLS appliquée), mais un endpoint public permet à quiconque de *tenter* login/register comme sur le site. Pour la production : gardez `SUPABASE_SERVICE_ROLE_KEY` uniquement côté serveur (jamais dans le client MCP distant), préférez un tunnel nommé Cloudflare avec restriction d'accès, et/ou ajoutez une authentification devant l'endpoint.
+
+### 🔌 Autres clients compatibles MCP
+
+Tout client supportant stdio ou Streamable HTTP : LibreChat, Warp, Cline (VS Code), Goose, n8n, l'Inspecteur MCP officiel (`npx @modelcontextprotocol/inspector node dist/index.js`).
 
 ## Authentification des outils
 
