@@ -40,3 +40,23 @@ export function createSupabaseAnonClient(config: AppConfig): SupabaseClient {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
 }
+
+/**
+ * Client Supabase "au nom de l'utilisateur" — client fraîchement créé pour
+ * CHAQUE appel d'outil MCP, portant le JWT Supabase fourni par le client MCP
+ * dans l'en-tête Authorization de chaque requête PostgREST.
+ *
+ * C'est le pendant serveur de `src/lib/supabase.ts` côté navigateur : la
+ * RLS (Row Level Security) s'applique EXACTEMENT comme si l'utilisateur
+ * utilisait l'app React. Aucun outil n'a besoin de réimplémenter les règles
+ * de sécurité — elles sont celles déjà en production.
+ *
+ * Le JWT est validé en amont par `resolveCallerContext` (core/auth/context.ts)
+ * avant que ce client ne soit construit.
+ */
+export function createUserClient(config: AppConfig, accessToken: string): SupabaseClient {
+  return createClient(config.supabaseUrl, config.supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+  });
+}

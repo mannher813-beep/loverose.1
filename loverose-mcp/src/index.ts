@@ -9,10 +9,13 @@ import { registerAuthTools } from "./domains/auth/index.js";
 import { registerProfileTools } from "./domains/profile/index.js";
 import { registerDiscoverTools } from "./domains/discover/index.js";
 import { registerChatTools } from "./domains/chat/index.js";
+import { registerFeedTools } from "./domains/feed/index.js";
 import { registerPaymentsTools } from "./domains/payments/index.js";
 import { registerCreatorTools } from "./domains/creator/index.js";
 import { registerNotificationsTools } from "./domains/notifications/index.js";
 import { registerSettingsTools } from "./domains/settings/index.js";
+import { registerAdminTools } from "./domains/admin/index.js";
+import { registerExtrasTools } from "./domains/extras/index.js";
 
 import type { DomainDeps } from "./domains/types.js";
 
@@ -25,9 +28,8 @@ import type { DomainDeps } from "./domains/types.js";
  * les mêmes tables Supabase, les mêmes RPC et les mêmes Edge Functions
  * que le site/l'application actuels.
  *
- * À cette étape, seule l'architecture est en place : aucun outil MCP
- * n'est encore enregistré (voir les fichiers domains/*\/index.ts, qui
- * exportent des fonctions register*Tools volontairement vides).
+ * Domaines enregistrés (≈70 outils) : auth, profile, discover, chat,
+ * feed, payments, creator, notifications, settings, admin, extras.
  */
 
 const logger = createLogger("bootstrap");
@@ -39,21 +41,23 @@ async function main() {
 
   const server = new McpServer({
     name: "loverose-mcp",
-    version: "0.1.0",
+    version: "0.2.0",
   });
 
   const deps: DomainDeps = { server, admin, anon, config };
 
-  // Enregistrement de chaque domaine métier. Chaque fonction est, pour
-  // l'instant, un squelette sans outil (voir domains/*).
+  // Enregistrement de chaque domaine métier.
   registerAuthTools(deps);
   registerProfileTools(deps);
   registerDiscoverTools(deps);
   registerChatTools(deps);
+  registerFeedTools(deps);
   registerPaymentsTools(deps);
   registerCreatorTools(deps);
   registerNotificationsTools(deps);
   registerSettingsTools(deps);
+  registerAdminTools(deps);
+  registerExtrasTools(deps);
 
   if (config.transport === "stdio") {
     const transport = new StdioServerTransport();
