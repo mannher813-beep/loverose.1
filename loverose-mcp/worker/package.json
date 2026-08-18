@@ -1,0 +1,24 @@
+{
+  "name": "loverose-mcp-worker",
+  "private": true,
+  "version": "0.3.0",
+  "description": "Serveur MCP LoveRose déployé sur Cloudflare Workers (92 outils) — même base de code que la version Node (../src).",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "tsc --noEmit",
+    "dry-run": "wrangler deploy --dry-run --outdir=dist-dry"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.23.0",
+    "@supabase/supabase-js": "^2.108.2",
+    "agents": "^0.2.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250718.0",
+    "typescript": "~5.8.2",
+    "wrangler": "^4.0.0"
+  }
+}

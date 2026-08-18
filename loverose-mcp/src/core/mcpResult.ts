@@ -14,12 +14,42 @@
 export interface McpToolTextResult {
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
+  /** Signature d'index exigée par le SDK MCP pour les résultats d'outils. */
+  [key: string]: unknown;
 }
 
 export function mcpOk(data: unknown): McpToolTextResult {
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
   };
+}
+
+/**
+ * Réussite accompagnée d'images affichables directement par le client MCP
+ * (photos de profils/posts). Chaque image est renvoyée en base64 avec son
+ * type MIME — format `type: "image"` de la spécification MCP.
+ */
+export interface McpImage {
+  data: string; // base64 sans préfixe data:
+  mimeType: string;
+}
+export type McpContentBlock =
+  | { type: "text"; text: string }
+  | { type: "image"; data: string; mimeType: string };
+
+export interface McpToolContentResult {
+  content: McpContentBlock[];
+  isError?: boolean;
+  /** Signature d'index exigée par le SDK MCP pour les résultats d'outils. */
+  [key: string]: unknown;
+}
+
+export function mcpOkWithImages(data: unknown, images: McpImage[]): McpToolContentResult {
+  const content: McpContentBlock[] = [
+    { type: "text", text: JSON.stringify(data, null, 2) },
+    ...images.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType })),
+  ];
+  return { content };
 }
 
 export function mcpFail(message: string, extra?: { code?: string; status?: number }): McpToolTextResult {
@@ -56,9 +86,9 @@ export function mcpFailFromSupabaseError(error: unknown): McpToolTextResult {
  * résultat MCP `isError: true` plutôt que de faire planter l'appel.
  */
 export function withMcpErrorHandling<Args extends unknown[]>(
-  handler: (...args: Args) => Promise<McpToolTextResult>
+  handler: (...args: Args) => Promise<McpToolTextResult | McpToolContentResult>
 ) {
-  return async (...args: Args): Promise<McpToolTextResult> => {
+  return async (...args: Args): Promise<McpToolTextResult | McpToolContentResult> => {
     try {
       return await handler(...args);
     } catch (err) {

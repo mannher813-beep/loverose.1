@@ -1,146 +1,332 @@
-# LoveRose MCP Server — architecture (v0.1, sans outils)
+# LoveRose MCP Server — 92 outils (v0.3 — stdio + HTTP)
 
-Ce dossier contient **uniquement l'architecture** d'un serveur MCP (Model
-Context Protocol) pour LoveRose, tel que demandé. **Aucun outil n'est encore
-implémenté** — seulement la structure, les conventions et les points
-d'extension.
+Serveur MCP (Model Context Protocol) pour LoveRose : **couche d'accès complète**
+à l'application, indépendante de l'interface React. Objectif : un membre (ou un
+admin) peut utiliser LoveRose **sans ouvrir le site** — inscription, découverte,
+chat, feed avec photos, paiements MoneyFusion, création de contenu, modération.
 
-## Ce que ce projet N'EST PAS
+Le serveur ne réimplémente AUCUNE règle métier : il interroge les mêmes tables
+Supabase, appelle les mêmes RPC Postgres et proxifie les mêmes APIs que le
+site/l'app PWA. La sécurité (RLS) s'applique via le JWT utilisateur fourni à
+chaque outil.
 
-- Ce n'est **pas** une modification du site/de l'app existants
-  (`loverose.1-main/src`, `loverose.1-main/functions`) : rien n'y a été touché.
-- Ce n'est **pas** une réimplémentation de la logique métier : ce serveur est
-  conçu pour **appeler** les mêmes tables Supabase, les mêmes fonctions RPC
-  Postgres et les mêmes Edge Functions déjà en production.
+## 🌍 Mettre le MCP à disposition des utilisateurs (production)
 
-## Pourquoi un projet séparé et indépendant
+Le site est en production sur `https://loverose.pages.dev`, mais **un site
+Cloudflare Pages ne peut pas héberger le serveur MCP** (processus Node
+permanent). Il faut un hébergement always-on qui donnera **l'URL publique à
+partager** :
 
-- Le SDK MCP officiel (`@modelcontextprotocol/sdk`) tourne dans un processus
-  Node.js autonome (transport stdio ou HTTP), pas dans le navigateur / React.
-- Séparer complètement ce dossier du repo `loverose.1-main` garantit que le
-  site et l'app PWA continuent de fonctionner à l'identique, quoi qu'il
-  arrive côté MCP.
+```
+Utilisateur ChatGPT/Claude ──► https://<votre-hôte-mcp>/mcp ──► Supabase LoveRose
+   (ajoute le connecteur           (serveur MCP hébergé 24/7)     (mêmes tables
+    une seule fois)                 Dockerfile fourni              que le site)
+```
+
+### Option recommandée : Railway / Render / Fly.io (Dockerfile prêt)
+
+1. Créer un service depuis le dossier `loverose-mcp/` (chaque plateforme
+   détecte le `Dockerfile` fourni) — Railway : *New Project → Deploy from
+   GitHub repo* ; Render : *New → Web Service* ; Fly.io : `fly launch`.
+2. Variables d'environnement du service :
+   ```
+   SUPABASE_URL=https://iqoceeaqwfdqiucrsicm.supabase.co
+   SUPABASE_ANON_KEY=...        # VITE_SUPABASE_ANON_KEY du site
+   SUPABASE_SERVICE_ROLE_KEY=... # ⚠️ SECRET — uniquement sur le serveur
+   APP_URL=https://loverose.pages.dev
+   MCP_TRANSPORT=http
+   MCP_HTTP_PORT=8787
+   ```
+3. Vous obtenez une URL publique, ex. `https://loverose-mcp.up.railway.app`
+   → **le lien MCP à donner aux utilisateurs est `https://…/mcp`**.
+4. (Optionnel) Brancher un domaine propre : `mcp.loverose.com` etc.
+
+### Alternatives
+
+- **⭐ Cloudflare Workers natif (recommandé — voir `worker/`)** : même compte Cloudflare que le site, domaine gratuit `loverose-mcp.<sous-domaine>.workers.dev`, plan gratuit (Durable Object SQLite). Instructions détaillées ci-dessous.
+- **Cloudflare Tunnel** depuis un VPS : `cloudflared tunnel --url http://localhost:8787` — reste dans l'écosystème Cloudflare du site.
+- **VPS + Docker + nginx TLS** : le Dockerfile fonctionne tel quel.
+
+### Déployer sur Cloudflare Workers (natif, recommandé)
+
+Le dossier `worker/` réutilise **la même base de code** (les 11 domaines de
+`../src`) derrière un transport Workers officiel (`agents/mcp`, Durable Object
+SQLite — compatible plan gratuit).
+
+```bash
+cd loverose-mcp/worker
+npm install
+
+npx wrangler login                      # compte Cloudflare du site
+npx wrangler secret put SUPABASE_ANON_KEY          # valeur VITE_SUPABASE_ANON_KEY
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY  # ⚠️ secret serveur
+npx wrangler secret put GEMINI_API_KEY              # optionnel (outils IA)
+
+npx wrangler deploy
+# → https://loverose-mcp.<votre-sous-domaine>.workers.dev/mcp
+```
+
+Vérifications : `curl https://…/health` (JSON ok) puis `tools/list` sur `/mcp`.
+Développement local : `npm run dev` (wrangler dev, http://localhost:8787/mcp).
+
+### Brancher la page d'aide publique du site
+
+Le site expose désormais **`https://loverose.pages.dev/mcp`** (functions/mcp.ts)
+qui guide les utilisateurs pas à pas. Après déploiement du Worker, définissez
+la variable Pages `MCP_URL` :
+
+```
+Cloudflare Dashboard → Pages → loverose → Settings → Environment variables
+  MCP_URL = https://loverose-mcp.<votre-sous-domaine>.workers.dev/mcp
+```
+
+puis ajoutez le lien « 🤖 Utiliser avec ChatGPT/Claude » vers `/mcp` dans le
+menu du site si souhaité.
+
+### Ce que partagent les utilisateurs
+
+Le guide `GUIDE-UTILISATEURS.md` (à la racine de ce dossier) est prêt à être
+publié : « Ajoutez `https://<votre-hôte-mcp>/mcp` dans ChatGPT → Connecteurs »,
+puis connexion avec email/mot de passe LoveRose **dans la conversation**.
+
+### Vérifier le déploiement
+
+```bash
+curl https://<votre-hôte>/health          # {"ok":true,...,"tools":92}
+curl -X POST https://<votre-hôte>/mcp \
+  -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'   # liste des 92 outils
+```
+
+## Démarrage
+
+```bash
+cd loverose-mcp
+npm install
+cp .env.example .env   # SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+npm run build
+npm start              # stdio — à brancher dans Claude Desktop / client MCP
+
+# test : node scripts/smoke-test.mjs  (liste les 92 outils via le protocole)
+```
+
+Deux transports (`MCP_TRANSPORT` dans .env) :
+
+| Mode | Commande | Usage |
+|---|---|---|
+| `stdio` (défaut) | `node dist/index.js` | Clients **locaux** : Claude Desktop, Claude Code, Cursor, VS Code |
+| `http` | `MCP_TRANSPORT=http node dist/index.js` (port `MCP_HTTP_PORT`, défaut 8787) | **Connecteurs distants** : claude.ai, ChatGPT, n'importe quel client via `POST /mcp` (Streamable HTTP, stateless) |
+
+Vérification rapide du mode HTTP :
+
+```bash
+curl -X POST http://localhost:8787/mcp \
+  -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+## Connecter le MCP aux chatbots
+
+### 🖥️ Claude Desktop (le plus simple — stdio local)
+
+1. Ouvrir le fichier de config :
+   - macOS : `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - Windows : `%APPDATA%\Claude\claude_desktop_config.json`
+2. Ajouter :
+
+```json
+{
+  "mcpServers": {
+    "loverose": {
+      "command": "node",
+      "args": ["/chemin/absolu/vers/loverose-mcp/dist/index.js"],
+      "env": {
+        "SUPABASE_URL": "https://iqoceeaqwfdqiucrsicm.supabase.co",
+        "SUPABASE_ANON_KEY": "votre-anon-key",
+        "SUPABASE_SERVICE_ROLE_KEY": "votre-service-role-key",
+        "APP_URL": "https://loverose.pages.dev"
+      }
+    }
+  }
+}
+```
+
+3. Relancer Claude Desktop → l'icône outils 🛠️ affiche les 92 outils LoveRose.
+4. Dans la conversation : *« Connecte-toi à LoveRose : mon email est X, mon mot de passe Y »* → l'agent appelle `login`, garde le token, puis tout le reste.
+
+### 💻 Claude Code (CLI)
+
+```bash
+claude mcp add loverose \
+  -e SUPABASE_URL=https://iqoceeaqwfdqiucrsicm.supabase.co \
+  -e SUPABASE_ANON_KEY=xxx -e SUPABASE_SERVICE_ROLE_KEY=xxx \
+  -- node /chemin/vers/loverose-mcp/dist/index.js
+```
+
+### 🖱️ Cursor — `.cursor/mcp.json` (à la racine du projet)
+
+```json
+{
+  "mcpServers": {
+    "loverose": {
+      "command": "node",
+      "args": ["/chemin/vers/loverose-mcp/dist/index.js"],
+      "env": { "SUPABASE_URL": "...", "SUPABASE_ANON_KEY": "...", "SUPABASE_SERVICE_ROLE_KEY": "..." }
+    }
+  }
+}
+```
+
+### 🧩 VS Code (Copilot Chat, mode agent) — `.vscode/mcp.json`
+
+```json
+{
+  "servers": {
+    "loverose": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/chemin/vers/loverose-mcp/dist/index.js"],
+      "env": { "SUPABASE_URL": "...", "SUPABASE_ANON_KEY": "...", "SUPABASE_SERVICE_ROLE_KEY": "..." }
+    }
+  }
+}
+```
+
+### 🌐 Claude.ai et ChatGPT (web) — connecteurs distants
+
+Ces interfaces **n'acceptent pas stdio local** : il faut une URL **HTTPS publique** servie par le mode `http`.
+
+1. Lancer le serveur en mode HTTP (sur votre machine ou un serveur) :
+   ```bash
+   MCP_TRANSPORT=http node dist/index.js
+   ```
+2. L'exposer en HTTPS, au choix :
+   - **Cloudflare Tunnel (gratuit, recommandé)** : `cloudflared tunnel --url http://localhost:8787` → vous obtenez `https://xxx.trycloudflare.com`
+   - **ngrok** : `ngrok http 8787`
+   - Ou déployer `dist/` sur un hébergeur Node (Render, Railway, Fly.io, VPS...)
+3. Brancher le connecteur :
+   - **claude.ai** : Paramètres → Connecteurs → *Ajouter un connecteur* → URL `https://votre-tunnel/mcp`
+   - **ChatGPT** : Paramètres → Connecteurs (activer le mode développeur si nécessaire) → *Créer* → URL `https://votre-tunnel/mcp`
+4. Dans la conversation : *« Utilise LoveRose : connecte-moi »* → l'agent appelle `login` puis les outils.
+
+⚠️ **Sécurité avant d'exposer publiquement** : chaque outil exige le JWT du membre (RLS appliquée), mais un endpoint public permet à quiconque de *tenter* login/register comme sur le site. Pour la production : gardez `SUPABASE_SERVICE_ROLE_KEY` uniquement côté serveur (jamais dans le client MCP distant), préférez un tunnel nommé Cloudflare avec restriction d'accès, et/ou ajoutez une authentification devant l'endpoint.
+
+### 🔌 Autres clients compatibles MCP
+
+Tout client supportant stdio ou Streamable HTTP : LibreChat, Warp, Cline (VS Code), Goose, n8n, l'Inspecteur MCP officiel (`npx @modelcontextprotocol/inspector node dist/index.js`).
+
+## Authentification des outils
+
+1. Le client appelle `login` (ou `register`) → obtient un JWT Supabase.
+2. Ce `accessToken` est passé à chaque outil utilisateur.
+3. Le serveur valide le JWT (`admin.auth.getUser`) puis exécute les requêtes
+   avec un client porteur de CE JWT → **RLS de production appliquée**.
+4. Les outils `admin_*` exigent en plus `profiles.role = "admin"`.
+
+## Inventaire des 92 outils
+
+### AUTH (8) — Supabase Auth via client anon
+`register` · `login` · `logout` · `refreshSession` · `verifyPhoneOTP` ·
+`verifyEmail` · `resendOTP` · `resetPassword`
+
+### PROFILE (10) — Onboarding.tsx, ProfileSettings.tsx, Settings.tsx
+`complete_onboarding` · `get_my_profile` · `update_my_profile` ·
+`get_public_profile` · `upload_photo` (base64→Storage `loverose`) ·
+`delete_photo` · `request_verification` (badge, 500 FCFA) ·
+`get_verification_status` · `boost_profile` (10 crédits, 1h) · `get_profile_views`
+
+### DISCOVER (10) — Discover.tsx, WhoLikedMe.tsx
+`get_recommendations` (compatibilité genre/préférences, exclusions blocages/
+likes/matchs, boostés d'abord via RPC `get_active_premium_user_ids`) ·
+`like_profile` · `superlike_profile` · `pass_profile` (no-op, comme l'app) ·
+`undo_last_like` · `get_who_liked_me` · `get_matches` · `unmatch` ·
+`block_user` · `unblock_user` · `report_user`
+
+### CHAT (4) — Chat.tsx (règles de quota identiques)
+`list_conversations` · `get_messages` · `send_message` (3 premiers gratuits,
+10 mots max sans chiffres ; au-delà le trigger PostgreSQL débite 1 crédit) ·
+`get_message_quota`
+
+### FEED (14) — Feed.tsx, PublishListing.tsx (photos/likes/commentaires/partages)
+`get_feed_posts` · `get_post` · `get_post_media` (**images base64 affichables
+par le client MCP**, annonces payantes verrouillées jusqu'à déblocage) ·
+`create_post` (posts + annonces payantes) · `delete_my_post` · `like_post` ·
+`unlike_post` · `get_post_comments` · `add_post_comment` · `share_post` ·
+`review_post` (avis vendeur) · `unlock_post` (initie paiement) ·
+`follow_profile` · `unfollow_profile`
+
+### PAYMENTS (8) — proxy vers l'API du site, JAMAIS de réimplémentation MoneyFusion
+`list_plans` · `get_credit_balance` · `get_credit_history` ·
+`get_subscription_status` (RPC `is_user_premium`) · `buy_credits` ·
+`subscribe_premium` · `get_payment_status` · `list_payment_operators`
+
+→ Les outils de paiement renvoient un **lien checkout MoneyFusion** ; le
+webhook existant (`moneyfusion-webhook`) crédite/valide comme pour le site.
+
+### CREATOR (11) — CreatorOnboarding/Dashboard/Creators/PublicCreatorPage
+`start_creator_onboarding` · `get_my_creator_page` · `get_creator_dashboard` ·
+`add_payout_method` (RPC `set_payout_method`) · `request_payout` (RPC
+`request_payout`) · `list_payouts` · `list_creators` · `get_creator_page` ·
+`subscribe_to_page` · `tip_creator` · `get_referral_stats`
+
+### NOTIFICATIONS (5) — Notifications.tsx, lib/push.ts
+`list_notifications` · `get_unread_count` · `mark_notification_read` ·
+`mark_all_notifications_read` · `register_push_subscription`
+
+### SETTINGS (6) — Settings.tsx
+`get_my_settings` · `update_my_settings` · `update_location` ·
+`list_blocked_users` · `change_password` · `delete_my_account` (double
+confirmation : « SUPPRIMER » + mot de passe)
+
+### ADMIN (10) — garde profiles.role = "admin" (AdminPanel.tsx)
+`admin_list_reports` · `admin_update_report_status` ·
+`admin_set_profile_verification` · `admin_hide_profile` ·
+`admin_list_verifications` (avec URLs signées des documents KYC) ·
+`admin_review_creator_verification` · `admin_update_payout_status` ·
+`admin_send_notification` (RPC existante) · `admin_create_announcement`
+(table admin_announcements, CTA inclus) · `admin_delete_profile`
+
+### EXTRAS (6) — transverse + IA Gemini (GEMINI_API_KEY optionnelle)
+`get_app_config` (platform_settings) · `send_contact_message` (proxy
+functions/api/contact.ts, Turnstile inchangé) · `suggest_bio` ·
+`suggest_opening_line` (respecte les règles des messages gratuits) ·
+`moderate_photo` · — soit 5 outils + `get_app_config`.
+
+## Limites connues (propres au protocole MCP)
+
+- **Pas de boutons cliquables** : les paiements/likes se font par appel
+  d'outil confirmé par l'utilisateur ; le paiement ouvre un lien MoneyFusion.
+- **Pas de push temps réel** : l'agent « poll » `get_unread_count` /
+  `list_notifications`.
+- **Realtime Supabase** (websocket) : non applicable en MCP → pagination via
+  `limit`/`offset`.
 
 ## Structure
 
 ```
 loverose-mcp/
-├── package.json           # dépendances : @modelcontextprotocol/sdk, @supabase/supabase-js, zod
-├── tsconfig.json
-├── .env.example
-└── src/
-    ├── index.ts            # point d'entrée : instancie McpServer, câble le transport,
-    │                       # enregistre chaque domaine (sans outil pour l'instant)
-    ├── config/
-    │   └── env.ts          # chargement + validation des variables d'environnement
-    ├── core/
-    │   ├── supabaseClient.ts   # client Supabase service_role, même pattern que
-    │   │                       # functions/_shared/supabaseAdmin.ts
-    │   ├── errors.ts           # erreurs partagées (format cohérent entre outils)
-    │   ├── logger.ts           # logger structuré minimal
-    │   └── auth/
-    │       └── context.ts      # résolution du contexte appelant (JWT utilisateur
-    │                            # ou jeton de service), même logique que le
-    │                            # `jwtRole()` déjà utilisé dans les Edge Functions
-    ├── domains/
-    │   ├── types.ts         # signature commune `register*Tools(deps)`
-    │   ├── auth/            # ✅ IMPLÉMENTÉ — register, login, logout, refreshSession,
-    │   │                    #    verifyPhoneOTP, verifyEmail, resendOTP, resetPassword
-    │   ├── profile/         # → ProfileSettings.tsx, ProfileDetailModal.tsx, PublicProfile.tsx
-    │   ├── discover/        # → Discover.tsx, WhoLikedMe.tsx, likes/matches/blocked_users
-    │   ├── chat/            # → Chat.tsx, matches/messages/notifications
-    │   ├── payments/        # → functions/api/payments/*, Edge Functions MoneyFusion
-    │   ├── creator/         # → CreatorDashboard.tsx, Creators.tsx, creator_*
-    │   ├── notifications/   # → Notifications.tsx, push.ts, send-push
-    │   └── settings/        # → Settings.tsx, platform_settings, blocked_users
-    └── shared/
-        └── tables.ts        # cartographie domaine → tables/RPC/Edge Functions existantes
+├── src/
+│   ├── index.ts               # entrée : McpServer + enregistrement des 11 domaines
+│   ├── config/env.ts          # variables d'environnement
+│   ├── core/
+│   │   ├── supabaseClient.ts  # clients admin / anon / par-utilisateur (JWT → RLS)
+│   │   ├── auth/context.ts    # validation JWT + rôle (pattern Edge Functions)
+│   │   ├── mcpResult.ts       # résultats texte + IMAGES base64, gestion d'erreurs
+│   │   ├── tooling.ts         # helpers partagés (asUser, asAdminUser, unwrap…)
+│   │   ├── errors.ts · logger.ts
+│   └── domains/
+│       ├── auth/ profile/ discover/ chat/ feed/ payments/
+│       ├── creator/ notifications/ settings/ admin/ extras/
+│       └── types.ts · shared/tables.ts (cartographie tables/RPC/Edge Functions)
+├── scripts/smoke-test.mjs     # vérifie les 92 outils via le protocole MCP
+└── dist/                      # build tsc
 ```
 
-Chaque `domains/<domaine>/index.ts` exporte une fonction
-`register<Domaine>Tools(deps)` **vide pour l'instant** (juste un
-commentaire listant les futurs outils et les sources à réutiliser). Rien
-n'appelle encore `server.tool(...)`.
+## Ce que ce projet N'EST PAS
 
-## Stratégie de réutilisation de la logique métier
-
-Constat après analyse du repo `loverose.1-main` :
-
-| Élément                          | Où vit la logique aujourd'hui                          | Ce que le MCP devra faire |
-|-----------------------------------|----------------------------------------------------------|----------------------------|
-| Règles de matching, crédits, quotas | Composants React (`Discover.tsx`, `Chat.tsx`, ...) via `supabase-js` | Réinterroger **les mêmes tables** (`likes`, `matches`, `messages`, `user_credits`, ...) avec les mêmes filtres, pas les réécrire à la main |
-| Statut premium, retraits créateur, géoloc | Fonctions RPC Postgres (`is_user_premium`, `request_payout`, `update_my_location`, `update_my_presence`) | Appeler ces RPC directement — ne jamais recalculer ces règles côté MCP |
-| Paiement MoneyFusion, push, recompression d'images | Edge Functions Supabase déployées (`moneyfusion-create-payment`, `send-push`, `recompress-images`, ...) | Le domaine `payments`/`notifications` doit **appeler** ces fonctions, pas réimplémenter l'intégration |
-| Contact, Turnstile | Cloudflare Pages Functions (`functions/api/contact.ts`, `verify-turnstile.ts`) | Idem : proxy, pas de duplication |
-
-Voir `src/shared/tables.ts` pour la cartographie complète domaine → tables/RPC/Edge Functions.
-
-## Stratégie d'authentification (mécanisme prêt, pas encore branché à un outil)
-
-Chaque outil MCP agira "au nom" d'un compte LoveRose. Pour ne pas dupliquer
-les règles de sécurité déjà en place :
-
-1. Le client MCP fournit le **JWT Supabase** de l'utilisateur (le même token
-   émis par `supabase.auth` côté app).
-2. Le serveur valide ce JWT via `admin.auth.getUser(jwt)` — identique au
-   pattern déjà utilisé dans `send-reengagement-campaign` (`jwtRole()`).
-3. Les outils lisent ensuite `profiles.role` pour les autorisations
-   (admin, creator...), sans réimplémenter cette logique.
-
-Un second mode "service" (jeton de confiance `MCP_TRUSTED_SERVICE_TOKEN`) est
-prévu pour de futurs outils strictement serveur-à-serveur — jamais pour
-authentifier un utilisateur final.
-
-Voir `src/core/auth/context.ts`.
-
-## Domaine Auth (implémenté)
-
-8 outils, tous des appels directs à Supabase Auth (aucune règle réimplémentée) :
-
-| Outil | Méthode Supabase Auth | Client utilisé |
-|---|---|---|
-| `register` | `auth.signUp` | anon |
-| `login` | `auth.signInWithPassword` | anon |
-| `logout` | `auth.admin.signOut(accessToken, scope)` | admin (service_role) |
-| `refreshSession` | `auth.refreshSession` | anon |
-| `verifyPhoneOTP` | `auth.verifyOtp` (type `sms`/`phone_change`) | anon |
-| `verifyEmail` | `auth.verifyOtp` (type `signup`/`email`/`email_change`) | anon |
-| `resendOTP` | `auth.resend` | anon |
-| `resetPassword` | `auth.resetPasswordForEmail` | anon |
-
-Un nouveau client "anon" (`core/supabaseClient.ts` → `createSupabaseAnonClient`)
-a été ajouté : les flux d'authentification grand public doivent utiliser
-exactement les mêmes privilèges que `src/lib/supabase.ts` côté app, jamais le
-client `service_role`. Seul `logout` utilise le client admin, car révoquer la
-session d'un token donné passe par l'API d'administration GoTrue.
-
-Nécessite la variable `SUPABASE_ANON_KEY` (voir `.env.example`), en plus de
-`SUPABASE_SERVICE_ROLE_KEY` déjà requise.
-
-**Gestion des erreurs** (`core/mcpResult.ts`) : chaque outil est enveloppé par
-`withMcpErrorHandling`, qui garantit qu'aucune exception ne s'échappe jamais
-d'un handler. Toute erreur Supabase Auth (identifiants invalides, OTP expiré,
-compte déjà existant, etc.) ou exception inattendue est renvoyée au client
-MCP sous la forme `{ content: [...], isError: true }` avec un message et,
-quand disponible, un `code`/`status` — jamais une erreur de protocole brute.
-
-Volontairement hors périmètre de ce domaine : la connexion Google
-(`signInWithOAuth`, flux de redirection navigateur non pertinent en MCP) et
-la vérification Turnstile (couche anti-bot Cloudflare séparée de Supabase
-Auth, gérée par `functions/api/verify-turnstile.ts`).
-
-## Lancer le squelette (aucun outil ne répondra encore, mais le serveur démarre)
-
-```bash
-cd loverose-mcp
-npm install
-cp .env.example .env   # renseigner SUPABASE_SERVICE_ROLE_KEY
-npm run dev
-```
-
-## Prochaine étape (hors périmètre de cette livraison)
-
-Implémenter les premiers outils dans `domains/*/index.ts` en respectant les
-sources listées plus haut, domaine par domaine — en commençant probablement
-par `profile` et `discover` (lecture seule, faible risque), avant `payments`
-et `settings` (actions sensibles).
+- Pas une modification du site/app existants (`src/`, `functions/`) : rien n'y
+  a été touché.
+- Pas une réimplémentation de la logique métier : mêmes tables, mêmes RPC
+  (`is_user_premium`, `request_payout`, `set_payout_method`,
+  `admin_send_notification`, `get_active_premium_user_ids`…), mêmes Edge
+  Functions et APIs de paiement.

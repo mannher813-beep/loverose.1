@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "loverose-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "MCP_OBJECT", "class_name": "LoveRoseMCP" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LoveRoseMCP" ] }],
+  "alias": {
+    // `agents` importe dynamiquement le SDK Vercel AI (non utilisé ici) :
+    // on le remplace par un stub vide pour un bundle propre.
+    "ai": "./src/stub-ai.ts"
+  },
+  "vars": {
+    "SUPABASE_URL": "https://iqoceeaqwfdqiucrsicm.supabase.co",
+    "APP_URL": "https://loverose.pages.dev"
+  }
+  // Secrets à définir avant le premier déploiement :
+  //   npx wrangler secret put SUPABASE_ANON_KEY
+  //   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+  //   npx wrangler secret put GEMINI_API_KEY        (optionnel, outils IA)
+  // URL publique après déploiement : https://loverose-mcp.<votre-sous-domaine>.workers.dev/mcp
+}
