@@ -13,9 +13,9 @@ l'IA utilise **à votre place**. Vous n'ouvrez plus le site — vous parlez.
 
 **Lien du serveur MCP LoveRose :**
 ```
-https://VOTRE-DOMAINE-MCP/mcp
+https://loverose-mcp.votre-sous-domaine.workers.dev/mcp
 ```
-*(remplacer par l'URL réelle une fois le serveur déployé — voir README)*
+*(URL officielle publiée sur la page d'aide du site : https://loverose.pages.dev/mcp)*
 
 ### Dans ChatGPT
 1. Paramètres → **Connecteurs** (activez le *mode développeur* si l'option n'apparaît pas)

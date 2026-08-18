@@ -19,6 +19,9 @@ export interface AppConfig {
   transport: McpTransportMode;
   httpPort: number;
   trustedServiceToken?: string;
+  /** Optionnel : active les outils IA du domaine extras (suggest_bio, etc.) */
+  geminiApiKey?: string;
+  geminiModel?: string;
 }
 
 function required(name: string): string {
@@ -51,5 +54,7 @@ export function loadConfig(): AppConfig {
     transport,
     httpPort: Number(process.env.MCP_HTTP_PORT || 8787),
     trustedServiceToken: optional("MCP_TRUSTED_SERVICE_TOKEN"),
+    geminiApiKey: optional("GEMINI_API_KEY"),
+    geminiModel: process.env.GEMINI_MODEL || "gemini-2.0-flash",
   };
 }

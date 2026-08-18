@@ -14,6 +14,8 @@ export interface Env {
   USE_LIVE_PAYMENT?: string;
   VITE_TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET?: string;
+  /** URL publique du serveur MCP (affichée sur la page /mcp). Ex: https://loverose-mcp.xxx.workers.dev/mcp */
+  MCP_URL?: string;
 }
 
 export function getSupabaseAdmin(env: Env) {

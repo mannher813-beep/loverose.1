@@ -115,7 +115,7 @@ export const registerExtrasTools: RegisterDomainTools = ({ server, admin, config
         `Propose 3 variantes de bio (max 300 caractères chacune, ton chaleureux et authentique, français simple) pour : ` +
         `${args.age} ans, à ${args.location}, centres d'intérêt : ${args.interests.join(", ") || "non précisés"}, ` +
         `intention : ${args.intent ?? "non précisée"}. Pas de mentions de montants d'argent ni de contacts.`;
-      const text = await geminiGenerate(prompt, process.env.GEMINI_API_KEY, process.env.GEMINI_MODEL);
+      const text = await geminiGenerate(prompt, config.geminiApiKey, config.geminiModel);
       logger.info("bio suggested");
       return mcpOk({ suggestions: text });
     })
@@ -144,7 +144,7 @@ export const registerExtrasTools: RegisterDomainTools = ({ server, admin, config
         `Propose 3 phrases d'accroche pour un premier message, MAXIMUM 10 mots chacune, SANS AUCUN chiffre ` +
         `(contraintes techniques des messages gratuits). Profil cible : ${JSON.stringify(other)}. ` +
         `Mon profil : ${JSON.stringify(me)}. Ton respectueux et original, en français.`;
-      const text = await geminiGenerate(prompt, process.env.GEMINI_API_KEY, process.env.GEMINI_MODEL);
+      const text = await geminiGenerate(prompt, config.geminiApiKey, config.geminiModel);
       return mcpOk({ suggestions: text });
     })
   );
@@ -162,7 +162,7 @@ export const registerExtrasTools: RegisterDomainTools = ({ server, admin, config
     },
     withMcpErrorHandling(async (args: { accessToken: string; image_base64: string }) => {
       await asUser(admin, config, args.accessToken);
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = config.geminiApiKey;
       if (!apiKey) {
         return mcpFail("GEMINI_API_KEY absente du serveur MCP — modération IA indisponible", { code: "no_api_key" });
       }
@@ -170,7 +170,7 @@ export const registerExtrasTools: RegisterDomainTools = ({ server, admin, config
       const mimeType = match ? match[1] : "image/jpeg";
       const base64 = match ? match[2] : args.image_base64.trim();
 
-      const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+      const model = config.geminiModel || "gemini-2.0-flash";
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
         {

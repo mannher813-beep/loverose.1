@@ -43,9 +43,45 @@ Utilisateur ChatGPT/Claude ──► https://<votre-hôte-mcp>/mcp ──► Sup
 
 ### Alternatives
 
+- **⭐ Cloudflare Workers natif (recommandé — voir `worker/`)** : même compte Cloudflare que le site, domaine gratuit `loverose-mcp.<sous-domaine>.workers.dev`, plan gratuit (Durable Object SQLite). Instructions détaillées ci-dessous.
 - **Cloudflare Tunnel** depuis un VPS : `cloudflared tunnel --url http://localhost:8787` — reste dans l'écosystème Cloudflare du site.
-- **Portage natif Cloudflare Workers** : possible (stateless + agents SDK) — évolution future, demande une adaptation du transport.
 - **VPS + Docker + nginx TLS** : le Dockerfile fonctionne tel quel.
+
+### Déployer sur Cloudflare Workers (natif, recommandé)
+
+Le dossier `worker/` réutilise **la même base de code** (les 11 domaines de
+`../src`) derrière un transport Workers officiel (`agents/mcp`, Durable Object
+SQLite — compatible plan gratuit).
+
+```bash
+cd loverose-mcp/worker
+npm install
+
+npx wrangler login                      # compte Cloudflare du site
+npx wrangler secret put SUPABASE_ANON_KEY          # valeur VITE_SUPABASE_ANON_KEY
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY  # ⚠️ secret serveur
+npx wrangler secret put GEMINI_API_KEY              # optionnel (outils IA)
+
+npx wrangler deploy
+# → https://loverose-mcp.<votre-sous-domaine>.workers.dev/mcp
+```
+
+Vérifications : `curl https://…/health` (JSON ok) puis `tools/list` sur `/mcp`.
+Développement local : `npm run dev` (wrangler dev, http://localhost:8787/mcp).
+
+### Brancher la page d'aide publique du site
+
+Le site expose désormais **`https://loverose.pages.dev/mcp`** (functions/mcp.ts)
+qui guide les utilisateurs pas à pas. Après déploiement du Worker, définissez
+la variable Pages `MCP_URL` :
+
+```
+Cloudflare Dashboard → Pages → loverose → Settings → Environment variables
+  MCP_URL = https://loverose-mcp.<votre-sous-domaine>.workers.dev/mcp
+```
+
+puis ajoutez le lien « 🤖 Utiliser avec ChatGPT/Claude » vers `/mcp` dans le
+menu du site si souhaité.
 
 ### Ce que partagent les utilisateurs
 
