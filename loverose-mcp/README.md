@@ -1,4 +1,4 @@
-# LoveRose MCP Server — 92 outils (v0.2)
+# LoveRose MCP Server — 92 outils (v0.3 — stdio + HTTP)
 
 Serveur MCP (Model Context Protocol) pour LoveRose : **couche d'accès complète**
 à l'application, indépendante de l'interface React. Objectif : un membre (ou un
@@ -9,6 +9,58 @@ Le serveur ne réimplémente AUCUNE règle métier : il interroge les mêmes tab
 Supabase, appelle les mêmes RPC Postgres et proxifie les mêmes APIs que le
 site/l'app PWA. La sécurité (RLS) s'applique via le JWT utilisateur fourni à
 chaque outil.
+
+## 🌍 Mettre le MCP à disposition des utilisateurs (production)
+
+Le site est en production sur `https://loverose.pages.dev`, mais **un site
+Cloudflare Pages ne peut pas héberger le serveur MCP** (processus Node
+permanent). Il faut un hébergement always-on qui donnera **l'URL publique à
+partager** :
+
+```
+Utilisateur ChatGPT/Claude ──► https://<votre-hôte-mcp>/mcp ──► Supabase LoveRose
+   (ajoute le connecteur           (serveur MCP hébergé 24/7)     (mêmes tables
+    une seule fois)                 Dockerfile fourni              que le site)
+```
+
+### Option recommandée : Railway / Render / Fly.io (Dockerfile prêt)
+
+1. Créer un service depuis le dossier `loverose-mcp/` (chaque plateforme
+   détecte le `Dockerfile` fourni) — Railway : *New Project → Deploy from
+   GitHub repo* ; Render : *New → Web Service* ; Fly.io : `fly launch`.
+2. Variables d'environnement du service :
+   ```
+   SUPABASE_URL=https://iqoceeaqwfdqiucrsicm.supabase.co
+   SUPABASE_ANON_KEY=...        # VITE_SUPABASE_ANON_KEY du site
+   SUPABASE_SERVICE_ROLE_KEY=... # ⚠️ SECRET — uniquement sur le serveur
+   APP_URL=https://loverose.pages.dev
+   MCP_TRANSPORT=http
+   MCP_HTTP_PORT=8787
+   ```
+3. Vous obtenez une URL publique, ex. `https://loverose-mcp.up.railway.app`
+   → **le lien MCP à donner aux utilisateurs est `https://…/mcp`**.
+4. (Optionnel) Brancher un domaine propre : `mcp.loverose.com` etc.
+
+### Alternatives
+
+- **Cloudflare Tunnel** depuis un VPS : `cloudflared tunnel --url http://localhost:8787` — reste dans l'écosystème Cloudflare du site.
+- **Portage natif Cloudflare Workers** : possible (stateless + agents SDK) — évolution future, demande une adaptation du transport.
+- **VPS + Docker + nginx TLS** : le Dockerfile fonctionne tel quel.
+
+### Ce que partagent les utilisateurs
+
+Le guide `GUIDE-UTILISATEURS.md` (à la racine de ce dossier) est prêt à être
+publié : « Ajoutez `https://<votre-hôte-mcp>/mcp` dans ChatGPT → Connecteurs »,
+puis connexion avec email/mot de passe LoveRose **dans la conversation**.
+
+### Vérifier le déploiement
+
+```bash
+curl https://<votre-hôte>/health          # {"ok":true,...,"tools":92}
+curl -X POST https://<votre-hôte>/mcp \
+  -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'   # liste des 92 outils
+```
 
 ## Démarrage
 
