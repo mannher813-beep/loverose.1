@@ -12,16 +12,37 @@ interface FeedProps {
   onAuthRequired?: () => void;
 }
 
+const POSTS_PAGE_SIZE = 15;
+
 export default function Feed({ currentUser, currentUserProfile, onAuthRequired }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedViewProfile, setSelectedViewProfile] = useState<Profile | null>(null);
 
   // Filtre de catégorie du fil : null = toutes les annonces confondues,
-  // sinon on n'affiche que les publications de ce type d'annonce précis.
+  // sinon on ne charge (côté serveur) que les publications de ce type précis.
   const [categoryFilter, setCategoryFilter] = useState<ListingCategory | null>(null);
-  const visiblePosts = categoryFilter ? posts.filter((p) => p.listing_category === categoryFilter) : posts;
+  // Le filtrage se fait maintenant côté serveur (voir loadPosts), donc `posts`
+  // ne contient déjà que les annonces pertinentes.
+  const visiblePosts = posts;
+
+  // Pagination : offset de la prochaine page à charger, et refs "miroir" des
+  // states pour éviter les closures obsolètes dans le callback de
+  // l'IntersectionObserver (qui n'est monté qu'une seule fois).
+  const pageOffsetRef = useRef(0);
+  const hasMoreRef = useRef(true);
+  const isLoadingMoreRef = useRef(false);
+  const categoryFilterRef = useRef<ListingCategory | null>(null);
+  const didMountFilterEffectRef = useRef(false);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => { hasMoreRef.current = hasMorePosts; }, [hasMorePosts]);
+  useEffect(() => { isLoadingMoreRef.current = isLoadingMore; }, [isLoadingMore]);
+  useEffect(() => { categoryFilterRef.current = categoryFilter; }, [categoryFilter]);
 
   // post_id -> true once the current visitor has paid for that annonce
   const [purchasedPostIds, setPurchasedPostIds] = useState<Set<string>>(new Set());
@@ -45,7 +66,38 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
   useEffect(() => {
     // Posts are publicly readable (RLS allows anon SELECT), so the feed loads
     // for guests too — browsing the annonces never requires an account.
-    loadPosts();
+    loadPosts(true);
+  }, []);
+
+  // Rechargement (depuis le début) quand l'utilisateur change de catégorie.
+  // On saute le tout premier passage : le mount effect ci-dessus s'en charge déjà.
+  useEffect(() => {
+    if (!didMountFilterEffectRef.current) {
+      didMountFilterEffectRef.current = true;
+      return;
+    }
+    loadPosts(true);
+  }, [categoryFilter]);
+
+  // Scroll infini : on observe une sentinelle placée après la liste de posts.
+  // Monté une seule fois — le callback lit toujours les valeurs à jour via les
+  // refs (hasMoreRef / isLoadingMoreRef / categoryFilterRef), donc pas besoin
+  // de recréer l'observer à chaque changement de state.
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    const root = scrollContainerRef.current;
+    if (!sentinel || !root) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadPosts(false);
+        }
+      },
+      { root, rootMargin: "600px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -78,68 +130,73 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
     const postIds = loadedPosts.map(p => p.id);
     if (postIds.length === 0) return;
 
-    // 1. Load Likes
-    try {
-      const { data: dbLikes, error: likesError } = await supabase
-        .from("post_likes")
-        .select("post_id, user_id");
+    // Les 3 tables sont indépendantes l'une de l'autre : on les charge en
+    // parallèle (Promise.all) au lieu de s'enchaîner en cascade, et chacune
+    // est filtrée sur .in("post_id", postIds) — donc seulement sur les posts
+    // réellement affichés (la page qu'on vient de charger), jamais sur
+    // l'intégralité de la table. Les résultats sont fusionnés (merge) dans le
+    // state existant plutôt que de l'écraser, pour ne pas perdre les
+    // interactions déjà chargées sur les pages précédentes.
 
-      if (likesError) throw likesError;
+    const loadLikes = async () => {
+      try {
+        const { data: dbLikes, error } = await supabase
+          .from("post_likes")
+          .select("post_id, user_id")
+          .in("post_id", postIds);
 
-      if (dbLikes) {
+        if (error) throw error;
+
         const newLikesState: Record<string, { count: number; userLiked: boolean }> = {};
         loadedPosts.forEach(p => {
-          const postLikes = dbLikes.filter(l => l.post_id === p.id);
-          const userLiked = postLikes.some(l => l.user_id === currentUser?.id);
+          const postLikes = (dbLikes || []).filter(l => l.post_id === p.id);
           newLikesState[p.id] = {
             count: postLikes.length,
-            userLiked: userLiked
+            userLiked: postLikes.some(l => l.user_id === currentUser?.id)
           };
         });
-        setLikesState(newLikesState);
+        setLikesState(prev => ({ ...prev, ...newLikesState }));
+      } catch (e) {
+        console.warn("Could not load likes from DB, falling back to local simulation:", e);
+        const storedLikes = localStorage.getItem(`feed_likes_${currentUser?.id || 'anon'}`);
+        if (storedLikes) {
+          try {
+            setLikesState(prev => ({ ...prev, ...JSON.parse(storedLikes) }));
+          } catch (err) {}
+        } else {
+          const fallbackLikes: Record<string, { count: number; userLiked: boolean }> = {};
+          loadedPosts.forEach(p => {
+            fallbackLikes[p.id] = { count: Math.floor(Math.random() * 8) + 2, userLiked: false };
+          });
+          setLikesState(prev => ({ ...prev, ...fallbackLikes }));
+        }
       }
-    } catch (e) {
-      console.warn("Could not load likes from DB, falling back to local simulation:", e);
-      const storedLikes = localStorage.getItem(`feed_likes_${currentUser?.id || 'anon'}`);
-      if (storedLikes) {
-        try { setLikesState(JSON.parse(storedLikes)); } catch (err) {}
-      } else {
-        const initialLikes: Record<string, { count: number; userLiked: boolean }> = {};
-        loadedPosts.forEach(p => {
-          initialLikes[p.id] = { count: Math.floor(Math.random() * 8) + 2, userLiked: false };
-        });
-        setLikesState(initialLikes);
-      }
-    }
+    };
 
-    // 2. Load Comments
-    try {
-      const { data: dbComments, error: commentsError } = await supabase
-        .from("post_comments")
-        .select(`
-          id,
-          post_id,
-          user_id,
-          text,
-          created_at
-        `);
+    const loadComments = async () => {
+      try {
+        const { data: dbComments, error } = await supabase
+          .from("post_comments")
+          .select("id, post_id, user_id, text, created_at")
+          .in("post_id", postIds);
 
-      if (commentsError) throw commentsError;
+        if (error) throw error;
 
-      if (dbComments) {
-        const newCommentsState: Record<string, any[]> = {};
-        const uniqueUserIds = Array.from(new Set(dbComments.map(c => c.user_id)));
-        
-        let profileMap = new Map();
+        const uniqueUserIds = Array.from(new Set((dbComments || []).map(c => c.user_id)));
+
+        let profileMap = new Map<string, any>();
         if (uniqueUserIds.length > 0) {
           const { data: commentProfiles } = await supabase
             .from("profiles")
             .select("uid, full_name, avatar_url")
             .in("uid", uniqueUserIds);
-          profileMap = new Map(commentProfiles?.map(p => [p.uid, p]) || []);
+          profileMap = new Map((commentProfiles || []).map(p => [p.uid, p]));
         }
 
-        dbComments.forEach((c: any) => {
+        const newCommentsState: Record<string, any[]> = {};
+        loadedPosts.forEach(p => { newCommentsState[p.id] = []; });
+
+        (dbComments || []).forEach((c: any) => {
           const profile = profileMap.get(c.user_id);
           const formattedComment = {
             id: c.id,
@@ -148,60 +205,52 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
             text: c.text,
             created_at: c.created_at
           };
-          if (!newCommentsState[c.post_id]) {
-            newCommentsState[c.post_id] = [];
-          }
+          if (!newCommentsState[c.post_id]) newCommentsState[c.post_id] = [];
           newCommentsState[c.post_id].push(formattedComment);
         });
 
-        // Initialize empty lists for posts with no comments
-        loadedPosts.forEach(p => {
-          if (!newCommentsState[p.id]) {
-            newCommentsState[p.id] = [];
-          }
-        });
-
-        setCommentsState(newCommentsState);
+        setCommentsState(prev => ({ ...prev, ...newCommentsState }));
+      } catch (e) {
+        console.warn("Could not load comments from DB, falling back to local simulation:", e);
+        const storedComments = localStorage.getItem(`feed_comments_${currentUser?.id || 'anon'}`);
+        if (storedComments) {
+          try {
+            setCommentsState(prev => ({ ...prev, ...JSON.parse(storedComments) }));
+          } catch (err) {}
+        } else {
+          const emptyComments: Record<string, any[]> = {};
+          loadedPosts.forEach(p => { emptyComments[p.id] = []; });
+          setCommentsState(prev => ({ ...prev, ...emptyComments }));
+        }
       }
-    } catch (e) {
-      console.warn("Could not load comments from DB, falling back to local simulation:", e);
-      const storedComments = localStorage.getItem(`feed_comments_${currentUser?.id || 'anon'}`);
-      if (storedComments) {
-        try { setCommentsState(JSON.parse(storedComments)); } catch (err) {}
-      } else {
-        const emptyComments: Record<string, any[]> = {};
-        loadedPosts.forEach(p => {
-          emptyComments[p.id] = [];
-        });
-        setCommentsState(emptyComments);
-      }
-    }
+    };
 
-    // 3. Load Shares
-    try {
-      const { data: dbShares, error: sharesError } = await supabase
-        .from("post_shares")
-        .select("post_id, user_id");
+    const loadShares = async () => {
+      try {
+        const { data: dbShares, error } = await supabase
+          .from("post_shares")
+          .select("post_id, user_id")
+          .in("post_id", postIds);
 
-      if (sharesError) throw sharesError;
+        if (error) throw error;
 
-      if (dbShares) {
         const newSharesState: Record<string, number> = {};
         loadedPosts.forEach(p => {
-          const postShares = dbShares.filter(s => s.post_id === p.id);
-          newSharesState[p.id] = postShares.length;
+          newSharesState[p.id] = (dbShares || []).filter(s => s.post_id === p.id).length;
         });
-        setSharesState(newSharesState);
+        setSharesState(prev => ({ ...prev, ...newSharesState }));
+      } catch (e) {
+        console.warn("Could not load shares from DB, falling back to local simulation:", e);
+        const newSharesState: Record<string, number> = {};
+        loadedPosts.forEach(p => {
+          const storedShareCount = localStorage.getItem(`feed_shares_${p.id}`);
+          newSharesState[p.id] = storedShareCount ? parseInt(storedShareCount) : Math.floor(Math.random() * 3);
+        });
+        setSharesState(prev => ({ ...prev, ...newSharesState }));
       }
-    } catch (e) {
-      console.warn("Could not load shares from DB, falling back to local simulation:", e);
-      const newSharesState: Record<string, number> = {};
-      loadedPosts.forEach(p => {
-        const storedShareCount = localStorage.getItem(`feed_shares_${p.id}`);
-        newSharesState[p.id] = storedShareCount ? parseInt(storedShareCount) : Math.floor(Math.random() * 3);
-      });
-      setSharesState(newSharesState);
-    }
+    };
+
+    await Promise.all([loadLikes(), loadComments(), loadShares()]);
   };
 
   const handleLikeToggle = async (postId: string) => {
@@ -375,26 +424,59 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
     }, 3000);
   };
 
-  const loadPosts = async () => {
-    setIsLoading(true);
+  // reset = true  -> (re)part de zéro (montage initial, ou changement de filtre)
+  // reset = false -> charge la page suivante (scroll infini)
+  const loadPosts = async (reset: boolean) => {
+    if (reset) {
+      setIsLoading(true);
+      pageOffsetRef.current = 0;
+      setHasMorePosts(true);
+      hasMoreRef.current = true;
+    } else {
+      // Évite les doubles déclenchements de l'IntersectionObserver et
+      // s'arrête proprement quand il n'y a plus rien à charger.
+      if (isLoadingMoreRef.current || !hasMoreRef.current) return;
+      isLoadingMoreRef.current = true;
+      setIsLoadingMore(true);
+    }
+
     try {
-      const { data, error } = await supabase
+      const from = pageOffsetRef.current;
+      const to = from + POSTS_PAGE_SIZE - 1;
+      const activeCategory = categoryFilterRef.current;
+
+      // Pagination réelle : .range() ne récupère que POSTS_PAGE_SIZE lignes,
+      // au lieu de tout le fil d'un coup. Le filtre de catégorie est
+      // appliqué côté serveur (.eq) plutôt qu'en mémoire après coup.
+      let query = supabase
         .from("posts")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
+      if (activeCategory) {
+        query = query.eq("listing_category", activeCategory);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
-      // Populate author profiles in a single batch query to solve the N+1 query performance bottleneck
-      const authorIds = Array.from(new Set((data || []).map(p => p.author_id).filter(Boolean)));
+      const fetchedPosts = data || [];
+      pageOffsetRef.current = from + fetchedPosts.length;
+      const stillHasMore = fetchedPosts.length === POSTS_PAGE_SIZE;
+      hasMoreRef.current = stillHasMore;
+      setHasMorePosts(stillHasMore);
+
+      // Batch-load author profiles for just this page (avoids N+1 queries)
+      const authorIds = Array.from(new Set(fetchedPosts.map(p => p.author_id).filter(Boolean)));
       const profilesMap: Record<string, any> = {};
-      
+
       if (authorIds.length > 0) {
         const { data: profilesData } = await supabase
           .from("profiles")
           .select("*")
           .in("uid", authorIds);
-        
+
         if (profilesData) {
           profilesData.forEach(prof => {
             profilesMap[prof.uid] = prof;
@@ -402,14 +484,16 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
         }
       }
 
-      const populatedPosts = (data || []).map((p) => {
+      const populatedPosts = fetchedPosts.map((p) => {
         return {
           ...p,
           author_profile: profilesMap[p.author_id] || { full_name: "Membre LoveRose" }
         } as Post;
       });
 
-      // Fil non chronologique : mélangé aléatoirement à chaque chargement.
+      // Fil non chronologique : on mélange chaque page fraîchement chargée
+      // (mélanger tout le fil à chaque fois demanderait de tout garder en
+      // mémoire, ce qui est justement ce qu'on essaie d'éviter).
       const shuffle = <T,>(arr: T[]): T[] => {
         const a = [...arr];
         for (let i = a.length - 1; i > 0; i--) {
@@ -419,16 +503,18 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
         return a;
       };
 
-      const orderedPosts = shuffle(populatedPosts);
+      const orderedPage = shuffle(populatedPosts);
 
-      setPosts(orderedPosts);
+      setPosts(prev => (reset ? orderedPage : [...prev, ...orderedPage]));
       // Load interactions for loaded posts
-      await loadInteractionsForPosts(orderedPosts);
+      await loadInteractionsForPosts(orderedPage);
     } catch (err: any) {
       console.warn("Could not query posts table (possibly offline or unmigrated):", err);
       setErrorMessage("Impossible de charger le fil d'actualité.");
     } finally {
       setIsLoading(false);
+      isLoadingMoreRef.current = false;
+      setIsLoadingMore(false);
     }
   };
 
@@ -477,7 +563,7 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-50 p-4 space-y-6 font-sans">
+    <div ref={scrollContainerRef} className="flex-1 overflow-y-auto bg-slate-50 p-4 space-y-6 font-sans">
 
       {errorMessage && (
         <div className="max-w-xl mx-auto bg-red-50 text-red-600 text-xs p-3 rounded-xl font-bold">
@@ -525,7 +611,8 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
             <span>Chargement des posts...</span>
           </div>
         ) : visiblePosts.length > 0 ? (
-          visiblePosts.map((p, index) => {
+          <>
+          {visiblePosts.map((p, index) => {
             const author = p.author_profile;
             const isSharedTarget = p.id === highlightedPostId;
             return (
@@ -777,7 +864,25 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
                 )}
               </React.Fragment>
             );
-          })
+          })}
+
+          {/* Sentinelle observée par l'IntersectionObserver : quand elle
+              devient visible, on charge la page de posts suivante. */}
+          <div ref={loadMoreSentinelRef} className="h-1 w-full" />
+
+          {isLoadingMore && (
+            <div className="text-center py-4 text-slate-400 text-xs">
+              <Loader2 className="animate-spin mx-auto mb-1 text-rose-500" size={18} />
+              <span>Chargement de plus de posts...</span>
+            </div>
+          )}
+
+          {!hasMorePosts && !isLoadingMore && visiblePosts.length > 0 && (
+            <p className="text-center text-slate-300 text-[10px] font-semibold py-2">
+              Vous avez tout vu ✨
+            </p>
+          )}
+          </>
         ) : (
           <div className="text-center p-12 bg-white border border-slate-150 rounded-3xl space-y-3">
             <Sparkles className="mx-auto text-rose-400" size={32} />
