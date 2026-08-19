@@ -369,7 +369,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
             <Heart size={18} className="text-rose-500 fill-rose-500 animate-pulse" />
             <span className="text-xs font-black text-rose-500 uppercase tracking-widest">LoveRose</span>
           </div>
-          <span className="text-[10px] font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">
+          <span className="text-[12px] font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">
             Étape {step} sur {totalSteps}
           </span>
         </div>
@@ -394,7 +394,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                   </p>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Téléphone portable</label>
+                  <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider block">Téléphone portable</label>
                   
                   <div className="flex gap-2">
                     <div className="w-1/3">
@@ -407,7 +407,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                         placeholder="Votre numéro de téléphone"
                         value={phoneLocal}
                         onChange={(e) => setPhoneLocal(e.target.value)}
-                        className="w-full h-[46px] px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
+                        className="w-full h-[46px] px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-slate-900"
                       />
                     </div>
                   </div>
@@ -416,7 +416,7 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                     const parsed = parsePhoneNumberFromString(phoneLocal.trim(), selectedCountryIso);
                     const valid = !!parsed?.isValid();
                     return (
-                      <div className="flex justify-between items-center text-[10px] font-bold mt-1.5">
+                      <div className="flex justify-between items-center text-[12px] font-bold mt-1.5">
                         <span className={valid ? "text-emerald-500" : "text-slate-500"}>
                           {valid ? `✓ Numéro valide : ${parsed?.number}` : "Numéro incomplet ou invalide"}
                         </span>
@@ -449,30 +449,30 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nom Complet</label>
+                    <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">Nom Complet</label>
                     <input
                       type="text"
                       placeholder="Votre nom"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-slate-900"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pseudo unique</label>
+                    <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">Pseudo unique</label>
                     <input
                       type="text"
                       placeholder="Pseudo"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-slate-900"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Votre Âge (18+)</label>
+                    <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">Votre Âge (18+)</label>
                     <input
                       type="number"
                       min={18}
@@ -487,33 +487,33 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                         const parsed = parseInt(raw, 10);
                         if (!isNaN(parsed)) setAge(parsed);
                       }}
-                      className={`w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500 ${
+                      className={`w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-xs font-semibold focus:outline-none focus:border-slate-900 ${
                         age > 0 && age < 18 ? "border-red-400" : "border-slate-200"
                       }`}
                     />
                     {age > 0 && age < 18 && (
-                      <p className="text-[10px] text-red-500 font-semibold">Vous devez avoir au moins 18 ans.</p>
+                      <p className="text-[12px] text-red-500 font-semibold">Vous devez avoir au moins 18 ans.</p>
                     )}
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pays & Ville</label>
+                    <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">Pays & Ville</label>
                     <input
                       type="text"
                       placeholder="Ex: Abidjan, Côte d'Ivoire"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-slate-900"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mon genre</label>
+                    <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">Mon genre</label>
                     <select
                       value={gender}
                       onChange={(e) => setGender(e.target.value as any)}
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-slate-900"
                     >
                       <option value="homme">Homme</option>
                       <option value="femme">Femme</option>
@@ -521,11 +521,11 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Je recherche</label>
+                    <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">Je recherche</label>
                     <select
                       value={preferences}
                       onChange={(e) => setPreferences(e.target.value as any)}
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-rose-500"
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-slate-900"
                     >
                       <option value="femme">Des Femmes</option>
                       <option value="homme">Des Hommes</option>
@@ -638,16 +638,16 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ma description</label>
+                  <label className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">Ma description</label>
                   <textarea
                     placeholder="Ex: Passionné d'art et de rencontres culturelles, j'aime échanger autour d'un bon verre et découvrir des coins insolites..."
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     rows={4}
                     maxLength={300}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:border-rose-500 resize-none"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:border-slate-900 resize-none"
                   />
-                  <div className="text-right text-[9px] text-slate-400">
+                  <div className="text-right text-[11px] text-slate-400">
                     {bio.length}/300 caractères
                   </div>
                 </div>
@@ -687,14 +687,14 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                     {avatarPreview ? (
                       <>
                         <img src={avatarPreview} alt="Aperçu" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[10px] font-bold">
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[12px] font-bold">
                           Changer de photo
                         </div>
                       </>
                     ) : (
                       <div className="text-center p-4 text-slate-400 space-y-1">
                         <Camera size={24} className="mx-auto text-slate-350" />
-                        <span className="text-[10px] font-bold block">Choisir un fichier</span>
+                        <span className="text-[12px] font-bold block">Choisir un fichier</span>
                       </div>
                     )}
                   </label>
@@ -736,21 +736,21 @@ export default function Onboarding({ currentUser, onComplete }: OnboardingProps)
                         {galleryPreviews[index] ? (
                           <>
                             <img src={galleryPreviews[index]!} alt={`Galerie ${index + 1}`} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[9px] font-bold">
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[11px] font-bold">
                               Changer
                             </div>
                           </>
                         ) : (
                           <div className="text-center p-2 text-slate-400 space-y-1">
                             <Camera size={18} className="mx-auto text-slate-350" />
-                            <span className="text-[9px] font-bold block">Photo {index + 1}</span>
+                            <span className="text-[11px] font-bold block">Photo {index + 1}</span>
                           </div>
                         )}
                       </label>
                     </div>
                   ))}
                 </div>
-                <div className="bg-rose-50/50 border border-rose-100 p-2.5 rounded-2xl text-[10px] text-rose-600 font-semibold text-center mt-2">
+                <div className="bg-rose-50/50 border border-rose-100 p-2.5 rounded-2xl text-[12px] text-rose-600 font-semibold text-center mt-2">
                   {galleryPreviews.filter(Boolean).length}/3 photos de galerie ajoutées (facultatif)
                 </div>
               </motion.div>

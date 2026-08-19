@@ -633,7 +633,7 @@ FOR EACH ROW EXECUTE FUNCTION public.validate_and_charge_message();
                   </div>
                 </div>
                 {dbStatus?.availableKeys && dbStatus.availableKeys.length > 0 && (
-                  <div className="mt-2 text-[10px] text-slate-400 border-t border-slate-800 pt-2">
+                  <div className="mt-2 text-[12px] text-slate-400 border-t border-slate-800 pt-2">
                     <span className="font-semibold text-slate-300">Clés détectées :</span>{" "}
                     <span className="font-mono text-indigo-300 bg-black/40 px-1 py-0.5 rounded break-all">
                       {dbStatus.availableKeys.map(k => `"${k}"`).join(", ")}
@@ -652,7 +652,7 @@ FOR EACH ROW EXECUTE FUNCTION public.validate_and_charge_message();
                   </p>
                 </div>
                 {dbStatus?.errorMessage && (
-                  <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 text-red-300 rounded-lg text-[10px] font-mono leading-relaxed max-h-20 overflow-y-auto">
+                  <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 text-red-300 rounded-lg text-[12px] font-mono leading-relaxed max-h-20 overflow-y-auto">
                     {dbStatus.errorMessage}
                   </div>
                 )}

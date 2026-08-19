@@ -166,7 +166,7 @@ export default function KycVerificationModal({ currentUser, page, verificationRe
         </div>
 
         {/* Repères des 2 clés */}
-        <div className="flex items-center gap-2 text-[10px] font-bold">
+        <div className="flex items-center gap-2 text-[12px] font-bold">
           <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full border ${!isAnonymous ? "border-emerald-500/40 text-emerald-400 bg-emerald-500/10" : "border-slate-700 text-slate-400"}`}>
             {!isAnonymous ? <CheckCircle2 size={12} /> : <Lock size={12} />}
             Compte réel
@@ -210,7 +210,7 @@ export default function KycVerificationModal({ currentUser, page, verificationRe
                 >
                   {isLinking ? <Loader2 className="animate-spin" size={16} /> : <><Chrome size={16} /> Se connecter avec Google</>}
                 </button>
-                {linkError && <p className="text-[10px] text-rose-400 font-semibold">{linkError}</p>}
+                {linkError && <p className="text-[12px] text-rose-400 font-semibold">{linkError}</p>}
               </div>
             )}
 
@@ -230,7 +230,7 @@ export default function KycVerificationModal({ currentUser, page, verificationRe
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-xl p-3 text-white font-semibold"
                 />
-                {linkError && <p className="text-[10px] text-rose-400 font-semibold">{linkError}</p>}
+                {linkError && <p className="text-[12px] text-rose-400 font-semibold">{linkError}</p>}
                 <button
                   onClick={handleLinkEmail}
                   disabled={isLinking}
@@ -247,7 +247,7 @@ export default function KycVerificationModal({ currentUser, page, verificationRe
                 <p className="text-[11px] text-slate-300 leading-relaxed">
                   Un lien de confirmation a été envoyé à <strong className="text-white">{email}</strong>. Ouvrez-le, puis revenez ici.
                 </p>
-                {linkError && <p className="text-[10px] text-rose-400 font-semibold">{linkError}</p>}
+                {linkError && <p className="text-[12px] text-rose-400 font-semibold">{linkError}</p>}
                 <button onClick={refreshAndContinue} className="w-full py-3 border border-slate-800 hover:bg-slate-800 text-slate-300 font-bold rounded-xl transition">
                   J'ai confirmé, continuer
                 </button>
@@ -263,16 +263,16 @@ export default function KycVerificationModal({ currentUser, page, verificationRe
             </p>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 block uppercase">Nom complet (identique à la pièce)</label>
+              <label className="text-[12px] font-bold text-slate-400 block uppercase">Nom complet (identique à la pièce)</label>
               <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-xl p-3 text-white font-semibold" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 block uppercase">N° pièce d'identité</label>
+                <label className="text-[12px] font-bold text-slate-400 block uppercase">N° pièce d'identité</label>
                 <input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-xl p-3 text-white font-semibold" />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 block uppercase">Ville</label>
+                <label className="text-[12px] font-bold text-slate-400 block uppercase">Ville</label>
                 <input value={city} onChange={(e) => setCity(e.target.value)} className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-xl p-3 text-white font-semibold" />
               </div>
             </div>
@@ -307,9 +307,9 @@ export default function KycVerificationModal({ currentUser, page, verificationRe
                         </div>
                       )}
                     </label>
-                    <p className="text-[9px] font-bold text-slate-400 leading-tight">{s.label}</p>
+                    <p className="text-[11px] font-bold text-slate-400 leading-tight">{s.label}</p>
                     {state?.warning && (
-                      <p className="text-[9px] text-amber-400 font-semibold flex items-start gap-0.5">
+                      <p className="text-[11px] text-amber-400 font-semibold flex items-start gap-0.5">
                         <AlertTriangle size={10} className="flex-shrink-0 mt-px" /> {state.warning}
                       </p>
                     )}
@@ -318,7 +318,7 @@ export default function KycVerificationModal({ currentUser, page, verificationRe
               })}
             </div>
 
-            {submitError && <p className="text-[10px] text-rose-400 font-semibold">{submitError}</p>}
+            {submitError && <p className="text-[12px] text-rose-400 font-semibold">{submitError}</p>}
 
             <button
               onClick={handleSubmit}

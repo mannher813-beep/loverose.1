@@ -26,7 +26,7 @@ export default function Legal({ onClose, initialTab = 'terms' }: LegalProps) {
       <div className="flex items-center justify-between border-b border-slate-100 pb-4">
         <div>
           <h2 className="text-xl font-extrabold text-slate-950">Informations Légales & Contact</h2>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Vérification AdSense & Conformité Réglementaire</p>
+          <p className="text-[12px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Vérification AdSense & Conformité Réglementaire</p>
         </div>
         {onClose && (
           <button onClick={onClose} className="text-xs font-bold text-rose-500 hover:text-rose-600 transition cursor-pointer">
@@ -121,7 +121,7 @@ export default function Legal({ onClose, initialTab = 'terms' }: LegalProps) {
                 <p className="text-[11px] text-slate-500">Nous vous répondrons par e-mail dans les plus brefs délais (généralement sous 24h).</p>
                 <button
                   onClick={() => setFormSent(false)}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] rounded-lg transition"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[12px] rounded-lg transition"
                 >
                   Envoyer un autre message
                 </button>
@@ -130,48 +130,48 @@ export default function Legal({ onClose, initialTab = 'terms' }: LegalProps) {
               <form onSubmit={handleSubmitContact} className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Votre Nom (Optionnel)</label>
+                    <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Votre Nom (Optionnel)</label>
                     <input
                       type="text"
                       value={contactForm.name}
                       onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
                       placeholder="Ex: Jean Paul"
-                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl font-bold transition"
+                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl font-bold transition"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Adresse Email <span className="text-rose-500">*</span></label>
+                    <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Adresse Email <span className="text-rose-500">*</span></label>
                     <input
                       type="email"
                       required
                       value={contactForm.email}
                       onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
                       placeholder="votre-email@exemple.com"
-                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl font-bold transition"
+                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl font-bold transition"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Sujet / Motif</label>
+                  <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Sujet / Motif</label>
                   <input
                     type="text"
                     value={contactForm.subject}
                     onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
                     placeholder="Ex: Question sur la monétisation, problème technique"
-                    className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl font-bold transition"
+                    className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl font-bold transition"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Votre Message <span className="text-rose-500">*</span></label>
+                  <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Votre Message <span className="text-rose-500">*</span></label>
                   <textarea
                     required
                     rows={4}
                     value={contactForm.message}
                     onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
                     placeholder="Saisissez votre message détaillé ici..."
-                    className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl font-bold transition"
+                    className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl font-bold transition"
                   />
                 </div>
 
@@ -185,7 +185,7 @@ export default function Legal({ onClose, initialTab = 'terms' }: LegalProps) {
               </form>
             )}
 
-            <div className="flex items-center space-x-2 bg-slate-50 p-4 border border-slate-150 rounded-2xl text-[10px] text-slate-500">
+            <div className="flex items-center space-x-2 bg-slate-50 p-4 border border-slate-150 rounded-2xl text-[12px] text-slate-500">
               <AlertCircle size={14} className="text-slate-400 flex-shrink-0" />
               <span>Pour toute question urgente concernant les paiements Money Fusion, veuillez inclure votre référence de transaction.</span>
             </div>

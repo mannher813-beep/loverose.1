@@ -429,12 +429,12 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
             <div className="flex items-center gap-1.5">
               <span className="font-black text-sm tracking-tight text-white">{page.page_name}</span>
               {isCertified ? (
-                <span className="bg-amber-500 text-slate-950 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">CERTIFIÉ</span>
+                <span className="bg-amber-500 text-slate-950 text-[11px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">CERTIFIÉ</span>
               ) : (
-                <span className="bg-slate-800 text-slate-400 text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">NON CERTIFIÉ</span>
+                <span className="bg-slate-800 text-slate-400 text-[11px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">NON CERTIFIÉ</span>
               )}
             </div>
-            <p className="text-[10px] text-amber-500 font-semibold tracking-wide flex items-center gap-1 uppercase">
+            <p className="text-[12px] text-amber-500 font-semibold tracking-wide flex items-center gap-1 uppercase">
               <Briefcase size={10} />
               <span>Espace Créateur Indépendant</span>
             </p>
@@ -521,13 +521,13 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
                       <ShieldAlert size={14} />
                       <span>Certification Requise</span>
                     </h4>
-                    <p className="text-[10px] text-slate-400 leading-relaxed max-w-xl">
+                    <p className="text-[12px] text-slate-400 leading-relaxed max-w-xl">
                       Votre page est gratuite et fonctionnelle ! Cependant, pour retirer vos gains vers votre compte Mobile Money, votre identité doit être validée par nos équipes.
                     </p>
                   </div>
                   <button 
                     onClick={() => setShowCertifyModal(true)}
-                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-[10px] font-black tracking-wider uppercase px-4 py-2 rounded-xl transition cursor-pointer flex items-center gap-1"
+                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-[12px] font-black tracking-wider uppercase px-4 py-2 rounded-xl transition cursor-pointer flex items-center gap-1"
                   >
                     <span>Faire certifier ma page</span>
                   </button>
@@ -540,35 +540,35 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
                   {/* Stats Bento Grid */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-slate-900 border border-slate-800 p-4 rounded-3xl space-y-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Solde Disponible</p>
+                      <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wide">Solde Disponible</p>
                       <h3 className="text-xl md:text-2xl font-black text-amber-500">
                         {wallet?.balance || 0} {wallet?.currency || "FCFA"}
                       </h3>
-                      <p className="text-[9px] text-slate-500">Reversement direct à la demande</p>
+                      <p className="text-[11px] text-slate-500">Reversement direct à la demande</p>
                     </div>
 
                     <div className="bg-slate-900 border border-slate-800 p-4 rounded-3xl space-y-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Abonnés Actifs</p>
+                      <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wide">Abonnés Actifs</p>
                       <h3 className="text-xl md:text-2xl font-black text-white">
                         {followersCount}
                       </h3>
-                      <p className="text-[9px] text-slate-500">Membres abonnés gratuitement</p>
+                      <p className="text-[11px] text-slate-500">Membres abonnés gratuitement</p>
                     </div>
 
                     <div className="bg-slate-900 border border-slate-800 p-4 rounded-3xl space-y-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Total des gains</p>
+                      <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wide">Total des gains</p>
                       <h3 className="text-xl md:text-2xl font-black text-emerald-500">
                         {wallet?.total_earned || 0} {wallet?.currency || "FCFA"}
                       </h3>
-                      <p className="text-[9px] text-slate-500">Commissions LoveRose 20% déduites</p>
+                      <p className="text-[11px] text-slate-500">Commissions LoveRose 20% déduites</p>
                     </div>
 
                     <div className="bg-slate-900 border border-slate-800 p-4 rounded-3xl space-y-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Visites Page</p>
+                      <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wide">Visites Page</p>
                       <h3 className="text-xl md:text-2xl font-black text-white">
                         {stats.viewsCount}
                       </h3>
-                      <p className="text-[9px] text-slate-500">Portée de vos publications</p>
+                      <p className="text-[11px] text-slate-500">Portée de vos publications</p>
                     </div>
                   </div>
 
@@ -620,13 +620,13 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
                                   {earn.source === 'tip' && "Pourboire reçu"}
                                   {earn.source === 'premium_content' && "Déblocage de contenu exclusif"}
                                 </p>
-                                <p className="text-[10px] text-slate-500">
+                                <p className="text-[12px] text-slate-500">
                                   {new Date(earn.created_at).toLocaleDateString()}
                                 </p>
                               </div>
                               <div className="text-right">
                                 <p className="font-extrabold text-emerald-400">+{earn.creator_net || earn.amount_collected} {wallet?.currency || "XOF"}</p>
-                                <p className="text-[9px] text-slate-500">Commission déduite</p>
+                                <p className="text-[11px] text-slate-500">Commission déduite</p>
                               </div>
                             </div>
                           ))}
@@ -645,15 +645,15 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
                         <div className="space-y-4">
                           <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between">
                             <div className="space-y-1">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase">Numéro de retrait</p>
+                              <p className="text-[12px] font-bold text-slate-400 uppercase">Numéro de retrait</p>
                               <p className="text-sm font-black text-white">{payoutMethod.payout_phone_number || payoutMethod.phone}</p>
-                              <p className="text-[9px] font-semibold text-slate-500 uppercase">{payoutMethod.operator_id || payoutMethod.operator}</p>
+                              <p className="text-[11px] font-semibold text-slate-500 uppercase">{payoutMethod.operator_id || payoutMethod.operator}</p>
                             </div>
                             <CheckCircle size={20} className="text-amber-500" />
                           </div>
                           <button 
                             onClick={() => setShowPayoutSetup(true)}
-                            className="w-full text-center py-2 text-[10px] text-slate-400 hover:text-white font-extrabold transition cursor-pointer"
+                            className="w-full text-center py-2 text-[12px] text-slate-400 hover:text-white font-extrabold transition cursor-pointer"
                           >
                             Modifier les informations
                           </button>
@@ -685,7 +685,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
 
                     <form onSubmit={handleCreatePost} className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase block">Texte de la publication</label>
+                        <label className="text-[12px] font-bold text-slate-500 uppercase block">Texte de la publication</label>
                         <textarea
                           rows={4}
                           value={newPostContent}
@@ -696,7 +696,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase block">Lien Photo/Média URL (Optionnel)</label>
+                        <label className="text-[12px] font-bold text-slate-500 uppercase block">Lien Photo/Média URL (Optionnel)</label>
                         <input
                           type="text"
                           placeholder="https://..."
@@ -718,7 +718,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
 
                       {newPostIsPremium && (
                         <div className="space-y-1.5 animate-fadeIn">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase block">Prix de déblocage (FCFA)</label>
+                          <label className="text-[12px] font-bold text-slate-500 uppercase block">Prix de déblocage (FCFA)</label>
                           <input
                             type="number"
                             value={newPostUnlockPrice}
@@ -760,14 +760,14 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
                         {posts.map((post) => (
                           <div key={post.id} className="p-4 bg-slate-950 rounded-2xl border border-slate-800 flex flex-col space-y-3 text-xs relative">
                             <div className="flex justify-between items-start">
-                              <span className="text-[10px] text-slate-500">{new Date(post.created_at).toLocaleString()}</span>
+                              <span className="text-[12px] text-slate-500">{new Date(post.created_at).toLocaleString()}</span>
                               {post.is_premium ? (
-                                <span className="bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wide flex items-center gap-1">
+                                <span className="bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[11px] font-black px-2 py-0.5 rounded uppercase tracking-wide flex items-center gap-1">
                                   <Lock size={10} />
                                   <span>Payant ({post.unlock_price} F)</span>
                                 </span>
                               ) : (
-                                <span className="bg-slate-800 text-slate-400 text-[8px] font-bold px-2 py-0.5 rounded uppercase tracking-wide flex items-center gap-1">
+                                <span className="bg-slate-800 text-slate-400 text-[11px] font-bold px-2 py-0.5 rounded uppercase tracking-wide flex items-center gap-1">
                                   <Unlock size={10} />
                                   <span>Public / Gratuit</span>
                                 </span>
@@ -792,28 +792,28 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
                   <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-5">
                     <h4 className="text-xs font-extrabold tracking-wide uppercase text-white border-b border-slate-800 pb-3 flex items-center justify-between">
                       <span>Portefeuille de Reversement</span>
-                      <span className="font-semibold text-[10px] text-slate-400">Commission de 20% déduite en temps réel</span>
+                      <span className="font-semibold text-[12px] text-slate-400">Commission de 20% déduite en temps réel</span>
                     </h4>
 
                     <div className="grid sm:grid-cols-3 gap-6">
                       <div className="space-y-1">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Solde réclamable</p>
+                        <p className="text-[12px] text-slate-400 font-bold uppercase">Solde réclamable</p>
                         <h2 className="text-2xl font-black text-amber-500">{wallet?.balance || 0} FCFA</h2>
-                        <p className="text-[9px] text-slate-500">Montant net que vous pouvez demander</p>
+                        <p className="text-[11px] text-slate-500">Montant net que vous pouvez demander</p>
                       </div>
 
                       <div className="space-y-1">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">En cours de validation</p>
+                        <p className="text-[12px] text-slate-400 font-bold uppercase">En cours de validation</p>
                         <h2 className="text-2xl font-black text-slate-400">{wallet?.pending_payout || 0} FCFA</h2>
-                        <p className="text-[9px] text-slate-500">Demandes de retraits en attente</p>
+                        <p className="text-[11px] text-slate-500">Demandes de retraits en attente</p>
                       </div>
 
                       <div className="space-y-1">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Déjà retiré à vie</p>
+                        <p className="text-[12px] text-slate-400 font-bold uppercase">Déjà retiré à vie</p>
                         <h2 className="text-2xl font-black text-emerald-500">
                           {payouts.filter(p => p.status === 'approved').reduce((sum, p) => sum + p.requested_amount, 0)} FCFA
                         </h2>
-                        <p className="text-[9px] text-slate-500">Total payé avec succès</p>
+                        <p className="text-[11px] text-slate-500">Total payé avec succès</p>
                       </div>
                     </div>
 
@@ -847,7 +847,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs text-slate-300">
                           <thead>
-                            <tr className="border-b border-slate-800 text-slate-500 uppercase text-[9px] font-black">
+                            <tr className="border-b border-slate-800 text-slate-500 uppercase text-[11px] font-black">
                               <th className="py-2">Date</th>
                               <th>ID/Référence</th>
                               <th>Montant Brut</th>
@@ -860,19 +860,19 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
                             {payouts.map((p) => (
                               <tr key={p.id} className="py-2">
                                 <td className="py-3 font-semibold">{new Date(p.created_at).toLocaleDateString()}</td>
-                                <td className="font-mono text-[10px] text-slate-400">{p.id.substring(0, 8)}...</td>
+                                <td className="font-mono text-[12px] text-slate-400">{p.id.substring(0, 8)}...</td>
                                 <td className="font-bold">{p.requested_amount || p.amount} FCFA</td>
                                 <td className="text-rose-500">-{p.platform_fee || Math.round((p.requested_amount || p.amount) * 0.2)} FCFA</td>
                                 <td className="font-extrabold text-emerald-400">{p.net_amount || Math.round((p.requested_amount || p.amount) * 0.8)} FCFA</td>
                                 <td>
                                   {p.status === "approved" && (
-                                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold px-2 py-0.5 rounded">Reversé</span>
+                                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-bold px-2 py-0.5 rounded">Reversé</span>
                                   )}
                                   {p.status === "pending" && (
-                                    <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[9px] font-bold px-2 py-0.5 rounded">En cours</span>
+                                    <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[11px] font-bold px-2 py-0.5 rounded">En cours</span>
                                   )}
                                   {p.status === "rejected" && (
-                                    <span className="bg-red-500/10 text-red-400 border border-red-500/20 text-[9px] font-bold px-2 py-0.5 rounded">Rejeté</span>
+                                    <span className="bg-red-500/10 text-red-400 border border-red-500/20 text-[11px] font-bold px-2 py-0.5 rounded">Rejeté</span>
                                   )}
                                 </td>
                               </tr>
@@ -907,7 +907,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
                           />
                           <div>
                             <p className="font-extrabold text-white">{f.profile?.full_name || "Membre"}</p>
-                            <p className="text-[9px] text-slate-500">Suivi depuis {new Date(f.created_at).toLocaleDateString()}</p>
+                            <p className="text-[11px] text-slate-500">Suivi depuis {new Date(f.created_at).toLocaleDateString()}</p>
                           </div>
                         </div>
                       ))}
@@ -936,7 +936,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
                           </div>
                           <div className="flex-1 space-y-0.5">
                             <p className="text-slate-200 font-semibold">{n.content}</p>
-                            <p className="text-[9px] text-slate-500">{new Date(n.created_at).toLocaleString()}</p>
+                            <p className="text-[11px] text-slate-500">{new Date(n.created_at).toLocaleString()}</p>
                           </div>
                         </div>
                       ))}
@@ -957,14 +957,14 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
 
                   <div className="pt-4 max-w-md space-y-4 text-xs">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block">Prix de l'abonnement (FCFA / mois)</label>
+                      <label className="text-[12px] font-bold text-slate-500 uppercase block">Prix de l'abonnement (FCFA / mois)</label>
                       <input 
                         type="number" 
                         value={page.subscription_price || 2500} 
                         disabled
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-400 cursor-not-allowed font-semibold"
                       />
-                      <p className="text-[9px] text-slate-500">Contactez le support administratif pour modifier la tarification récurrente.</p>
+                      <p className="text-[11px] text-slate-500">Contactez le support administratif pour modifier la tarification récurrente.</p>
                     </div>
 
                     <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
@@ -1012,28 +1012,28 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
           className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'dashboard' ? 'text-amber-500 font-bold' : 'text-slate-500'}`}
         >
           <TrendingUp size={16} />
-          <span className="text-[9px]">Dashboard</span>
+          <span className="text-[11px]">Dashboard</span>
         </button>
         <button 
           onClick={() => setActiveTab('posts')}
           className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'posts' ? 'text-amber-500 font-bold' : 'text-slate-500'}`}
         >
           <FileText size={16} />
-          <span className="text-[9px]">Posts</span>
+          <span className="text-[11px]">Posts</span>
         </button>
         <button 
           onClick={() => setActiveTab('revenue')}
           className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'revenue' ? 'text-amber-500 font-bold' : 'text-slate-500'}`}
         >
           <Coins size={16} />
-          <span className="text-[9px]">Retraits</span>
+          <span className="text-[11px]">Retraits</span>
         </button>
         <button 
           onClick={() => setActiveTab('subscribers')}
           className={`flex flex-col items-center gap-1 cursor-pointer ${activeTab === 'subscribers' ? 'text-amber-500 font-bold' : 'text-slate-500'}`}
         >
           <Users size={16} />
-          <span className="text-[9px]">Abonnés</span>
+          <span className="text-[11px]">Abonnés</span>
         </button>
       </footer>
 
@@ -1052,7 +1052,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
 
             <form onSubmit={handlePayoutMethodSetup} className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 block uppercase">Nom Complet (Bénéficiaire)</label>
+                <label className="text-[12px] font-bold text-slate-400 block uppercase">Nom Complet (Bénéficiaire)</label>
                 <input
                   type="text"
                   required
@@ -1064,7 +1064,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 block uppercase">Opérateur Mobile Money</label>
+                <label className="text-[12px] font-bold text-slate-400 block uppercase">Opérateur Mobile Money</label>
                 <select
                   value={payoutForm.operatorId}
                   onChange={(e) => setPayoutForm(p => ({ ...p, operatorId: e.target.value }))}
@@ -1078,7 +1078,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1 col-span-1">
-                  <label className="text-[10px] font-bold text-slate-400 block uppercase">Code Pays</label>
+                  <label className="text-[12px] font-bold text-slate-400 block uppercase">Code Pays</label>
                   <select
                     value={payoutForm.countryIso}
                     onChange={(e) => setPayoutForm(p => ({ ...p, countryIso: e.target.value }))}
@@ -1092,7 +1092,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
                   </select>
                 </div>
                 <div className="space-y-1 col-span-2">
-                  <label className="text-[10px] font-bold text-slate-400 block uppercase">Numéro Téléphone</label>
+                  <label className="text-[12px] font-bold text-slate-400 block uppercase">Numéro Téléphone</label>
                   <input
                     type="tel"
                     required
@@ -1105,7 +1105,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 block uppercase">Définir un Code PIN de Paiement (4 chiffres min.)</label>
+                <label className="text-[12px] font-bold text-slate-400 block uppercase">Définir un Code PIN de Paiement (4 chiffres min.)</label>
                 <input
                   type="password"
                   required
@@ -1149,7 +1149,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
 
             <form onSubmit={handleRequestPayoutSubmit} className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 block uppercase">Montant à retirer (FCFA)</label>
+                <label className="text-[12px] font-bold text-slate-400 block uppercase">Montant à retirer (FCFA)</label>
                 <input
                   type="number"
                   required
@@ -1175,7 +1175,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
               )}
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 block uppercase">Saisissez votre PIN de sécurité</label>
+                <label className="text-[12px] font-bold text-slate-400 block uppercase">Saisissez votre PIN de sécurité</label>
                 <input
                   type="password"
                   required

@@ -279,7 +279,7 @@ export default function ProfileDetailModal({
         </div>
 
         {profile.verification_status === "verified" && (
-          <div className="absolute top-16 right-3 bg-emerald-500 text-white px-2.5 py-1.5 rounded-full flex items-center gap-1 text-[10px] font-bold shadow-md uppercase tracking-wider z-30">
+          <div className="absolute top-16 right-3 bg-emerald-500 text-white px-2.5 py-1.5 rounded-full flex items-center gap-1 text-[12px] font-bold shadow-md uppercase tracking-wider z-30">
             <CheckCircle size={11} fill="white" className="text-emerald-500" />
             <span>Vérifié</span>
           </div>
@@ -319,7 +319,7 @@ export default function ProfileDetailModal({
 
           {/* About / Bio section */}
           <div className="space-y-1.5">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">À propos de moi</h4>
+            <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-widest">À propos de moi</h4>
             {profile.bio ? (
               <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
                 {profile.bio}
@@ -332,11 +332,11 @@ export default function ProfileDetailModal({
           {/* Quick Info Attributes Grid */}
           <div className="grid grid-cols-2 gap-3.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
             <div className="text-left">
-              <p className="text-[9px] font-extrabold text-slate-400 uppercase">Genre</p>
+              <p className="text-[11px] font-extrabold text-slate-400 uppercase">Genre</p>
               <p className="text-xs font-bold text-slate-800 capitalize mt-0.5">{profile.gender || "Non spécifié"}</p>
             </div>
             <div className="text-left">
-              <p className="text-[9px] font-extrabold text-slate-400 uppercase">Recherche</p>
+              <p className="text-[11px] font-extrabold text-slate-400 uppercase">Recherche</p>
               <p className="text-xs font-bold text-slate-800 capitalize mt-0.5">
                 {profile.preferences === "homme" ? "Hommes" : profile.preferences === "femme" ? "Femmes" : "Tout le monde"}
               </p>
@@ -345,7 +345,7 @@ export default function ProfileDetailModal({
 
           {/* Relationship Intents tags */}
           <div className="space-y-2">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Intentions de rencontre</h4>
+            <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Intentions de rencontre</h4>
             <div className="flex flex-wrap gap-1.5">
               {profile.relationship_intents && profile.relationship_intents.length > 0 ? (
                 profile.relationship_intents.map((intent) => {
@@ -373,12 +373,12 @@ export default function ProfileDetailModal({
           {/* Ratings & reviews — visible à tous, laissés uniquement par des acheteurs confirmés */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avis</h4>
+              <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Avis</h4>
               {reviews.length > 0 && (
                 <div className="flex items-center gap-1">
                   <Star size={13} className="text-amber-400 fill-amber-400" />
                   <span className="text-xs font-black text-slate-800">{avgRating.toFixed(1)}</span>
-                  <span className="text-[10px] text-slate-400">({reviews.length})</span>
+                  <span className="text-[12px] text-slate-400">({reviews.length})</span>
                 </div>
               )}
             </div>
@@ -432,9 +432,9 @@ export default function ProfileDetailModal({
                   onChange={(e) => setReviewComment(e.target.value)}
                   placeholder="Votre commentaire (facultatif)"
                   rows={3}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-rose-400 resize-none"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-slate-900 resize-none"
                 />
-                {reviewError && <p className="text-[10px] text-red-500 font-semibold">{reviewError}</p>}
+                {reviewError && <p className="text-[12px] text-red-500 font-semibold">{reviewError}</p>}
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowReviewForm(false)}

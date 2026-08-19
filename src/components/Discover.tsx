@@ -32,7 +32,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 function renderOnlineStatus(profile: Profile) {
   if (isActuallyOnline(profile)) {
     return (
-      <div className="flex items-center space-x-1 text-emerald-400 font-extrabold text-[10px] uppercase tracking-wider animate-pulse bg-emerald-950/40 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+      <div className="flex items-center space-x-1 text-emerald-400 font-extrabold text-[12px] uppercase tracking-wider animate-pulse bg-emerald-950/40 border border-emerald-500/20 px-2 py-0.5 rounded-full">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
         <span>En ligne</span>
       </div>
@@ -59,7 +59,7 @@ function renderOnlineStatus(profile: Profile) {
     }
 
     return (
-      <div className="flex items-center space-x-1 text-slate-300 font-extrabold text-[9px] uppercase tracking-wider bg-slate-900/50 border border-slate-700/30 px-2 py-0.5 rounded-full">
+      <div className="flex items-center space-x-1 text-slate-300 font-extrabold text-[11px] uppercase tracking-wider bg-slate-900/50 border border-slate-700/30 px-2 py-0.5 rounded-full">
         <span className="w-1 h-1 rounded-full bg-slate-400"></span>
         <span>{text}</span>
       </div>
@@ -643,7 +643,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                   ) : (
                     <>
                       <div>
-                        <p className="text-[10px] font-extrabold text-slate-500 uppercase mb-2">Tranche d'âge</p>
+                        <p className="text-[12px] font-extrabold text-slate-500 uppercase mb-2">Tranche d'âge</p>
                         <div className="flex items-center gap-2">
                           <input
                             type="number"
@@ -652,7 +652,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                             placeholder="Min"
                             value={ageFilterMin ?? ""}
                             onChange={(e) => setAgeFilterMin(e.target.value ? parseInt(e.target.value) : null)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-rose-400"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-slate-900"
                           />
                           <span className="text-slate-400 text-xs">—</span>
                           <input
@@ -662,7 +662,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                             placeholder="Max"
                             value={ageFilterMax ?? ""}
                             onChange={(e) => setAgeFilterMax(e.target.value ? parseInt(e.target.value) : null)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-rose-400"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-slate-900"
                           />
                         </div>
                       </div>
@@ -805,7 +805,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                 {currentUser && currentUserProfile && (
                   <div className="absolute top-4 left-4 bg-white/95 backdrop-blur shadow-sm px-3 py-1 rounded-full flex items-center space-x-1 z-10 border border-rose-500/10">
                     <Sparkles size={11} className="text-rose-500 animate-pulse fill-rose-500" />
-                    <span className="text-[10px] font-black text-slate-800">
+                    <span className="text-[12px] font-black text-slate-800">
                       {compatibilityScore}% Compatibilité
                     </span>
                   </div>
@@ -814,13 +814,13 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                 {/* Verification + Premium Status Badges */}
                 <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1.5">
                   {activeProfile.verification_status === "verified" && (
-                    <div className="bg-emerald-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[9px] font-bold shadow-md uppercase tracking-wider">
+                    <div className="bg-emerald-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[11px] font-bold shadow-md uppercase tracking-wider">
                       <CheckCircle size={10} fill="white" className="text-emerald-500" />
                       <span>Vérifié</span>
                     </div>
                   )}
                   {premiumUids.has(activeProfile.uid) && (
-                    <div className="bg-gradient-to-r from-amber-400 to-amber-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[9px] font-bold shadow-md uppercase tracking-wider">
+                    <div className="bg-gradient-to-r from-amber-400 to-amber-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[11px] font-bold shadow-md uppercase tracking-wider">
                       <Sparkles size={10} fill="white" className="text-amber-500" />
                       <span>Premium</span>
                     </div>
@@ -847,7 +847,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                           <MapPin size={11} className="mr-1 text-rose-400 flex-shrink-0" />
                           <span className="truncate">{activeProfile.location}</span>
                           {currentUserProfile?.latitude && currentUserProfile?.longitude && activeProfile.latitude && activeProfile.longitude && (
-                            <span className="ml-2 bg-rose-950/60 border border-rose-500/25 px-1.5 py-0.2 rounded-full text-[9px] font-extrabold text-rose-300 flex-shrink-0">
+                            <span className="ml-2 bg-rose-950/60 border border-rose-500/25 px-1.5 py-0.2 rounded-full text-[11px] font-extrabold text-rose-300 flex-shrink-0">
                               {Math.round(calculateDistance(currentUserProfile.latitude, currentUserProfile.longitude, activeProfile.latitude, activeProfile.longitude))} km
                             </span>
                           )}
@@ -878,7 +878,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                   }
                   setIsReportOpen(true);
                 }}
-                className="text-slate-400 hover:text-red-500 text-[10px] flex items-center gap-1 transition cursor-pointer font-bold"
+                className="text-slate-400 hover:text-red-500 text-[12px] flex items-center gap-1 transition cursor-pointer font-bold"
               >
                 <ShieldAlert size={12} />
                 <span>Signaler ce profil</span>

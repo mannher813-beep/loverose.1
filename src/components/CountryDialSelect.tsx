@@ -54,7 +54,7 @@ export default function CountryDialSelect({ value, onChange, locale = "fr", disa
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
-        className="w-full h-[46px] px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-rose-500 flex items-center justify-between gap-1 cursor-pointer disabled:opacity-50"
+        className="w-full h-[46px] px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-slate-900 flex items-center justify-between gap-1 cursor-pointer disabled:opacity-50"
       >
         <span className="flex items-center gap-1 truncate">
           <span className="text-base leading-none">{selected?.flag || "🏳️"}</span>

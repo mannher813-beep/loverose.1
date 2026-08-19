@@ -2,15 +2,32 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { supabase } from "../lib/supabase";
 import { Post, Profile, ListingCategory } from "../types";
 import AdSlot from "./AdSlot";
-import { Send, MessageCircle, Heart, Share2, Sparkles, Loader2, DollarSign, MessageSquare, MapPin, Tag, Boxes, Clock } from "lucide-react";
+import {
+  Send, MessageCircle, Heart, Share2, Loader2, DollarSign, MessageSquare,
+  MapPin, Tag, Boxes, Clock, Search, X, SlidersHorizontal, Compass, BadgeCheck,
+} from "lucide-react";
 import { LISTING_CATEGORIES } from "../types";
 import ProfileDetailModal from "./ProfileDetailModal";
 import AdaptiveImage from "./AdaptiveImage";
+import { Button, Badge, EmptyState, PostSkeleton, cx } from "./ui";
 
-// Nombre de publications chargées en une fois. Le fil récupérait auparavant
-// toute la table `posts`, ce qui rendait le premier affichage de plus en plus
-// lent au fur et à mesure que la plateforme grossissait.
-const POSTS_PAGE_SIZE = 30;
+// Nombre de publications chargées par page. Le fil récupérait auparavant toute
+// la table `posts`, ce qui rendait le premier affichage de plus en plus lent au
+// fur et à mesure que la plateforme grossissait.
+const POSTS_PAGE_SIZE = 12;
+
+/** Rend une date en libellé relatif court ("il y a 3 h"), plus lisible. */
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.round(diff / 60000);
+  if (min < 1) return "à l'instant";
+  if (min < 60) return `il y a ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `il y a ${h} h`;
+  const d = Math.round(h / 24);
+  if (d < 7) return `il y a ${d} j`;
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
 
 interface FeedProps {
   currentUser: any;
@@ -21,16 +38,36 @@ interface FeedProps {
 export default function Feed({ currentUser, currentUserProfile, onAuthRequired }: FeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedViewProfile, setSelectedViewProfile] = useState<Profile | null>(null);
 
-  // Filtre de catégorie du fil : null = toutes les annonces confondues,
-  // sinon on n'affiche que les publications de ce type d'annonce précis.
+  // Filtre de catégorie du fil : null = toutes les annonces confondues.
   const [categoryFilter, setCategoryFilter] = useState<ListingCategory | null>(null);
-  const visiblePosts = useMemo(
-    () => (categoryFilter ? posts.filter((p) => p.listing_category === categoryFilter) : posts),
-    [posts, categoryFilter]
-  );
+  // Recherche plein texte côté client sur le contenu et la localisation.
+  const [searchQuery, setSearchQuery] = useState("");
+  // Filtres complémentaires demandés par les utilisateurs du fil.
+  const [priceFilter, setPriceFilter] = useState<"all" | "free" | "paid">("all");
+  const [showFilters, setShowFilters] = useState(false);
+
+  const visiblePosts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return posts.filter((p) => {
+      if (categoryFilter && p.listing_category !== categoryFilter) return false;
+      if (priceFilter === "free" && !p.is_free_listing) return false;
+      if (priceFilter === "paid" && !p.listing_price) return false;
+      if (!q) return true;
+      return (
+        (p.contenu || "").toLowerCase().includes(q) ||
+        (p.listing_location || "").toLowerCase().includes(q) ||
+        (p.author_profile?.full_name || "").toLowerCase().includes(q)
+      );
+    });
+  }, [posts, categoryFilter, priceFilter, searchQuery]);
+
+  const activeFilterCount =
+    (categoryFilter ? 1 : 0) + (priceFilter !== "all" ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
 
   // post_id -> true once the current visitor has paid for that annonce
   const [purchasedPostIds, setPurchasedPostIds] = useState<Set<string>>(new Set());
@@ -339,78 +376,117 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
     }, 3000);
   };
 
+  const POST_COLUMNS =
+    "id, author_id, contenu, medias, media_types, media_dimensions, created_at, listing_price, whatsapp_link, is_free_listing, listing_category, listing_location, listing_condition, listing_negotiable, listing_expires_at, listing_quantity";
+
+  /** Attache le profil auteur à un lot de posts, en une seule requête. */
+  const attachAuthors = useCallback(async (rows: any[]): Promise<Post[]> => {
+    const authorIds = Array.from(new Set(rows.map((p) => p.author_id).filter(Boolean)));
+    const profilesMap: Record<string, any> = {};
+
+    if (authorIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("uid, full_name, avatar_url, verification_status, age, ville, pays, bio")
+        .in("uid", authorIds);
+      for (const prof of profilesData || []) profilesMap[prof.uid] = prof;
+    }
+
+    return rows.map(
+      (p) =>
+        ({
+          ...p,
+          author_profile: profilesMap[p.author_id] || { full_name: "Membre LoveRose" },
+        }) as Post
+    );
+  }, []);
+
   const loadPosts = useCallback(async () => {
     setIsLoading(true);
     try {
-      // On ne ramène que les colonnes réellement affichées et on plafonne le
-      // nombre de publications : `select("*")` sans limite téléchargeait tout
-      // l'historique du fil (avec toutes les colonnes) à chaque ouverture.
+      // Seules les colonnes affichées sont demandées, et par page : un
+      // `select("*")` sans limite téléchargeait tout l'historique du fil.
       const { data, error } = await supabase
         .from("posts")
-        .select(
-          "id, author_id, contenu, medias, media_types, media_dimensions, created_at, listing_price, whatsapp_link, is_free_listing, listing_category, listing_location, listing_condition, listing_negotiable, listing_expires_at, listing_quantity"
-        )
+        .select(POST_COLUMNS)
         .order("created_at", { ascending: false })
-        .limit(POSTS_PAGE_SIZE);
+        .range(0, POSTS_PAGE_SIZE - 1);
 
       if (error) throw error;
 
-      // Profils des auteurs en une seule requête groupée (évite le N+1), et
-      // limitée aux colonnes utiles à l'en-tête du post.
-      const authorIds = Array.from(new Set((data || []).map((p) => p.author_id).filter(Boolean)));
-      const profilesMap: Record<string, any> = {};
-
-      if (authorIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("uid, full_name, avatar_url, verification_status, age, ville, pays, bio")
-          .in("uid", authorIds);
-
-        for (const prof of profilesData || []) {
-          profilesMap[prof.uid] = prof;
-        }
-      }
-
-      const populatedPosts = (data || []).map(
-        (p) =>
-          ({
-            ...p,
-            author_profile: profilesMap[p.author_id] || { full_name: "Membre LoveRose" },
-          }) as Post
-      );
-
-      // Fil non chronologique : mélangé aléatoirement à chaque chargement.
-      const shuffle = <T,>(arr: T[]): T[] => {
-        const a = [...arr];
-        for (let i = a.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [a[i], a[j]] = [a[j], a[i]];
-        }
-        return a;
-      };
-
-      const orderedPosts = shuffle(populatedPosts);
+      const rows = data || [];
+      const populated = await attachAuthors(rows);
 
       // Les posts s'affichent immédiatement : les compteurs de likes /
       // commentaires / partages arrivent ensuite en arrière-plan au lieu de
       // retarder l'affichage de tout le fil.
-      setPosts(orderedPosts);
+      setPosts(populated);
+      setHasMore(rows.length === POSTS_PAGE_SIZE);
       setIsLoading(false);
-      loadInteractionsForPosts(orderedPosts).catch((e) =>
+      loadInteractionsForPosts(populated).catch((e) =>
         console.warn("Could not load post interactions:", e)
       );
     } catch (err: any) {
       console.warn("Could not query posts table (possibly offline or unmigrated):", err);
-      setErrorMessage("Impossible de charger le fil d'actualité.");
+      setErrorMessage("Impossible de charger le fil d'annonces.");
       setIsLoading(false);
     }
-  }, [loadInteractionsForPosts]);
+  }, [attachAuthors, loadInteractionsForPosts]);
+
+  /** Pagination : charge la page suivante sans perdre celles déjà affichées. */
+  const loadMorePosts = useCallback(async () => {
+    if (isLoadingMore || !hasMore || isLoading) return;
+    setIsLoadingMore(true);
+    try {
+      const from = posts.length;
+      const { data, error } = await supabase
+        .from("posts")
+        .select(POST_COLUMNS)
+        .order("created_at", { ascending: false })
+        .range(from, from + POSTS_PAGE_SIZE - 1);
+
+      if (error) throw error;
+
+      const rows = data || [];
+      const populated = await attachAuthors(rows);
+
+      // On dédoublonne : une publication créée entre deux pages pourrait
+      // sinon apparaître deux fois et casser les clés React.
+      setPosts((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...populated.filter((p) => !seen.has(p.id))];
+      });
+      setHasMore(rows.length === POSTS_PAGE_SIZE);
+      loadInteractionsForPosts(populated).catch(() => {});
+    } catch (err) {
+      console.warn("Could not load more posts:", err);
+      setHasMore(false);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [attachAuthors, hasMore, isLoading, isLoadingMore, loadInteractionsForPosts, posts.length]);
 
   useEffect(() => {
     // Posts are publicly readable (RLS allows anon SELECT), so the feed loads
     // for guests too — browsing the annonces never requires an account.
     loadPosts();
   }, [loadPosts]);
+
+  // Défilement infini : on observe une sentinelle en bas de liste plutôt que
+  // d'écouter l'évènement scroll (moins coûteux, pas de throttling à gérer).
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMorePosts();
+      },
+      { rootMargin: "600px 0px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, loadMorePosts]);
 
   const handlePayForListing = async (post: Post) => {
     if (!currentUser) {
@@ -457,343 +533,511 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-50 p-4 space-y-6 font-sans">
+    <div className="flex-1 overflow-y-auto bg-slate-50">
+      {/* ============ EN-TÊTE ÉDITORIAL DU FIL ============ */}
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-2xl mx-auto px-4 pt-6 pb-4 space-y-5">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <span className="u-kicker text-rose-600">Le fil</span>
+              <h1 className="u-display text-3xl sm:text-4xl text-slate-950 mt-1.5">
+                Annonces
+              </h1>
+            </div>
+            <p className="text-xs text-slate-500 font-medium text-right pb-1.5 hidden sm:block">
+              {posts.length} publication{posts.length > 1 ? "s" : ""}
+              <br />
+              chargée{posts.length > 1 ? "s" : ""}
+            </p>
+          </div>
 
-      {errorMessage && (
-        <div className="max-w-xl mx-auto bg-red-50 text-red-600 text-xs p-3 rounded-xl font-bold">
-          {errorMessage}
-        </div>
-      )}
+          {/* Recherche */}
+          <div className="relative">
+            <Search
+              size={17}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+            />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Rechercher une annonce, une ville, un vendeur…"
+              aria-label="Rechercher une annonce"
+              className="w-full h-12 pl-11 pr-11 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:bg-white focus:border-slate-900 focus:outline-none transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                aria-label="Effacer la recherche"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-900 rounded cursor-pointer transition"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
 
-      {/* Filtre de catégorie : toutes les annonces, ou une catégorie précise */}
-      <div className="max-w-xl mx-auto -mb-2 overflow-x-auto">
-        <div className="flex items-center gap-1.5 w-max pb-1">
-          <button
-            type="button"
-            onClick={() => setCategoryFilter(null)}
-            className={`flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 rounded-full transition cursor-pointer whitespace-nowrap border ${
-              categoryFilter === null
-                ? "bg-rose-500 border-rose-500 text-white"
-                : "bg-white border-slate-200 text-slate-600 hover:border-rose-300"
-            }`}
-          >
-            Toutes les annonces
-          </button>
-          {LISTING_CATEGORIES.map((cat) => (
+          {/* Rail de catégories + bouton filtres */}
+          <div className="flex items-center gap-2">
             <button
-              key={cat.value}
-              type="button"
-              onClick={() => setCategoryFilter((prev) => (prev === cat.value ? null : cat.value))}
-              className={`flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 rounded-full transition cursor-pointer whitespace-nowrap border ${
-                categoryFilter === cat.value
-                  ? "bg-rose-500 border-rose-500 text-white"
-                  : "bg-white border-slate-200 text-slate-600 hover:border-rose-300"
-              }`}
+              onClick={() => setShowFilters((v) => !v)}
+              aria-expanded={showFilters}
+              className={cx(
+                "flex items-center gap-1.5 h-9 px-3 rounded-lg border text-[13px] font-bold whitespace-nowrap cursor-pointer transition-colors flex-shrink-0",
+                showFilters || activeFilterCount > 0
+                  ? "bg-slate-900 border-slate-900 text-white"
+                  : "bg-white border-slate-300 text-slate-700 hover:border-slate-900"
+              )}
             >
-              <span>{cat.emoji}</span>
-              <span>{cat.label}</span>
+              <SlidersHorizontal size={14} />
+              Filtres
+              {activeFilterCount > 0 && (
+                <span className="ml-0.5 bg-rose-500 text-white text-[12px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
-          ))}
+
+            <div className="flex-1 overflow-x-auto u-scrollbar-none u-fade-x">
+              <div className="flex items-center gap-1.5 w-max pr-6">
+                <button
+                  onClick={() => setCategoryFilter(null)}
+                  className={cx(
+                    "h-9 px-3.5 rounded-lg border text-[13px] font-bold whitespace-nowrap cursor-pointer transition-colors",
+                    categoryFilter === null
+                      ? "bg-rose-50 border-rose-500 text-rose-700"
+                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
+                  )}
+                >
+                  Toutes
+                </button>
+                {LISTING_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.value}
+                    onClick={() =>
+                      setCategoryFilter((prev) => (prev === cat.value ? null : cat.value))
+                    }
+                    className={cx(
+                      "flex items-center gap-1.5 h-9 px-3.5 rounded-lg border text-[13px] font-bold whitespace-nowrap cursor-pointer transition-colors",
+                      categoryFilter === cat.value
+                        ? "bg-rose-50 border-rose-500 text-rose-700"
+                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
+                    )}
+                  >
+                    <span aria-hidden>{cat.emoji}</span>
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Panneau de filtres complémentaires */}
+          {showFilters && (
+            <div className="animate-rise flex flex-wrap items-center gap-2 pt-1">
+              <span className="u-kicker text-slate-400">Prix</span>
+              {([
+                { id: "all", label: "Tout" },
+                { id: "free", label: "Contact gratuit" },
+                { id: "paid", label: "Payant" },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setPriceFilter(opt.id)}
+                  className={cx(
+                    "h-8 px-3 rounded-lg border text-xs font-bold cursor-pointer transition-colors",
+                    priceFilter === opt.id
+                      ? "bg-slate-900 border-slate-900 text-white"
+                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={() => {
+                    setCategoryFilter(null);
+                    setPriceFilter("all");
+                    setSearchQuery("");
+                  }}
+                  className="h-8 px-3 text-xs font-bold text-rose-600 hover:text-rose-700 underline underline-offset-2 cursor-pointer"
+                >
+                  Tout réinitialiser
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Feed Posts List */}
-      <div className="max-w-xl mx-auto space-y-4">
-        {isLoading ? (
-          <div className="text-center p-12 text-slate-400 text-xs">
-            <Loader2 className="animate-spin mx-auto mb-2 text-rose-500" size={24} />
-            <span>Chargement des posts...</span>
+      {/* ============ CORPS DU FIL ============ */}
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+        {errorMessage && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-4 rounded-lg font-semibold">
+            {errorMessage}
           </div>
+        )}
+
+        {isLoading ? (
+          // Squelettes plutôt qu'un spinner : la page garde sa structure et
+          // l'attente paraît nettement plus courte.
+          <>
+            <PostSkeleton />
+            <PostSkeleton />
+            <PostSkeleton />
+          </>
         ) : visiblePosts.length > 0 ? (
           visiblePosts.map((p, index) => {
             const author = p.author_profile;
             const isSharedTarget = p.id === highlightedPostId;
+            const likes = likesState[p.id];
+            const comments = commentsState[p.id] || [];
+            const isCommentsOpen = activeCommentsPostId === p.id;
+
             return (
               <React.Fragment key={p.id}>
-                <div
+                <article
                   ref={isSharedTarget ? highlightedPostRef : undefined}
-                  className={`bg-white border rounded-3xl p-5 shadow-xs space-y-4 transition-all duration-700 ${
-                    isSharedTarget ? "border-rose-400 ring-2 ring-rose-200" : "border-slate-150"
-                  }`}
+                  className={cx(
+                    "bg-white border rounded-xl overflow-hidden transition-colors duration-500",
+                    isSharedTarget ? "border-rose-500 ring-2 ring-rose-100" : "border-slate-200"
+                  )}
                 >
-                  {/* Post Header */}
-                  <div 
-                    onClick={() => author && setSelectedViewProfile(author)}
-                    className="flex items-center space-x-3 cursor-pointer hover:opacity-85 transition"
-                    title="Visiter le profil public"
-                  >
-                    <AdaptiveImage
-                      src={author?.avatar_url}
-                      fallbackSrc={`https://api.dicebear.com/7.x/adventurer/svg?seed=${author?.full_name || p.author_id}`}
-                      alt={author?.full_name}
-                      referrerPolicy="no-referrer"
-                      loading="lazy"
-                      decoding="async"
-                      width={40}
-                      height={40}
-                      className="w-10 h-10 rounded-full object-cover bg-slate-100 border border-slate-100"
-                    />
-                    <div>
-                      <div className="flex items-center gap-1">
-                        <span className="font-bold text-slate-800 text-sm">{author?.full_name || "Membre LoveRose"}</span>
-                        {author?.verification_status === "verified" && (
-                          <span className="bg-rose-50 text-rose-500 text-[9px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider">Vérifié</span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-slate-400">
-                        {new Date(p.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                  </div>
+                  {/* --- En-tête auteur --- */}
+                  <header className="flex items-center gap-3 px-5 pt-5">
+                    <button
+                      onClick={() => author && setSelectedViewProfile(author)}
+                      className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer group"
+                      title="Visiter le profil public"
+                    >
+                      <AdaptiveImage
+                        src={author?.avatar_url}
+                        fallbackSrc={`https://api.dicebear.com/7.x/adventurer/svg?seed=${author?.full_name || p.author_id}`}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                        decoding="async"
+                        width={44}
+                        height={44}
+                        className="w-11 h-11 rounded-full object-cover bg-slate-100 border border-slate-200 flex-shrink-0"
+                      />
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-1.5">
+                          <span className="font-bold text-[15px] text-slate-900 truncate group-hover:underline underline-offset-2">
+                            {author?.full_name || "Membre LoveRose"}
+                          </span>
+                          {author?.verification_status === "verified" && (
+                            <BadgeCheck
+                              size={15}
+                              className="text-rose-500 flex-shrink-0"
+                              aria-label="Profil vérifié"
+                            />
+                          )}
+                        </span>
+                        <span className="block text-xs text-slate-500 font-medium mt-0.5">
+                          {timeAgo(p.created_at)}
+                        </span>
+                      </span>
+                    </button>
+                  </header>
 
-                  {/* Post Content */}
-                  <div className="space-y-3">
-                    {/* Badges d'annonce : type choisi par l'auteur + infos complémentaires */}
+                  {/* --- Corps --- */}
+                  <div className="px-5 pt-3.5 space-y-3.5">
+                    {p.contenu && (
+                      <p className="text-[15px] text-slate-800 leading-relaxed whitespace-pre-wrap">
+                        {p.contenu}
+                      </p>
+                    )}
+
+                    {/* Métadonnées de l'annonce */}
                     {p.listing_category && (
                       <div className="flex flex-wrap items-center gap-1.5">
                         {(() => {
                           const cat = LISTING_CATEGORIES.find((c) => c.value === p.listing_category);
                           return cat ? (
-                            <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 text-[10px] font-bold px-2 py-1 rounded-full">
-                              <Tag size={10} />
+                            <Badge tone="brand" icon={<Tag size={11} />}>
                               {cat.emoji} {cat.label}
-                            </span>
+                            </Badge>
                           ) : null;
                         })()}
                         {p.listing_location && (
-                          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded-full">
-                            <MapPin size={10} />
-                            {p.listing_location}
-                          </span>
+                          <Badge icon={<MapPin size={11} />}>{p.listing_location}</Badge>
                         )}
                         {p.listing_condition && (
-                          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded-full capitalize">
-                            <Boxes size={10} />
+                          <Badge icon={<Boxes size={11} />} className="capitalize">
                             {p.listing_condition}
-                          </span>
+                          </Badge>
                         )}
                         {p.listing_negotiable && (
-                          <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-600 text-[10px] font-bold px-2 py-1 rounded-full">
-                            <DollarSign size={10} />
+                          <Badge tone="warning" icon={<DollarSign size={11} />}>
                             Négociable
-                          </span>
+                          </Badge>
                         )}
                         {typeof p.listing_quantity === "number" && (
-                          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded-full">
+                          <Badge>
                             {p.listing_quantity > 0 ? `${p.listing_quantity} dispo.` : "Épuisé"}
-                          </span>
+                          </Badge>
                         )}
                         {p.listing_expires_at && (
-                          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-1 rounded-full">
-                            <Clock size={10} />
+                          <Badge icon={<Clock size={11} />}>
                             {new Date(p.listing_expires_at) < new Date()
                               ? "Expirée"
-                              : `Jusqu'au ${new Date(p.listing_expires_at).toLocaleDateString([], { day: "numeric", month: "short" })}`}
-                          </span>
+                              : `Jusqu'au ${new Date(p.listing_expires_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`}
+                          </Badge>
                         )}
                       </div>
                     )}
-                    <p className="text-slate-700 text-xs md:text-sm leading-relaxed whitespace-pre-wrap">{p.contenu}</p>
-                    
-                    {/* Post media — single photo full-width, several photos as a grid */}
-                    {p.medias && p.medias.length > 0 && (
-                      p.medias.length === 1 ? (
-                        <div className="rounded-2xl overflow-hidden bg-slate-950 border border-slate-100/5 flex items-center justify-center max-h-[80vh] w-full">
+                  </div>
+
+                  {/* --- Médias, pleine largeur pour un rendu éditorial --- */}
+                  {p.medias && p.medias.length > 0 && (
+                    <div className="mt-4">
+                      {p.medias.length === 1 ? (
+                        <div className="bg-slate-100 border-y border-slate-200 flex items-center justify-center max-h-[70vh] overflow-hidden">
                           <AdaptiveImage
                             src={p.medias[0]}
-                            alt="Illustration post"
+                            alt=""
                             referrerPolicy="no-referrer"
                             loading={index === 0 ? "eager" : "lazy"}
                             decoding="async"
                             style={{
-                              width: '100%',
-                              aspectRatio: p.media_dimensions && p.media_dimensions[0] ? `${p.media_dimensions[0].ratio}` : 'auto',
-                              objectFit: 'contain',
-                              maxHeight: '80vh',
+                              width: "100%",
+                              aspectRatio:
+                                p.media_dimensions && p.media_dimensions[0]
+                                  ? `${p.media_dimensions[0].ratio}`
+                                  : undefined,
+                              objectFit: "contain",
+                              maxHeight: "70vh",
                             }}
-                            className="hover:scale-[1.005] transition duration-300"
                           />
                         </div>
                       ) : (
-                        <div className="grid grid-cols-2 gap-1.5 rounded-2xl overflow-hidden">
+                        <div className="grid grid-cols-2 gap-0.5 border-y border-slate-200">
                           {p.medias.map((url, i) => (
                             <AdaptiveImage
                               key={url + i}
                               src={url}
-                              alt={`Photo ${i + 1}`}
+                              alt=""
                               referrerPolicy="no-referrer"
                               loading={index === 0 && i < 2 ? "eager" : "lazy"}
                               decoding="async"
-                              className="w-full aspect-square object-cover bg-slate-950"
+                              className="w-full aspect-square object-cover bg-slate-100"
                             />
                           ))}
                         </div>
-                      )
-                    )}
-
-                    {/* Free-contact annonce: no payment, WhatsApp button opens directly */}
-                    {p.is_free_listing && p.whatsapp_link && (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Annonce</p>
-                          <p className="text-sm font-black text-slate-900">Contact gratuit</p>
-                        </div>
-                        <button
-                          onClick={() => window.open(p.whatsapp_link!, "_blank", "noopener,noreferrer")}
-                          className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5 flex-shrink-0"
-                        >
-                          <MessageSquare size={13} />
-                          <span>Contacter sur WhatsApp</span>
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Paid annonce block: price + pay / contact button */}
-                    {!p.is_free_listing && !!p.listing_price && (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Annonce</p>
-                          <p className="text-sm font-black text-slate-900">{p.listing_price.toLocaleString("fr-FR")} FCFA</p>
-                        </div>
-                        <button
-                          onClick={() => handlePayForListing(p)}
-                          disabled={payingPostId === p.id}
-                          className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50 flex-shrink-0"
-                        >
-                          {payingPostId === p.id ? (
-                            <Loader2 size={13} className="animate-spin" />
-                          ) : purchasedPostIds.has(p.id) ? (
-                            <MessageSquare size={13} />
-                          ) : (
-                            <DollarSign size={13} />
-                          )}
-                          <span>{purchasedPostIds.has(p.id) ? "Contacter sur WhatsApp" : "Payer & Contacter"}</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Post Footer Actions */}
-                  {shareToastMessage && (
-                    <div className="bg-rose-500 text-white text-xs font-bold py-2 px-4 rounded-xl text-center animate-bounce">
-                      {shareToastMessage}
+                      )}
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-slate-400 text-xs font-semibold">
-                    <button 
+                  {/* --- Bloc transaction --- */}
+                  {(p.is_free_listing && p.whatsapp_link) ||
+                  (!p.is_free_listing && !!p.listing_price) ? (
+                    <div className="mx-5 mt-4 flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+                      <div className="min-w-0">
+                        <span className="u-kicker text-slate-400">
+                          {p.is_free_listing ? "Contact" : "Prix"}
+                        </span>
+                        <p className="u-display text-xl text-slate-950 mt-0.5">
+                          {p.is_free_listing
+                            ? "Gratuit"
+                            : `${p.listing_price!.toLocaleString("fr-FR")} FCFA`}
+                        </p>
+                      </div>
+                      {p.is_free_listing ? (
+                        <Button
+                          size="sm"
+                          variant="ink"
+                          icon={<MessageSquare size={14} />}
+                          onClick={() =>
+                            window.open(p.whatsapp_link!, "_blank", "noopener,noreferrer")
+                          }
+                        >
+                          Contacter
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          loading={payingPostId === p.id}
+                          icon={
+                            purchasedPostIds.has(p.id) ? (
+                              <MessageSquare size={14} />
+                            ) : (
+                              <DollarSign size={14} />
+                            )
+                          }
+                          onClick={() => handlePayForListing(p)}
+                        >
+                          {purchasedPostIds.has(p.id) ? "Contacter" : "Payer & contacter"}
+                        </Button>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {/* --- Actions --- */}
+                  <div className="mt-4 mx-5 border-t border-slate-100 flex items-stretch">
+                    <button
                       onClick={() => handleLikeToggle(p.id)}
-                      className={`flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer ${likesState[p.id]?.userLiked ? 'text-rose-500 font-bold' : ''}`}
+                      aria-pressed={!!likes?.userLiked}
+                      className={cx(
+                        "flex-1 flex items-center justify-center gap-2 py-3 text-[13px] font-bold rounded-lg cursor-pointer transition-colors",
+                        likes?.userLiked
+                          ? "text-rose-600"
+                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                      )}
                     >
-                      <Heart size={16} fill={likesState[p.id]?.userLiked ? "currentColor" : "none"} className={likesState[p.id]?.userLiked ? "animate-pulse" : ""} />
-                      <span>{likesState[p.id]?.count ?? (Math.floor(Math.random() * 8) + 2)} J'aime</span>
+                      <Heart size={17} fill={likes?.userLiked ? "currentColor" : "none"} />
+                      {likes?.count ?? 0}
+                      <span className="hidden xs:inline">J'aime</span>
                     </button>
-                    <button 
-                      onClick={() => setActiveCommentsPostId(activeCommentsPostId === p.id ? null : p.id)}
-                      className={`flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer ${activeCommentsPostId === p.id ? 'text-rose-500 font-bold' : ''}`}
+                    <button
+                      onClick={() =>
+                        setActiveCommentsPostId(isCommentsOpen ? null : p.id)
+                      }
+                      aria-expanded={isCommentsOpen}
+                      className={cx(
+                        "flex-1 flex items-center justify-center gap-2 py-3 text-[13px] font-bold rounded-lg cursor-pointer transition-colors",
+                        isCommentsOpen
+                          ? "text-rose-600"
+                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                      )}
                     >
-                      <MessageCircle size={16} />
-                      <span>{(commentsState[p.id] || []).length} Commenter</span>
+                      <MessageCircle size={17} />
+                      {comments.length}
+                      <span className="hidden xs:inline">Commenter</span>
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleSharePost(p.id)}
-                      className="flex items-center space-x-1 hover:text-rose-500 transition cursor-pointer"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 text-[13px] font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
                     >
-                      <Share2 size={16} />
-                      <span>{sharesState[p.id] ?? 0} Partager</span>
+                      <Share2 size={17} />
+                      {sharesState[p.id] ?? 0}
+                      <span className="hidden xs:inline">Partager</span>
                     </button>
                   </div>
 
-                  {/* Sub Comments Accordion */}
-                  {activeCommentsPostId === p.id && (
-                    <div className="bg-slate-50 rounded-2xl p-4 space-y-4 border border-slate-100 animate-fadeIn text-xs">
-                      <h5 className="font-extrabold text-slate-800 flex items-center gap-1">
-                        <MessageCircle size={14} className="text-rose-500" />
-                        <span>Commentaires ({(commentsState[p.id] || []).length})</span>
-                      </h5>
-
-                      {/* Comments List */}
-                      <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
-                        {(commentsState[p.id] || []).length > 0 ? (
-                          (commentsState[p.id] || []).map((c: any) => (
-                            <div key={c.id} className="flex gap-2.5 items-start bg-white p-2.5 rounded-xl border border-slate-100 shadow-3xs">
+                  {/* --- Commentaires --- */}
+                  {isCommentsOpen && (
+                    <div className="animate-rise bg-slate-50 border-t border-slate-200 px-5 py-4 space-y-3.5">
+                      <div className="space-y-2.5 max-h-64 overflow-y-auto">
+                        {comments.length > 0 ? (
+                          comments.map((c: any) => (
+                            <div key={c.id} className="flex gap-2.5">
                               <AdaptiveImage
                                 src={c.avatar_url}
-                                alt="User avatar"
+                                alt=""
                                 loading="lazy"
                                 decoding="async"
-                                width={24}
-                                height={24}
-                                className="w-6 h-6 rounded-full object-cover"
+                                width={28}
+                                height={28}
+                                className="w-7 h-7 rounded-full object-cover bg-slate-200 flex-shrink-0"
                               />
-                              <div className="flex-1 space-y-1">
-                                <div className="flex justify-between items-center">
-                                  <span className="font-extrabold text-slate-800 text-[10px]">{c.author_name}</span>
-                                  <span className="text-[8px] text-slate-400">{new Date(c.created_at).toLocaleDateString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                              <div className="flex-1 min-w-0 bg-white border border-slate-200 rounded-lg px-3 py-2">
+                                <div className="flex items-baseline justify-between gap-2">
+                                  <span className="font-bold text-[13px] text-slate-900 truncate">
+                                    {c.author_name}
+                                  </span>
+                                  <span className="text-[11px] text-slate-400 flex-shrink-0">
+                                    {timeAgo(c.created_at)}
+                                  </span>
                                 </div>
-                                <p className="text-slate-600 font-medium text-[11px] leading-normal">{c.text}</p>
+                                <p className="text-[13px] text-slate-700 leading-relaxed mt-0.5">
+                                  {c.text}
+                                </p>
                               </div>
                             </div>
                           ))
                         ) : (
-                          <p className="text-[10px] text-slate-400 font-medium text-center py-2">Aucun commentaire pour le moment. Écrivez le premier ! ✨</p>
+                          <p className="text-[13px] text-slate-500 text-center py-3">
+                            Aucun commentaire. Lancez la conversation.
+                          </p>
                         )}
                       </div>
 
-                      {/* Input comment field */}
-                      <div className="flex gap-2 items-center">
+                      <div className="flex gap-2">
                         <input
                           type="text"
                           value={newCommentText}
                           onChange={(e) => setNewCommentText(e.target.value)}
-                          placeholder="Écrire un commentaire doux..."
+                          placeholder="Votre commentaire…"
+                          aria-label="Écrire un commentaire"
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleAddComment(p.id);
-                            }
+                            if (e.key === "Enter") handleAddComment(p.id);
                           }}
-                          className="flex-1 bg-white border border-slate-200 focus:border-rose-500 focus:outline-none rounded-xl px-3 py-2 text-[11px] font-medium"
+                          className="flex-1 h-10 px-3.5 bg-white border border-slate-300 rounded-lg text-[13px] font-medium focus:border-slate-900 focus:outline-none transition-colors"
                         />
-                        <button
-                          onClick={() => handleAddComment(p.id)}
+                        <Button
+                          size="sm"
+                          className="h-10 px-3.5"
                           disabled={!newCommentText.trim()}
-                          className="bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white p-2 rounded-xl transition cursor-pointer disabled:opacity-40"
+                          onClick={() => handleAddComment(p.id)}
+                          aria-label="Envoyer le commentaire"
                         >
-                          <Send size={12} />
-                        </button>
+                          <Send size={14} />
+                        </Button>
                       </div>
                     </div>
                   )}
-                </div>
+                </article>
 
-                {/* Inline Feed AdSlot after every 3rd post */}
-                {(index + 1) % 3 === 0 && (
-                  <div className="w-full max-w-xl mx-auto py-1">
-                    <AdSlot slot={`news_feed_${Math.floor(index / 3) + 1}`} userId={currentUser?.id} />
-                  </div>
+                {/* Encart publicitaire toutes les 4 annonces */}
+                {(index + 1) % 4 === 0 && (
+                  <AdSlot slot={`news_feed_${Math.floor(index / 4) + 1}`} userId={currentUser?.id} />
                 )}
               </React.Fragment>
             );
           })
+        ) : activeFilterCount > 0 ? (
+          <EmptyState
+            icon={<Search size={20} />}
+            title="Aucun résultat"
+            description="Aucune annonce ne correspond à votre recherche. Essayez d'élargir vos critères."
+            action={
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCategoryFilter(null);
+                  setPriceFilter("all");
+                  setSearchQuery("");
+                }}
+              >
+                Réinitialiser les filtres
+              </Button>
+            }
+          />
         ) : (
-          <div className="text-center p-12 bg-white border border-slate-150 rounded-3xl space-y-3">
-            <Sparkles className="mx-auto text-rose-400" size={32} />
-            {categoryFilter ? (
-              <>
-                <h4 className="font-extrabold text-slate-800 text-sm">Aucune annonce dans cette catégorie</h4>
-                <p className="text-slate-400 text-xs max-w-xs mx-auto leading-relaxed">Essayez une autre catégorie, ou revenez à "Toutes les annonces".</p>
-              </>
+          <EmptyState
+            icon={<Compass size={20} />}
+            title="Le fil est encore vide"
+            description="Soyez la première personne à publier une annonce sur LoveRose."
+          />
+        )}
+
+        {/* Sentinelle de défilement infini + états de pagination */}
+        {!isLoading && visiblePosts.length > 0 && (
+          <div ref={sentinelRef} className="py-6 text-center">
+            {isLoadingMore ? (
+              <span className="inline-flex items-center gap-2 text-sm text-slate-500 font-semibold">
+                <Loader2 size={15} className="animate-spin" />
+                Chargement…
+              </span>
+            ) : hasMore ? (
+              <Button variant="outline" onClick={loadMorePosts}>
+                Afficher plus d'annonces
+              </Button>
             ) : (
-              <>
-                <h4 className="font-extrabold text-slate-800 text-sm">Le fil d'actualité est vide</h4>
-                <p className="text-slate-400 text-xs max-w-xs mx-auto leading-relaxed">Soyez la première personne à publier un mot doux, une photo ou une pensée bienveillante sur LoveRose !</p>
-              </>
+              <span className="u-kicker text-slate-400">Fin du fil</span>
             )}
           </div>
         )}
       </div>
 
-      {/* Render profile details modal for post author */}
+      {/* Toast de partage */}
+      {shareToastMessage && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 animate-rise bg-slate-900 text-white text-[13px] font-bold px-4 py-2.5 rounded-lg shadow-lg">
+          {shareToastMessage}
+        </div>
+      )}
+
       {selectedViewProfile && (
         <ProfileDetailModal
           profile={selectedViewProfile}

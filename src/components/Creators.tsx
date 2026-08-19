@@ -866,7 +866,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                         className="w-full h-full object-cover"
                         referrerPolicy="no-referrer"
                       />
-                      <div className="absolute top-2 right-2 bg-slate-900/65 backdrop-blur-md px-2.5 py-1 rounded-full text-[9px] font-extrabold text-white">
+                      <div className="absolute top-2 right-2 bg-slate-900/65 backdrop-blur-md px-2.5 py-1 rounded-full text-[11px] font-extrabold text-white">
                         {page.category}
                       </div>
                     </div>
@@ -888,7 +888,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                           <span>{page.page_name}</span>
                           <CheckCircle className="text-rose-500 fill-rose-500" size={13} />
                         </h4>
-                        <p className="text-[10px] text-slate-400 font-bold">{page.location || "Cameroun"}</p>
+                        <p className="text-[12px] text-slate-400 font-bold">{page.location || "Cameroun"}</p>
                         <p className="text-[11px] text-slate-500 font-medium line-clamp-3 leading-normal mt-2.5">{page.description}</p>
                       </div>
 
@@ -896,7 +896,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                       {page.interests && page.interests.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-1">
                           {page.interests.slice(0, 3).map((tag: string, i: number) => (
-                            <span key={i} className="bg-slate-50 border border-slate-150 px-2 py-0.5 rounded-md text-[9px] text-slate-500 font-bold">
+                            <span key={i} className="bg-slate-50 border border-slate-150 px-2 py-0.5 rounded-md text-[11px] text-slate-500 font-bold">
                               #{tag}
                             </span>
                           ))}
@@ -907,12 +907,12 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
 
                   <div className="p-5 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <div>
-                      <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Abonnement</p>
+                      <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Abonnement</p>
                       <p className="text-xs font-black text-rose-500">{page.subscription_price} FCFA/mois</p>
                     </div>
                     <button
                       onClick={() => setSelectedPage(page)}
-                      className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] rounded-lg transition cursor-pointer"
+                      className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[12px] rounded-lg transition cursor-pointer"
                     >
                       Visiter
                     </button>
@@ -945,7 +945,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
               />
-              <div className="absolute top-4 right-4 bg-slate-900/70 backdrop-blur-sm px-3.5 py-1.5 rounded-full text-[10px] font-black text-amber-300 border border-white/10 uppercase tracking-wider">
+              <div className="absolute top-4 right-4 bg-slate-900/70 backdrop-blur-sm px-3.5 py-1.5 rounded-full text-[12px] font-black text-amber-300 border border-white/10 uppercase tracking-wider">
                 Créateur Vérifié
               </div>
             </div>
@@ -1020,7 +1020,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                       <Sparkles className="text-amber-500 fill-amber-400" size={16} />
                       <span>💝 Envoyer un pourboire</span>
                     </h4>
-                    <p className="text-[10px] text-slate-400 font-medium">Soutenez directement ce créateur avec un don sécurisé Money Fusion.</p>
+                    <p className="text-[12px] text-slate-400 font-medium">Soutenez directement ce créateur avec un don sécurisé Money Fusion.</p>
                   </div>
 
                   {/* Amounts row */}
@@ -1029,7 +1029,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                       <button
                         key={amt}
                         onClick={() => setTipAmount(amt)}
-                        className={`py-2 text-[10px] font-black rounded-lg border transition cursor-pointer text-center ${
+                        className={`py-2 text-[12px] font-black rounded-lg border transition cursor-pointer text-center ${
                           tipAmount === amt 
                             ? "bg-amber-50 text-amber-700 border-amber-300" 
                             : "bg-slate-50 text-slate-600 border-slate-150 hover:bg-slate-100"
@@ -1048,9 +1048,9 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                         placeholder="Autre montant libre"
                         value={tipAmount}
                         onChange={(e) => setTipAmount(e.target.value)}
-                        className="w-full p-2.5 bg-slate-50 border border-slate-250 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition pr-12"
+                        className="w-full p-2.5 bg-slate-50 border border-slate-250 focus:border-rose-450 focus:bg-white  outline-none rounded-xl text-xs font-bold transition pr-12"
                       />
-                      <span className="absolute right-3 top-3 text-[10px] text-slate-400 font-bold">FCFA</span>
+                      <span className="absolute right-3 top-3 text-[12px] text-slate-400 font-bold">FCFA</span>
                     </div>
 
                     <input
@@ -1058,7 +1058,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                       placeholder="Petit mot de soutien (Optionnel)"
                       value={tipMessage}
                       onChange={(e) => setTipMessage(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-250 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-250 focus:border-rose-450 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                     />
 
                     <button
@@ -1091,7 +1091,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                 
                 {/* Copyable referral link */}
                 <div className="bg-white/80 border border-purple-100 p-2.5 rounded-xl flex items-center justify-between gap-2">
-                  <span className="text-[9px] font-mono font-bold text-slate-500 truncate select-all">
+                  <span className="text-[11px] font-mono font-bold text-slate-500 truncate select-all">
                     {`https://loverose.pages.dev/page/${selectedPage.slug}?ref=${selectedPage.referral_code}`}
                   </span>
                   <button
@@ -1099,7 +1099,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                       navigator.clipboard.writeText(`https://loverose.pages.dev/page/${selectedPage.slug}?ref=${selectedPage.referral_code}`);
                       alert("Lien de parrainage copié !");
                     }}
-                    className="text-[9px] font-black text-purple-700 hover:text-purple-800 transition bg-purple-100 px-2 py-1 rounded-md cursor-pointer"
+                    className="text-[11px] font-black text-purple-700 hover:text-purple-800 transition bg-purple-100 px-2 py-1 rounded-md cursor-pointer"
                   >
                     Copier
                   </button>
@@ -1139,7 +1139,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                           />
                           <div>
                             <p className="font-extrabold text-slate-900">{selectedPage.page_name}</p>
-                            <p className="text-[10px] text-slate-400 font-bold">{new Date(post.created_at).toLocaleDateString()}</p>
+                            <p className="text-[12px] text-slate-400 font-bold">{new Date(post.created_at).toLocaleDateString()}</p>
                           </div>
                         </div>
 
@@ -1148,7 +1148,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                           
                           {/* Premium indicator badge */}
                           {post.is_premium && (
-                            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                               <Lock size={9} />
                               <span>Publication Premium</span>
                             </span>
@@ -1180,14 +1180,14 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                                 </div>
                                 <div className="space-y-1">
                                   <h5 className="font-black text-slate-900 text-xs">Cette publication est verrouillée</h5>
-                                  <p className="text-[10px] text-slate-400 font-medium leading-normal">Abonnez-vous à la page pour débloquer tout le contenu, ou déverrouillez ce post unique.</p>
+                                  <p className="text-[12px] text-slate-400 font-medium leading-normal">Abonnez-vous à la page pour débloquer tout le contenu, ou déverrouillez ce post unique.</p>
                                 </div>
                                 
                                 <div className="flex gap-2 justify-center">
                                   <button
                                     onClick={() => handleUnlockPost(post)}
                                     disabled={isActionLoading === `unlock_${post.id}`}
-                                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[10px] rounded-lg transition shadow-xs cursor-pointer flex items-center gap-1"
+                                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[12px] rounded-lg transition shadow-xs cursor-pointer flex items-center gap-1"
                                   >
                                     <Unlock size={11} />
                                     <span>Débloquer pour {post.unlock_price} F</span>
@@ -1195,7 +1195,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                                   
                                   <button
                                     onClick={handlePageSubscribe}
-                                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] rounded-lg transition cursor-pointer"
+                                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[12px] rounded-lg transition cursor-pointer"
                                   >
                                     S'abonner ({selectedPage.subscription_price} F)
                                   </button>
@@ -1272,7 +1272,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
               <div className="flex justify-between items-center border-b border-slate-100 pb-4">
                 <div className="space-y-0.5">
                   <h3 className="font-extrabold text-slate-900 text-base">Devenir Créateur LoveRose</h3>
-                  <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider">Étape {onboardingStep} sur 4</p>
+                  <p className="text-[12px] font-bold text-rose-500 uppercase tracking-wider">Étape {onboardingStep} sur 4</p>
                 </div>
                 {/* Visual steps bullet indicators */}
                 <div className="flex space-x-1">
@@ -1304,7 +1304,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                       </div>
                       <div>
                         <h5 className="font-bold text-slate-900 text-xs">Audience Ciblée & Qualifiée</h5>
-                        <p className="text-[10px] text-slate-400 leading-normal mt-0.5">Rencontrez des personnes réellement engagées, abonnées à votre univers exclusif.</p>
+                        <p className="text-[12px] text-slate-400 leading-normal mt-0.5">Rencontrez des personnes réellement engagées, abonnées à votre univers exclusif.</p>
                       </div>
                     </div>
 
@@ -1314,7 +1314,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                       </div>
                       <div>
                         <h5 className="font-bold text-slate-900 text-xs">Paiements Locaux Faciles</h5>
-                        <p className="text-[10px] text-slate-400 leading-normal mt-0.5">Vos abonnés vous payent en un clic avec Orange Money, MTN MoMo, Wave ou CB (via Money Fusion).</p>
+                        <p className="text-[12px] text-slate-400 leading-normal mt-0.5">Vos abonnés vous payent en un clic avec Orange Money, MTN MoMo, Wave ou CB (via Money Fusion).</p>
                       </div>
                     </div>
 
@@ -1324,7 +1324,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                       </div>
                       <div>
                         <h5 className="font-bold text-slate-900 text-xs">4 Canaux de Revenus Simultanés</h5>
-                        <p className="text-[10px] text-slate-400 leading-normal mt-0.5">Abonnements récurrents, pourboires libres, déblocage de posts à l'unité, et affiliation parrainage.</p>
+                        <p className="text-[12px] text-slate-400 leading-normal mt-0.5">Abonnements récurrents, pourboires libres, déblocage de posts à l'unité, et affiliation parrainage.</p>
                       </div>
                     </div>
                   </div>
@@ -1440,22 +1440,22 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                   <div className="space-y-4">
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Nom de votre Page</label>
+                        <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Nom de votre Page</label>
                         <input
                           type="text"
                           required
                           value={pageForm.page_name}
                           onChange={(e) => setPageForm({ ...pageForm, page_name: e.target.value })}
                           placeholder="Ex: Rose de Douala, Coach Seduction"
-                          className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                          className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Catégorie principale</label>
+                        <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Catégorie principale</label>
                         <select
                           value={pageForm.category}
                           onChange={(e) => setPageForm({ ...pageForm, category: e.target.value })}
-                          className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                          className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                         >
                           <option value="Dating & Romance">Dating & Romance</option>
                           <option value="Conseils Séduction">Conseils Séduction & Amour</option>
@@ -1466,72 +1466,72 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Description de la Page (Sera visible publiquement)</label>
+                      <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Description de la Page (Sera visible publiquement)</label>
                       <textarea
                         required
                         rows={3}
                         value={pageForm.description}
                         onChange={(e) => setPageForm({ ...pageForm, description: e.target.value })}
                         placeholder="Présentez-vous brièvement, ainsi que le type de contenu premium auquel vos abonnés auront droit..."
-                        className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                        className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                       />
                     </div>
 
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Localisation / Ville</label>
+                        <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Localisation / Ville</label>
                         <input
                           type="text"
                           value={pageForm.location}
                           onChange={(e) => setPageForm({ ...pageForm, location: e.target.value })}
                           placeholder="Ex: Douala, Abidjan, Dakar"
-                          className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                          className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Prix d'Abonnement Mensuel (FCFA)</label>
+                        <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Prix d'Abonnement Mensuel (FCFA)</label>
                         <input
                           type="number"
                           required
                           value={pageForm.subscription_price}
                           onChange={(e) => setPageForm({ ...pageForm, subscription_price: e.target.value })}
                           placeholder="Ex: 2500"
-                          className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                          className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                         />
                       </div>
                     </div>
 
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Photo de profil (URL ou Avatar)</label>
+                        <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Photo de profil (URL ou Avatar)</label>
                         <input
                           type="text"
                           value={pageForm.avatar_url}
                           onChange={(e) => setPageForm({ ...pageForm, avatar_url: e.target.value })}
                           placeholder="Ex: https://..."
-                          className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                          className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Photo de couverture bannière (URL)</label>
+                        <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Photo de couverture bannière (URL)</label>
                         <input
                           type="text"
                           value={pageForm.banner_url}
                           onChange={(e) => setPageForm({ ...pageForm, banner_url: e.target.value })}
                           placeholder="Ex: https://..."
-                          className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                          className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Centres d'intérêt (Séparés par des virgules)</label>
+                      <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Centres d'intérêt (Séparés par des virgules)</label>
                       <input
                         type="text"
                         value={pageForm.interests}
                         onChange={(e) => setPageForm({ ...pageForm, interests: e.target.value })}
                         placeholder="Ex: vlogs, seduction, mode, conseils"
-                        className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                        className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                       />
                     </div>
 
@@ -1552,12 +1552,12 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                   {/* Payment fee highlight */}
                   <div className="bg-amber-50/50 border border-amber-200 p-4 rounded-2xl flex items-center justify-between">
                     <div>
-                      <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Frais d'Activation Unique</p>
+                      <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Frais d'Activation Unique</p>
                       <h5 className="font-black text-slate-900 text-sm">Frais d'accès créateur à vie</h5>
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-black text-amber-600">1 000 FCFA</p>
-                      <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Sécurisé Money Fusion</p>
+                      <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Sécurisé Money Fusion</p>
                     </div>
                   </div>
 
@@ -1610,16 +1610,16 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                       <span>{selectedDashboardPage?.page_name}</span>
                       <CheckCircle className="text-rose-500 fill-rose-500" size={12} />
                     </h4>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mt-0.5">{selectedDashboardPage?.category}</p>
+                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider mt-0.5">{selectedDashboardPage?.category}</p>
                     
                     {/* Status badge */}
                     <div className="mt-2">
                       {selectedDashboardPage?.status === 'active' ? (
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-150 text-[8px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-150 text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                           Page Active
                         </span>
                       ) : (
-                        <span className="bg-amber-50 text-amber-700 border border-amber-150 text-[8px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        <span className="bg-amber-50 text-amber-700 border border-amber-150 text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                           En cours de validation
                         </span>
                       )}
@@ -1629,14 +1629,14 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                   {/* Multi pages drop-down if user has multiple */}
                   {myPages.length > 1 && (
                     <div className="pt-2 border-t border-slate-100">
-                      <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider block text-left mb-1">Changer de page</label>
+                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block text-left mb-1">Changer de page</label>
                       <select
                         value={selectedDashboardPage?.id}
                         onChange={(e) => {
                           const pg = myPages.find(p => p.id === e.target.value);
                           if (pg) setSelectedDashboardPage(pg);
                         }}
-                        className="w-full p-2 bg-slate-50 border border-slate-200 outline-none rounded-lg text-[10px] font-bold transition"
+                        className="w-full p-2 bg-slate-50 border border-slate-200 outline-none rounded-lg text-[12px] font-bold transition"
                       >
                         {myPages.map(p => (
                           <option key={p.id} value={p.id}>{p.page_name}</option>
@@ -1648,7 +1648,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
 
                 {/* Left Side Quick Menu */}
                 <div className="bg-white border border-slate-150 rounded-3xl p-2 shadow-xs space-y-1">
-                  <div className="p-2 text-[9px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-50">Menu Administrateur</div>
+                  <div className="p-2 text-[11px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-50">Menu Administrateur</div>
                   
                   <button
                     onClick={() => { setSelectedPage(selectedDashboardPage); }}
@@ -1687,7 +1687,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                       <button 
                         type="button" 
                         onClick={() => setIsEditingSettings(false)}
-                        className="text-[10px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-wider cursor-pointer"
+                        className="text-[12px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-wider cursor-pointer"
                       >
                         Annuler
                       </button>
@@ -1695,7 +1695,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
 
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">Nom de votre Page</label>
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">Nom de votre Page</label>
                         <input
                           type="text"
                           required
@@ -1705,7 +1705,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                         />
                       </div>
                       <div>
-                        <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">Prix Abonnement Mensuel (FCFA)</label>
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">Prix Abonnement Mensuel (FCFA)</label>
                         <input
                           type="number"
                           required
@@ -1717,7 +1717,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                     </div>
 
                     <div>
-                      <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">Description de la Page</label>
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">Description de la Page</label>
                       <textarea
                         required
                         rows={3}
@@ -1729,7 +1729,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
 
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">URL Avatar</label>
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">URL Avatar</label>
                         <input
                           type="text"
                           value={editPageForm.avatar_url}
@@ -1738,7 +1738,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                         />
                       </div>
                       <div>
-                        <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">URL Couverture Bannière</label>
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">URL Couverture Bannière</label>
                         <input
                           type="text"
                           value={editPageForm.banner_url}
@@ -1779,21 +1779,21 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                 {wallet && (
                   <div className="bg-slate-900 text-white rounded-3xl p-6 shadow-sm grid sm:grid-cols-3 gap-6 border border-slate-800">
                     <div>
-                      <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Solde Disponible</p>
+                      <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Solde Disponible</p>
                       <h4 className="text-3xl font-black text-amber-300 mt-1">{wallet.available_balance} F</h4>
-                      <p className="text-[9px] text-slate-400 mt-1 leading-normal font-medium">Revenus prêts à être versés sur votre compte Money Fusion.</p>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-normal font-medium">Revenus prêts à être versés sur votre compte Money Fusion.</p>
                     </div>
                     
                     <div className="border-t sm:border-t-0 sm:border-l border-white/10 pt-4 sm:pt-0 sm:pl-6">
-                      <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider font-semibold">Revenus Déjà Retirés</p>
+                      <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider font-semibold">Revenus Déjà Retirés</p>
                       <h4 className="text-2xl font-black text-slate-100 mt-1">{wallet.claimed_earnings} F</h4>
-                      <p className="text-[9px] text-slate-400 mt-1 leading-normal font-medium">Revenus cumulés qui ont déjà été transférés avec succès.</p>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-normal font-medium">Revenus cumulés qui ont déjà été transférés avec succès.</p>
                     </div>
 
                     <div className="border-t sm:border-t-0 sm:border-l border-white/10 pt-4 sm:pt-0 sm:pl-6">
-                      <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider font-semibold">Revenus Totaux Générés</p>
+                      <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider font-semibold">Revenus Totaux Générés</p>
                       <h4 className="text-2xl font-black text-rose-400 mt-1">{wallet.total_earnings} F</h4>
-                      <p className="text-[9px] text-slate-400 mt-1 leading-normal font-medium">L'intégralité des revenus cumulés sur cette page créateur.</p>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-normal font-medium">L'intégralité des revenus cumulés sur cette page créateur.</p>
                     </div>
                   </div>
                 )}
@@ -1802,27 +1802,27 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                 {stats && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs text-left">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Followers</p>
+                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Followers</p>
                       <h4 className="text-xl font-black text-slate-900 mt-1">{stats.followers_count || 0}</h4>
-                      <p className="text-[8px] text-slate-400 font-medium">Membres abonnés gratuitement</p>
+                      <p className="text-[11px] text-slate-400 font-medium">Membres abonnés gratuitement</p>
                     </div>
 
                     <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs text-left">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Abonnés VIP</p>
+                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Abonnés VIP</p>
                       <h4 className="text-xl font-black text-rose-500 mt-1">{stats.subscribers_count || 0}</h4>
-                      <p className="text-[8px] text-slate-400 font-medium">Abonnés payants actifs</p>
+                      <p className="text-[11px] text-slate-400 font-medium">Abonnés payants actifs</p>
                     </div>
 
                     <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs text-left">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Publications</p>
+                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Publications</p>
                       <h4 className="text-xl font-black text-indigo-500 mt-1">{stats.posts_count || 0}</h4>
-                      <p className="text-[8px] text-slate-400 font-medium">Contenus partagés</p>
+                      <p className="text-[11px] text-slate-400 font-medium">Contenus partagés</p>
                     </div>
 
                     <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs text-left">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Affiliés</p>
+                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Affiliés</p>
                       <h4 className="text-xl font-black text-purple-500 mt-1">{stats.referrals_count || 0}</h4>
-                      <p className="text-[8px] text-slate-400 font-medium">Filleuls parrainés enregistrés</p>
+                      <p className="text-[11px] text-slate-400 font-medium">Filleuls parrainés enregistrés</p>
                     </div>
                   </div>
                 )}
@@ -1839,7 +1839,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
 
                   <form onSubmit={handleRequestPayout} className="grid sm:grid-cols-3 gap-4 items-end bg-slate-50 p-4 border border-slate-150/60 rounded-2xl">
                     <div>
-                      <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">Montant à retirer (FCFA)</label>
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">Montant à retirer (FCFA)</label>
                       <input
                         type="number"
                         required
@@ -1850,7 +1850,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                       />
                     </div>
                     <div>
-                      <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">Numéro de téléphone reversement</label>
+                      <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">Numéro de téléphone reversement</label>
                       <input
                         type="text"
                         required
@@ -1880,7 +1880,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                   {/* Payout requests list table */}
                   {payouts.length > 0 && (
                     <div className="pt-3">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-2">Historique des versements</p>
+                      <p className="text-[12px] font-black text-slate-400 uppercase tracking-wider block mb-2">Historique des versements</p>
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs text-left">
                           <thead>
@@ -1899,13 +1899,13 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                                 <td className="py-2">{p.phone}</td>
                                 <td className="py-2">
                                   {p.status === 'approved' && (
-                                    <span className="bg-emerald-50 text-emerald-700 text-[9px] font-black px-2 py-0.5 rounded-md border border-emerald-100">Payé</span>
+                                    <span className="bg-emerald-50 text-emerald-700 text-[11px] font-black px-2 py-0.5 rounded-md border border-emerald-100">Payé</span>
                                   )}
                                   {p.status === 'pending' && (
-                                    <span className="bg-amber-50 text-amber-700 text-[9px] font-black px-2 py-0.5 rounded-md border border-amber-100">En cours</span>
+                                    <span className="bg-amber-50 text-amber-700 text-[11px] font-black px-2 py-0.5 rounded-md border border-amber-100">En cours</span>
                                   )}
                                   {p.status === 'rejected' && (
-                                    <span className="bg-rose-50 text-rose-700 text-[9px] font-black px-2 py-0.5 rounded-md border border-rose-100">Rejeté</span>
+                                    <span className="bg-rose-50 text-rose-700 text-[11px] font-black px-2 py-0.5 rounded-md border border-rose-100">Rejeté</span>
                                   )}
                                 </td>
                               </tr>
@@ -1940,7 +1940,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                     <div className="grid sm:grid-cols-2 gap-4">
                       {/* Image URL input */}
                       <div>
-                        <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">URL de l'image (Optionnel)</label>
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">URL de l'image (Optionnel)</label>
                         <input
                           type="text"
                           value={newPostImage}
@@ -1975,7 +1975,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                               onChange={(e) => setNewPostUnlockPrice(e.target.value)}
                               className="w-full p-2 bg-slate-50 border border-slate-250 outline-none rounded-lg text-xs font-bold pr-12"
                             />
-                            <span className="absolute right-2 top-2 text-[8px] font-bold text-slate-400">FCFA</span>
+                            <span className="absolute right-2 top-2 text-[11px] font-bold text-slate-400">FCFA</span>
                           </div>
                         )}
                       </div>
@@ -2028,7 +2028,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                     <form onSubmit={handleVerificationSubmit} className="space-y-4 bg-slate-50 p-4 border border-slate-150/60 rounded-2xl">
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">Nom complet (Tel que sur la carte d'identité)</label>
+                          <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">Nom complet (Tel que sur la carte d'identité)</label>
                           <input
                             type="text"
                             required
@@ -2039,7 +2039,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                           />
                         </div>
                         <div>
-                          <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">Numéro de pièce d'identité (CNI / Passeport)</label>
+                          <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">Numéro de pièce d'identité (CNI / Passeport)</label>
                           <input
                             type="text"
                             required
@@ -2053,7 +2053,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
 
                       <div className="grid sm:grid-cols-3 gap-4">
                         <div>
-                          <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">Numéro Money Fusion lié</label>
+                          <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">Numéro Money Fusion lié</label>
                           <input
                             type="text"
                             required
@@ -2063,7 +2063,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                           />
                         </div>
                         <div>
-                          <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">Pays</label>
+                          <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">Pays</label>
                           <select
                             value={verificationForm.countryIso}
                             onChange={(e) => setVerificationForm({ ...verificationForm, countryIso: e.target.value })}
@@ -2076,7 +2076,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                           </select>
                         </div>
                         <div>
-                          <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">Ville de résidence</label>
+                          <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">Ville de résidence</label>
                           <input
                             type="text"
                             required
@@ -2089,7 +2089,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
 
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">Photo Recto-Verso CNI / Passeport</label>
+                          <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">Photo Recto-Verso CNI / Passeport</label>
                           <input
                             type="file"
                             accept="image/*"
@@ -2101,7 +2101,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                           />
                         </div>
                         <div>
-                          <label className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">Selfie tenant la pièce d'identité</label>
+                          <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">Selfie tenant la pièce d'identité</label>
                           <input
                             type="file"
                             accept="image/*"
@@ -2135,7 +2135,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                 {/* 7. DETAILED EARNINGS LOGS ledger */}
                 {recentEarnings.length > 0 && (
                   <div className="bg-white border border-slate-150 rounded-3xl p-6 shadow-sm space-y-4">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Historique détaillé des revenus reçus</p>
+                    <p className="text-[12px] font-black text-slate-400 uppercase tracking-wider block">Historique détaillé des revenus reçus</p>
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs text-left">
                         <thead>
@@ -2170,7 +2170,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
       )}
       
       {/* Footer legal reference link banners */}
-      <div className="border-t border-slate-150 pt-5 text-center flex flex-wrap gap-4 justify-center text-[10px] text-slate-400 font-black uppercase tracking-wider">
+      <div className="border-t border-slate-150 pt-5 text-center flex flex-wrap gap-4 justify-center text-[12px] text-slate-400 font-black uppercase tracking-wider">
         <a href="#terms" onClick={(e) => { e.preventDefault(); alert("Consultez la charte et les CGU de LoveRose Creators en accédant aux informations légales."); }} className="hover:text-slate-600">CGU</a>
         <span>•</span>
         <a href="#privacy" onClick={(e) => { e.preventDefault(); alert("LoveRose respecte la confidentialité et crypte toutes les pièces d'identité."); }} className="hover:text-slate-600">Confidentialité</a>
@@ -2196,14 +2196,14 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
             </div>
 
             <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 space-y-2 text-center">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Transaction</p>
+              <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">Transaction</p>
               <h4 className="text-md font-extrabold text-slate-900">{creatorPaymentForm.planName}</h4>
               <p className="text-3xl font-black text-rose-500">{creatorPaymentForm.amount} FCFA</p>
             </div>
 
             <form onSubmit={handleCreatorPaymentSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">
                   Nom Complet du Client
                 </label>
                 <input
@@ -2212,12 +2212,12 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                   placeholder="Ex: Jean Dupont"
                   value={creatorPaymentForm.fullName}
                   onChange={(e) => setCreatorPaymentForm(p => ({ ...p, fullName: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">
                   Numéro de Téléphone Mobile Money
                 </label>
                 <input
@@ -2226,9 +2226,9 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                   placeholder="Ex: 677123456"
                   value={creatorPaymentForm.phoneNumber}
                   onChange={(e) => setCreatorPaymentForm(p => ({ ...p, phoneNumber: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
                 />
-                <span className="text-[10px] text-slate-400 block font-medium">
+                <span className="text-[12px] text-slate-400 block font-medium">
                   Entrez le numéro associé à votre compte de paiement (Orange, MTN, Moov, Wave, etc.)
                 </span>
               </div>
@@ -2251,7 +2251,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
               </div>
             </form>
 
-            <p className="text-[9px] text-slate-400 text-center font-medium leading-relaxed">
+            <p className="text-[11px] text-slate-400 text-center font-medium leading-relaxed">
               En cliquant sur "Payer", vous serez redirigé vers l'interface officielle de Money Fusion pour effectuer votre transaction en toute sécurité.
             </p>
           </div>

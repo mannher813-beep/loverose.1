@@ -277,7 +277,7 @@ export default function ProfileSettings({
                 
                 {/* Verification badge */}
                 {profile.verification_status === "verified" && (
-                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-0.5" title="Profil vérifié officiellement">
+                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[12px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-0.5" title="Profil vérifié officiellement">
                     <CheckCircle size={11} fill="white" className="text-emerald-500" />
                     <span>Vérifié</span>
                   </span>
@@ -299,17 +299,17 @@ export default function ProfileSettings({
             <div className="flex items-center gap-6 border-t border-slate-100 md:border-t-0 pt-4 md:pt-0">
               <div className="text-center">
                 <p className="text-lg font-black text-slate-900">{profilePhotos.length}</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Photos</p>
+                <p className="text-[12px] text-slate-400 font-bold uppercase tracking-wider">Photos</p>
               </div>
               <div className="w-px h-8 bg-slate-100"></div>
               <div className="text-center">
                 <p className="text-lg font-black text-slate-900">{userPosts.length}</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Posts</p>
+                <p className="text-[12px] text-slate-400 font-bold uppercase tracking-wider">Posts</p>
               </div>
               <div className="w-px h-8 bg-slate-100"></div>
               <div className="text-center">
                 <p className="text-lg font-black text-rose-500">100%</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Intégrité</p>
+                <p className="text-[12px] text-slate-400 font-bold uppercase tracking-wider">Intégrité</p>
               </div>
             </div>
           </div>
@@ -323,7 +323,7 @@ export default function ProfileSettings({
           
           {/* Bio block */}
           <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-sm space-y-3">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5">
+            <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5">
               <AlignLeft size={13} className="text-rose-500" />
               <span>Ma Biographie</span>
             </h4>
@@ -338,7 +338,7 @@ export default function ProfileSettings({
 
           {/* Relationship Intents */}
           <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-sm space-y-3">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">
+            <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">
               ❤️ Intentions Recherchées
             </h4>
             <div className="flex flex-wrap gap-1.5">
@@ -349,14 +349,14 @@ export default function ProfileSettings({
                   </span>
                 ))
               ) : (
-                <p className="text-slate-400 text-[10px] italic">Aucune intention de rencontre sélectionnée.</p>
+                <p className="text-slate-400 text-[12px] italic">Aucune intention de rencontre sélectionnée.</p>
               )}
             </div>
           </div>
 
           {/* Photos gallery block */}
           <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-sm space-y-3">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5">
+            <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5">
               <Camera size={13} className="text-rose-500" />
               <span>Ma Galerie Photos</span>
             </h4>
@@ -388,7 +388,7 @@ export default function ProfileSettings({
                 )}
               </div>
             ) : (
-              <p className="text-slate-400 text-[10px] italic">Aucune photo dans votre galerie.</p>
+              <p className="text-slate-400 text-[12px] italic">Aucune photo dans votre galerie.</p>
             )}
           </div>
 
@@ -396,7 +396,7 @@ export default function ProfileSettings({
 
         {/* Mes annonces */}
         <div className="space-y-4">
-          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5">
+          <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5">
             <Newspaper size={13} className="text-rose-500" />
             <span>Mes annonces ({userPosts.length})</span>
           </h4>
@@ -409,7 +409,7 @@ export default function ProfileSettings({
           ) : userPosts.length === 0 ? (
             <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-8 text-center space-y-1">
               <p className="text-slate-500 text-xs font-semibold">Vous n'avez encore publié aucune annonce.</p>
-              <p className="text-slate-400 text-[10px]">Rendez-vous dans l'onglet Annonces pour publier votre première annonce.</p>
+              <p className="text-slate-400 text-[12px]">Rendez-vous dans l'onglet Annonces pour publier votre première annonce.</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -433,7 +433,7 @@ export default function ProfileSettings({
                           <Newspaper size={22} />
                         </div>
                       )}
-                      <span className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur text-slate-700 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-full">
+                      <span className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur text-slate-700 text-[11px] font-extrabold uppercase px-1.5 py-0.5 rounded-full">
                         {statusLabel}
                       </span>
                     </div>
@@ -441,10 +441,10 @@ export default function ProfileSettings({
                       <p className="text-[11px] font-bold text-slate-800 line-clamp-2 flex-1">
                         {post.contenu || "Sans description"}
                       </p>
-                      <p className="text-[9px] text-slate-400">
+                      <p className="text-[11px] text-slate-400">
                         {new Date(post.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
                       </p>
-                      <div className="flex items-center justify-between text-[9px] text-slate-500 font-semibold">
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold">
                         <span className="flex items-center gap-0.5"><Eye size={11} /> {views}</span>
                         <span className="flex items-center gap-0.5"><Heart size={11} /> {interactions}</span>
                         <span className="flex items-center gap-0.5">
@@ -455,7 +455,7 @@ export default function ProfileSettings({
                       <div className="flex items-center gap-1.5 pt-1">
                         <a
                           href={`/profil/${profile.username}`}
-                          className="flex-1 text-center text-[9px] font-bold py-1.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100 transition"
+                          className="flex-1 text-center text-[11px] font-bold py-1.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100 transition"
                         >
                           Voir
                         </a>
@@ -463,7 +463,7 @@ export default function ProfileSettings({
                           type="button"
                           disabled={isDeleting}
                           onClick={() => handleDeletePost(post.id)}
-                          className="flex-1 text-center text-[9px] font-bold py-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition disabled:opacity-50 cursor-pointer"
+                          className="flex-1 text-center text-[11px] font-bold py-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition disabled:opacity-50 cursor-pointer"
                         >
                           {isDeleting ? "..." : "Supprimer"}
                         </button>
@@ -524,7 +524,7 @@ export default function ProfileSettings({
                       <span className="font-black text-xs uppercase tracking-widest">LoveRose</span>
                     </div>
                     <div className="bg-white/10 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10">
-                      <span className="text-[8px] font-black tracking-wider uppercase text-rose-300">Intentions Claires</span>
+                      <span className="text-[11px] font-black tracking-wider uppercase text-rose-300">Intentions Claires</span>
                     </div>
                   </div>
 
@@ -553,7 +553,7 @@ export default function ProfileSettings({
                         {profile.age && <span className="text-sm font-bold text-slate-400">, {profile.age}</span>}
                       </h2>
                       {profile.location && (
-                        <p className="text-[10px] text-slate-400 flex items-center justify-center font-bold">
+                        <p className="text-[12px] text-slate-400 flex items-center justify-center font-bold">
                           <MapPin size={10} className="text-rose-500 mr-0.5 animate-pulse" />
                           <span>{profile.location}</span>
                         </p>
@@ -564,11 +564,11 @@ export default function ProfileSettings({
                   {/* Bio details panel */}
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3 relative z-10 backdrop-blur-sm">
                     {profile.bio ? (
-                      <p className="text-[10px] text-slate-300 line-clamp-3 leading-relaxed text-center italic font-semibold">
+                      <p className="text-[12px] text-slate-300 line-clamp-3 leading-relaxed text-center italic font-semibold">
                         "{profile.bio}"
                       </p>
                     ) : (
-                      <p className="text-[10px] text-slate-400 text-center italic font-semibold">
+                      <p className="text-[12px] text-slate-400 text-center italic font-semibold">
                         "Rejoignez-moi sur LoveRose pour discuter !"
                       </p>
                     )}
@@ -578,7 +578,7 @@ export default function ProfileSettings({
                         {profile.relationship_intents.slice(0, 2).map((intent, idx) => (
                           <span
                             key={idx}
-                            className="bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wide"
+                            className="bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wide"
                           >
                             ❤️ {intent}
                           </span>
@@ -590,8 +590,8 @@ export default function ProfileSettings({
                   {/* Dynamic footer scan indicator */}
                   <div className="flex items-center justify-between relative z-10 pt-4 border-t border-white/10">
                     <div className="space-y-1">
-                      <h4 className="text-[9px] font-black uppercase tracking-wider text-rose-400">Scannez pour me rejoindre</h4>
-                      <p className="text-[8px] text-slate-400 font-bold">loverose.pages.dev/profil/{profile.username}</p>
+                      <h4 className="text-[11px] font-black uppercase tracking-wider text-rose-400">Scannez pour me rejoindre</h4>
+                      <p className="text-[11px] text-slate-400 font-bold">loverose.pages.dev/profil/{profile.username}</p>
                     </div>
 
                     {/* Styled Mock vector QR for high end visuals */}
@@ -636,7 +636,7 @@ export default function ProfileSettings({
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={handleCopyLink}
-                  className="py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] uppercase tracking-wide rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                  className="py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[12px] uppercase tracking-wide rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
                 >
                   {copied ? (
                     <>
@@ -653,7 +653,7 @@ export default function ProfileSettings({
 
                 <button
                   onClick={handleShare}
-                  className="py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] uppercase tracking-wide rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                  className="py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[12px] uppercase tracking-wide rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
                 >
                   <Share2 size={12} />
                   <span>Natif Partager</span>

@@ -192,19 +192,19 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
     <div id="auth-page" className="min-h-screen min-h-[100dvh] bg-white flex flex-col md:flex-row font-sans">
 
       {/* Branding panel — full identity on desktop, compact strip on mobile */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-rose-600 via-rose-500 to-pink-500 text-white flex-shrink-0 md:w-[42%] md:min-h-screen">
+      <div className="relative overflow-hidden bg-slate-950 text-white flex-shrink-0 md:w-[42%] md:min-h-screen">
         {/* Scattered heart motif — the one signature flourish, kept quiet everywhere else */}
-        <div className="absolute inset-0 pointer-events-none opacity-25 hidden md:block">
+        <div className="absolute inset-0 pointer-events-none opacity-[0.07] hidden md:block">
           {HEART_PATTERN.map((h, i) => (
             <Heart
               key={i}
               size={h.size}
-              className="absolute fill-white animate-pulse"
+              className="absolute fill-rose-400"
               style={{ top: h.top, left: h.left, animationDelay: h.delay, animationDuration: "3s" }}
             />
           ))}
         </div>
-        <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-white/10 rounded-full blur-3xl hidden md:block" />
+        <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-rose-500/20 rounded-full blur-3xl hidden md:block" />
 
         <div className="relative z-10 px-6 py-6 md:px-10 md:py-14 md:h-full md:flex md:flex-col md:justify-between">
           <div className="flex items-center gap-3 md:gap-3">
@@ -218,14 +218,12 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
                 <ArrowLeft size={20} />
               </button>
             )}
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-white/15 rounded-2xl flex items-center justify-center flex-shrink-0">
-              <Heart size={22} fill="currentColor" />
-            </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight leading-none">
-                Love<span className="text-rose-100">Rose</span>
+              <h1 className="flex items-baseline gap-px leading-none">
+                <span className="u-display text-2xl md:text-3xl text-white">Love</span>
+                <span className="u-display text-2xl md:text-3xl text-rose-400">Rose</span>
               </h1>
-              <p className="text-[10px] md:text-xs text-rose-50/80 uppercase tracking-widest font-semibold hidden md:block">
+              <p className="u-kicker text-rose-400/80 mt-1.5 hidden md:block">
                 {t("tagline", { ns: "common" })}
               </p>
             </div>
@@ -233,26 +231,26 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
 
           {/* Value proposition — desktop only, mobile keeps the strip minimal */}
           <div className="hidden md:block mt-10 space-y-8">
-            <h2 className="text-3xl font-extrabold leading-snug">
+            <h2 className="u-display text-4xl leading-[1.08] text-white">
               {t("heroTitleLine1")}<br />{t("heroTitleLine2")}
             </h2>
-            <ul className="space-y-5 text-sm text-rose-50">
+            <ul className="space-y-5 text-[15px] text-slate-300">
               <li className="flex items-start gap-3">
-                <span className="mt-0.5 bg-white/15 rounded-lg p-1.5"><ShieldCheck size={16} /></span>
+                <span className="mt-0.5 bg-rose-500/15 text-rose-400 rounded-lg p-1.5"><ShieldCheck size={16} /></span>
                 <span>{t("heroBullet1")}</span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="mt-0.5 bg-white/15 rounded-lg p-1.5"><MessageCircleHeart size={16} /></span>
+                <span className="mt-0.5 bg-rose-500/15 text-rose-400 rounded-lg p-1.5"><MessageCircleHeart size={16} /></span>
                 <span>{t("heroBullet2")}</span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="mt-0.5 bg-white/15 rounded-lg p-1.5"><Sparkles size={16} /></span>
+                <span className="mt-0.5 bg-rose-500/15 text-rose-400 rounded-lg p-1.5"><Sparkles size={16} /></span>
                 <span>{t("heroBullet3")}</span>
               </li>
             </ul>
           </div>
 
-          <p className="hidden md:block text-[11px] text-rose-50/70">
+          <p className="hidden md:block text-xs text-slate-500">
             {t("copyrightNotice", { year: new Date().getFullYear() })}
           </p>
         </div>
@@ -275,28 +273,32 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
 
         <div className="flex-1 flex items-start md:items-center justify-center px-5 py-8 md:px-10">
           <div className="w-full max-w-sm space-y-6">
-            <div className="flex bg-slate-100 rounded-2xl p-1">
+            <div className="flex border-b border-slate-200" role="tablist">
               <button
                 type="button"
+                role="tab"
+                aria-selected={mode === "login"}
                 onClick={() => { setMode("login"); setErrorMsg(""); }}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${mode === "login" ? "bg-white text-rose-500 shadow-sm" : "text-slate-500"}`}
+                className={`flex-1 pb-3 text-sm font-bold transition cursor-pointer border-b-2 -mb-px ${mode === "login" ? "border-rose-500 text-slate-950" : "border-transparent text-slate-400 hover:text-slate-700"}`}
               >
                 {t("login")}
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={mode === "signup"}
                 onClick={() => { setMode("signup"); setErrorMsg(""); }}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${mode === "signup" ? "bg-white text-rose-500 shadow-sm" : "text-slate-500"}`}
+                className={`flex-1 pb-3 text-sm font-bold transition cursor-pointer border-b-2 -mb-px ${mode === "signup" ? "border-rose-500 text-slate-950" : "border-transparent text-slate-400 hover:text-slate-700"}`}
               >
                 {t("signup")}
               </button>
             </div>
 
             <div>
-              <h2 className="text-xl font-extrabold text-slate-900">
+              <h2 className="u-display text-3xl text-slate-950">
                 {mode === "signup" ? t("createYourAccount") : t("welcomeBack")}
               </h2>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-sm text-slate-500 mt-2">
                 {mode === "signup" ? t("signupDescription") : t("connectDescription")}
               </p>
             </div>
@@ -353,19 +355,19 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
                 )}
               </button>
             </div>
-            <p className="text-[10px] text-slate-400 leading-relaxed px-1 -mt-2">
+            <p className="text-[12px] text-slate-400 leading-relaxed px-1 -mt-2">
               {t("guestModeNote")}
             </p>
 
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("or")}</span>
+              <span className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">{t("or")}</span>
               <div className="flex-1 h-px bg-slate-200" />
             </div>
 
             <form onSubmit={handleEmailAuth} className="space-y-3">
               <div>
-                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">{t("emailLabel")}</label>
+                <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">{t("emailLabel")}</label>
                 <div className="relative">
                   <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -374,12 +376,12 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t("emailPlaceholder")}
-                    className="w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 focus:border-rose-400 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl font-bold text-xs transition"
+                    className="w-full h-12 pl-10 pr-3 bg-white border border-slate-300 focus:border-slate-900 outline-none rounded-lg font-medium text-sm text-slate-900 placeholder:text-slate-400 placeholder:font-normal transition-colors"
                   />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">{t("passwordLabel")}</label>
+                <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">{t("passwordLabel")}</label>
                 <div className="relative">
                   <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -389,7 +391,7 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 focus:border-rose-400 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl font-bold text-xs transition"
+                    className="w-full h-12 pl-10 pr-3 bg-white border border-slate-300 focus:border-slate-900 outline-none rounded-lg font-medium text-sm text-slate-900 placeholder:text-slate-400 placeholder:font-normal transition-colors"
                   />
                 </div>
               </div>
@@ -401,7 +403,7 @@ export default function Auth({ onSuccess, initialIsSignUp, onBack }: AuthProps) 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2"
+                className="w-full h-12 bg-rose-500 hover:bg-rose-600 disabled:opacity-45 text-white font-bold text-sm rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <Loader2 className="animate-spin" size={16} />

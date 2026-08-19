@@ -102,7 +102,7 @@ export default function PublicFAQ() {
           placeholder="Rechercher une question (ex: premium, créateur, paiement...)"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:border-rose-450 focus:ring-1 focus:ring-rose-200 outline-none transition shadow-sm"
+          className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:border-rose-450  outline-none transition shadow-sm"
         />
       </div>
 
@@ -122,7 +122,7 @@ export default function PublicFAQ() {
                   className="w-full px-6 py-4 flex items-center justify-between text-left font-bold text-slate-800 hover:text-rose-500 transition cursor-pointer text-xs sm:text-sm"
                 >
                   <div className="flex items-center space-x-3 pr-4">
-                    <span className="px-2 py-0.5 bg-slate-100 text-[9px] font-extrabold text-slate-500 rounded uppercase tracking-wider flex-shrink-0">
+                    <span className="px-2 py-0.5 bg-slate-100 text-[11px] font-extrabold text-slate-500 rounded uppercase tracking-wider flex-shrink-0">
                       {faq.category}
                     </span>
                     <span>{faq.question}</span>

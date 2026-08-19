@@ -616,14 +616,14 @@ export default function Settings({
                     <Camera size={14} className="text-rose-500" />
                     <span>Galerie de Profil</span>
                   </h3>
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[12px] text-slate-400 mt-1">
                     Obligation : Vous devez uploader au minimum 3 photos réelles pour valider votre compte.
                   </p>
                 </div>
 
                 {/* Validation warning */}
                 {photos.filter(Boolean).length < 3 && (
-                  <div className="bg-amber-50 border border-amber-100 text-amber-700 rounded-xl p-3 flex items-start gap-1.5 text-[10px] font-bold">
+                  <div className="bg-amber-50 border border-amber-100 text-amber-700 rounded-xl p-3 flex items-start gap-1.5 text-[12px] font-bold">
                     <AlertTriangle size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
                     <p>Obligation : 3 photos minimum ({photos.filter(Boolean).length}/3 ajoutées).</p>
                   </div>
@@ -664,12 +664,12 @@ export default function Settings({
                           className="aspect-square bg-slate-50 border border-dashed border-slate-300 hover:border-rose-400 hover:bg-rose-50/10 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:text-rose-500 transition cursor-pointer space-y-1"
                         >
                           <Plus size={16} />
-                          <span className="text-[9px] font-bold">Ajouter</span>
+                          <span className="text-[11px] font-bold">Ajouter</span>
                         </button>
                       )}
                     </div>
                     <div className="text-center">
-                      <span className="text-[9px] font-extrabold text-rose-500 bg-rose-50 px-2 rounded-full border border-rose-100 uppercase tracking-wider">
+                      <span className="text-[11px] font-extrabold text-rose-500 bg-rose-50 px-2 rounded-full border border-rose-100 uppercase tracking-wider">
                         {photos.length}/20 photos
                       </span>
                     </div>
@@ -687,31 +687,31 @@ export default function Settings({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Nom Complet</label>
+                    <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Nom Complet</label>
                     <input
                       type="text"
                       required
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Ex: Marc Olivier"
-                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-400 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Pseudo (Sans @)</label>
+                    <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Pseudo (Sans @)</label>
                     <input
                       type="text"
                       required
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="Ex: marcolivier237"
-                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-400 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Âge (Ans)</label>
+                    <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Âge (Ans)</label>
                     <input
                       type="number"
                       required
@@ -719,28 +719,28 @@ export default function Settings({
                       max={99}
                       value={age}
                       onChange={(e) => setAge(parseInt(e.target.value) || 18)}
-                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-400 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Ville & Pays</label>
+                    <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Ville & Pays</label>
                     <input
                       type="text"
                       required
                       value={locationStr}
                       onChange={(e) => setLocationStr(e.target.value)}
                       placeholder="Ex: Douala, Cameroun"
-                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-400 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Mon Genre</label>
+                    <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Mon Genre</label>
                     <select
                       value={gender}
                       onChange={(e) => setGender(e.target.value as any)}
-                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-400 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                     >
                       <option value="femme">Femme</option>
                       <option value="homme">Homme</option>
@@ -748,11 +748,11 @@ export default function Settings({
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Je Recherche</label>
+                    <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Je Recherche</label>
                     <select
                       value={preferences}
                       onChange={(e) => setPreferences(e.target.value as any)}
-                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-400 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                     >
                       <option value="femme">Des Femmes</option>
                       <option value="homme">Des Hommes</option>
@@ -761,11 +761,11 @@ export default function Settings({
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Langue Préférée</label>
+                    <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Langue Préférée</label>
                     <select
                       value={preferredLanguage}
                       onChange={(e) => setPreferredLanguage(e.target.value as any)}
-                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-400 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-bold transition"
+                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white  outline-none rounded-xl text-xs font-bold transition"
                     >
                       <option value="fr">Français</option>
                       <option value="en">English</option>
@@ -773,7 +773,7 @@ export default function Settings({
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Distance Maximale : {maxDistanceKm} km</label>
+                    <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Distance Maximale : {maxDistanceKm} km</label>
                     <div className="flex items-center space-x-3 mt-3">
                       <input
                         type="range"
@@ -789,23 +789,23 @@ export default function Settings({
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Ma Biographie</label>
+                  <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Ma Biographie</label>
                   <textarea
                     rows={4}
                     required
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     placeholder="Parlez-nous de vous, de vos passions, et de ce que vous recherchez..."
-                    className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-400 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl text-xs font-medium transition leading-relaxed resize-none"
+                    className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white  outline-none rounded-xl text-xs font-medium transition leading-relaxed resize-none"
                   />
                 </div>
 
                 {/* Intentions checkboxes */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                  <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">
                     Mes Intentions de Rencontre (Obligatoire)
                   </label>
-                  <p className="text-[9px] text-slate-400">Sélectionnez au moins une intention pour aider nos algorithmes de compatibilité.</p>
+                  <p className="text-[11px] text-slate-400">Sélectionnez au moins une intention pour aider nos algorithmes de compatibilité.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                     {intentsList.map((intent) => {
                       const isSelected = selectedIntents.includes(intent);
@@ -865,7 +865,7 @@ export default function Settings({
                   <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-center space-y-2 text-xs font-semibold text-emerald-800">
                     <CheckCircle className="mx-auto text-emerald-500" size={28} fill="white" />
                     <p>Compte Certifié Vérifié</p>
-                    <p className="font-medium text-emerald-600 text-[10px] leading-relaxed">
+                    <p className="font-medium text-emerald-600 text-[12px] leading-relaxed">
                       Votre badge de confiance vert est actif et visible auprès de tous les célibataires.
                     </p>
                   </div>
@@ -873,7 +873,7 @@ export default function Settings({
                   <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl text-center space-y-2 text-xs font-semibold text-amber-800">
                     <Loader2 className="mx-auto text-amber-500 animate-spin" size={24} />
                     <p>Documents en cours d'analyse</p>
-                    <p className="font-medium text-amber-600 text-[10px] leading-relaxed">
+                    <p className="font-medium text-amber-600 text-[12px] leading-relaxed">
                       Notre équipe de modération étudie vos justificatifs. Délai moyen : 12 heures.
                     </p>
                   </div>
@@ -881,12 +881,12 @@ export default function Settings({
                   <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl text-center space-y-3 text-xs font-semibold text-rose-800">
                     <ShieldAlert className="mx-auto text-rose-500" size={24} />
                     <p>Vos documents sont enregistrés</p>
-                    <p className="font-medium text-rose-600 text-[10px] leading-relaxed">
+                    <p className="font-medium text-rose-600 text-[12px] leading-relaxed">
                       Il ne reste plus que les frais de certification de {VERIFICATION_BADGE_FEE} FCFA à régler pour envoyer votre dossier à l'administrateur.
                     </p>
                     <button
                       onClick={() => setShowBadgePaymentConfirm(true)}
-                      className="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-rose-500/10"
+                      className="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[12px] uppercase tracking-wider rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-rose-500/10"
                     >
                       <span>Payer {VERIFICATION_BADGE_FEE} FCFA</span>
                       <ArrowRight size={12} />
@@ -897,24 +897,24 @@ export default function Settings({
                     {latestVerificationRequest?.status === "rejected" && (
                       <div className="bg-red-50 border border-red-100 p-3 rounded-2xl flex items-start gap-2">
                         <XCircle className="text-red-500 flex-shrink-0 mt-0.5" size={14} />
-                        <p className="text-red-700 text-[10px] leading-relaxed text-left">
+                        <p className="text-red-700 text-[12px] leading-relaxed text-left">
                           Votre précédente demande a été refusée{latestVerificationRequest.rejection_reason ? ` : ${latestVerificationRequest.rejection_reason}` : ""}. Vérifiez que vos photos sont nettes et lisibles, puis soumettez un nouveau dossier.
                         </p>
                       </div>
                     )}
-                    <p className="text-slate-500 text-[10px] leading-relaxed text-left">
+                    <p className="text-slate-500 text-[12px] leading-relaxed text-left">
                       Le badge <strong>Vérifié</strong> confirme votre authenticité et multiplie vos chances de Matchs par 3 ! Des frais de certification de <strong>{VERIFICATION_BADGE_FEE} FCFA</strong> s'appliquent après l'envoi des documents.
                     </p>
 
                     <div className="space-y-3 text-left">
                       <div>
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase block">Pièce d'identité (Photo)</label>
+                        <label className="text-[12px] font-extrabold text-slate-500 uppercase block">Pièce d'identité (Photo)</label>
                         <input
                           type="file"
                           accept="image/*"
                           required
                           onChange={(e) => handleLocalFileChange(e, setIdFileUrl, setIdFile)}
-                          className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] transition cursor-pointer font-medium text-slate-600"
+                          className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-[12px] transition cursor-pointer font-medium text-slate-600"
                         />
                         {idFileUrl && (
                           <div className="mt-1.5 rounded-lg overflow-hidden h-14 w-24 bg-slate-100 border border-slate-200">
@@ -924,13 +924,13 @@ export default function Settings({
                       </div>
 
                       <div>
-                        <label className="text-[10px] font-extrabold text-slate-500 uppercase block">Selfie de Contrôle (Photo)</label>
+                        <label className="text-[12px] font-extrabold text-slate-500 uppercase block">Selfie de Contrôle (Photo)</label>
                         <input
                           type="file"
                           accept="image/*"
                           required
                           onChange={(e) => handleLocalFileChange(e, setSelfieFileUrl, setSelfieFile)}
-                          className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] transition cursor-pointer font-medium text-slate-600"
+                          className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-[12px] transition cursor-pointer font-medium text-slate-600"
                         />
                         {selfieFileUrl && (
                           <div className="mt-1.5 rounded-lg overflow-hidden h-14 w-24 bg-slate-100 border border-slate-200">
@@ -943,7 +943,7 @@ export default function Settings({
                     <button
                       type="submit"
                       disabled={verificationLoading || !idFileUrl || !selfieFileUrl}
-                      className="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md shadow-rose-500/10"
+                      className="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[12px] uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md shadow-rose-500/10"
                     >
                       {verificationLoading ? (
                         <Loader2 className="animate-spin" size={12} />
@@ -963,15 +963,15 @@ export default function Settings({
                 </h4>
 
                 {pushStatus === "checking" ? (
-                  <p className="text-slate-400 text-[10px] leading-relaxed flex items-center gap-1.5">
+                  <p className="text-slate-400 text-[12px] leading-relaxed flex items-center gap-1.5">
                     <Loader2 className="animate-spin" size={12} /> Vérification...
                   </p>
                 ) : pushStatus === "unsupported" ? (
-                  <p className="text-slate-400 text-[10px] leading-relaxed">
+                  <p className="text-slate-400 text-[12px] leading-relaxed">
                     Votre navigateur ne supporte pas les notifications push.
                   </p>
                 ) : pushStatus === "subscribed" ? (
-                  <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-2xl text-center space-y-1.5 text-[10px] font-semibold text-emerald-800">
+                  <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-2xl text-center space-y-1.5 text-[12px] font-semibold text-emerald-800">
                     <CheckCircle className="mx-auto text-emerald-500" size={20} fill="white" />
                     <p>Notifications activées</p>
                     <p className="font-medium text-emerald-600 leading-relaxed">
@@ -979,11 +979,11 @@ export default function Settings({
                     </p>
                   </div>
                 ) : pushStatus === "denied" ? (
-                  <p className="text-slate-500 text-[10px] leading-relaxed">
+                  <p className="text-slate-500 text-[12px] leading-relaxed">
                     Vous avez bloqué les notifications pour LoveRose. Autorisez-les depuis les réglages de notifications de votre navigateur ou de votre téléphone, puis revenez sur cette page.
                   </p>
                 ) : pushStatus === "error" ? (
-                  <div className="bg-amber-50 border border-amber-100 p-3 rounded-2xl text-center space-y-2 text-[10px] font-semibold text-amber-800">
+                  <div className="bg-amber-50 border border-amber-100 p-3 rounded-2xl text-center space-y-2 text-[12px] font-semibold text-amber-800">
                     <AlertTriangle className="mx-auto text-amber-500" size={20} />
                     <p>La permission est accordée, mais l'activation a échoué</p>
                     <p className="font-medium text-amber-600 leading-relaxed">
@@ -992,20 +992,20 @@ export default function Settings({
                     <button
                       onClick={handleEnablePushFromSettings}
                       disabled={isTogglingPush}
-                      className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                      className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[12px] uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                     >
                       {isTogglingPush ? <Loader2 className="animate-spin" size={12} /> : <span>Réessayer</span>}
                     </button>
                   </div>
                 ) : (
                   <>
-                    <p className="text-slate-500 text-[10px] leading-relaxed">
+                    <p className="text-slate-500 text-[12px] leading-relaxed">
                       Activez les notifications pour être alerté(e) en cas de nouveau message ou de match, même quand LoveRose est fermé.
                     </p>
                     <button
                       onClick={handleEnablePushFromSettings}
                       disabled={isTogglingPush}
-                      className="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md shadow-rose-500/10"
+                      className="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[12px] uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md shadow-rose-500/10"
                     >
                       {isTogglingPush ? <Loader2 className="animate-spin" size={12} /> : <span>Activer les notifications</span>}
                     </button>
@@ -1028,7 +1028,7 @@ export default function Settings({
                         key={code}
                         type="button"
                         onClick={() => i18n.changeLanguage(code)}
-                        className={`flex flex-col items-center justify-center gap-1 py-2.5 rounded-2xl border text-[10px] font-bold transition cursor-pointer ${
+                        className={`flex flex-col items-center justify-center gap-1 py-2.5 rounded-2xl border text-[12px] font-bold transition cursor-pointer ${
                           active
                             ? "bg-rose-50 border-rose-300 text-rose-600"
                             : "bg-slate-50/50 border-slate-150 text-slate-500 hover:bg-slate-50"
@@ -1055,9 +1055,9 @@ export default function Settings({
                   <div className="flex justify-between items-center py-2 border-b border-slate-50">
                     <div>
                       <h4 className="text-xs font-bold text-slate-800">Adresse Email</h4>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{currentUser?.email || "Non renseigné"}</p>
+                      <p className="text-[12px] text-slate-400 mt-0.5">{currentUser?.email || "Non renseigné"}</p>
                     </div>
-                    <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2.5 py-1 rounded-full">
+                    <span className="text-[12px] bg-slate-100 text-slate-600 font-semibold px-2.5 py-1 rounded-full">
                       Vérifié
                     </span>
                   </div>
@@ -1065,12 +1065,12 @@ export default function Settings({
                   <div className="flex justify-between items-center py-2 border-b border-slate-50">
                     <div>
                       <h4 className="text-xs font-bold text-slate-800">Double Facteur (MFA)</h4>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Renforcer la protection de mes données personnelles</p>
+                      <p className="text-[12px] text-slate-400 mt-0.5">Renforcer la protection de mes données personnelles</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => alert("La double authentification sera disponible lors de la prochaine mise à jour de l'application.")}
-                      className="text-[10px] text-rose-500 hover:text-rose-600 font-bold transition cursor-pointer"
+                      className="text-[12px] text-rose-500 hover:text-rose-600 font-bold transition cursor-pointer"
                     >
                       Activer
                     </button>
@@ -1079,10 +1079,10 @@ export default function Settings({
                   <div className="flex justify-between items-center py-2">
                     <div>
                       <h4 className="text-xs font-bold text-slate-800">Confidentialité de ma fiche</h4>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Permettre aux autres de voir mon profil dans la découverte</p>
+                      <p className="text-[12px] text-slate-400 mt-0.5">Permettre aux autres de voir mon profil dans la découverte</p>
                     </div>
                     <div className="relative inline-flex items-center cursor-pointer">
-                      <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-extrabold px-3 py-1 rounded-full">
+                      <span className="text-[12px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-extrabold px-3 py-1 rounded-full">
                         Profil Public
                       </span>
                     </div>
@@ -1124,7 +1124,7 @@ export default function Settings({
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xs font-bold text-slate-800">Désactiver ou supprimer mon compte</h4>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Efface définitivement mes Matchs, messages, et profil de LoveRose</p>
+                    <p className="text-[12px] text-slate-400 mt-0.5">Efface définitivement mes Matchs, messages, et profil de LoveRose</p>
                   </div>
                   <button
                     type="button"
@@ -1133,7 +1133,7 @@ export default function Settings({
                         alert("Votre compte a été suspendu pour suppression. Contactez le service d'assistance LoveRose pour annuler sous 14 jours.");
                       }
                     }}
-                    className="text-[10px] text-red-500 hover:text-red-600 font-extrabold border border-red-100 bg-red-50/50 hover:bg-red-50 px-3 py-1.5 rounded-xl transition cursor-pointer"
+                    className="text-[12px] text-red-500 hover:text-red-600 font-extrabold border border-red-100 bg-red-50/50 hover:bg-red-50 px-3 py-1.5 rounded-xl transition cursor-pointer"
                   >
                     Supprimer mon compte
                   </button>
@@ -1150,7 +1150,7 @@ export default function Settings({
               <FileText className="text-rose-500" size={24} />
               <div>
                 <h3 className="font-extrabold text-slate-900 text-lg">Conditions Générales d'Utilisation (CGU)</h3>
-                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-0.5">Dernière mise à jour : 26 Juin 2026</p>
+                <p className="text-[12px] text-slate-400 uppercase tracking-widest font-bold mt-0.5">Dernière mise à jour : 26 Juin 2026</p>
               </div>
             </div>
 
@@ -1217,7 +1217,7 @@ export default function Settings({
               <ShieldAlert className="text-rose-500" size={24} />
               <div>
                 <h3 className="font-extrabold text-slate-900 text-lg">Politique de Confidentialité</h3>
-                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-0.5">Dernière mise à jour : 26 Juin 2026</p>
+                <p className="text-[12px] text-slate-400 uppercase tracking-widest font-bold mt-0.5">Dernière mise à jour : 26 Juin 2026</p>
               </div>
             </div>
 
@@ -1281,7 +1281,7 @@ export default function Settings({
 
       {/* App Info Footer */}
       <div className="text-center pt-4 space-y-1.5 border-t border-slate-200">
-        <p className="text-[10px] text-slate-400">LoveRose v2.1.0 • Fait en Afrique avec passion ❤️</p>
+        <p className="text-[12px] text-slate-400">LoveRose v2.1.0 • Fait en Afrique avec passion ❤️</p>
       </div>
 
       {/* Verification Badge Payment Modal (500 FCFA) */}
@@ -1303,14 +1303,14 @@ export default function Settings({
             </div>
 
             <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 space-y-2 text-center">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Badge de Vérification LoveRose</p>
+              <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">Badge de Vérification LoveRose</p>
               <p className="text-3xl font-black text-rose-500">{VERIFICATION_BADGE_FEE} FCFA</p>
-              <p className="text-[10px] text-slate-500">Frais uniques de certification de profil.</p>
+              <p className="text-[12px] text-slate-500">Frais uniques de certification de profil.</p>
             </div>
 
             <form onSubmit={handleConfirmBadgePayment} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">
                   Nom Complet du Client
                 </label>
                 <input
@@ -1319,12 +1319,12 @@ export default function Settings({
                   placeholder="Ex: Jean Dupont"
                   value={badgePaymentForm.fullName}
                   onChange={(e) => setBadgePaymentForm(p => ({ ...p, fullName: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">
                   Numéro de Téléphone Mobile Money
                 </label>
                 <input
@@ -1333,9 +1333,9 @@ export default function Settings({
                   placeholder="Ex: 677123456"
                   value={badgePaymentForm.phoneNumber}
                   onChange={(e) => setBadgePaymentForm(p => ({ ...p, phoneNumber: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
                 />
-                <span className="text-[10px] text-slate-400 block font-medium">
+                <span className="text-[12px] text-slate-400 block font-medium">
                   Entrez le numéro associé à votre compte de paiement (Orange, MTN, Moov, Wave, etc.)
                 </span>
               </div>
@@ -1365,7 +1365,7 @@ export default function Settings({
               </div>
             </form>
 
-            <p className="text-[9px] text-slate-400 text-center font-medium leading-relaxed">
+            <p className="text-[11px] text-slate-400 text-center font-medium leading-relaxed">
               En cliquant sur "Payer", vous serez redirigé vers l'interface officielle de Money Fusion pour effectuer votre transaction en toute sécurité. Votre dossier sera transmis à l'administrateur une fois le paiement confirmé.
             </p>
           </div>

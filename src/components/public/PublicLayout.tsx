@@ -53,173 +53,173 @@ export default function PublicLayout({ currentPath, onNavigate, onShowAuth }: Pu
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-800 antialiased overflow-x-hidden">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-        {/* Logo */}
-        <div 
-          onClick={() => handleLinkClick("/")}
-          className="flex items-center space-x-2 cursor-pointer group"
-        >
-          <div className="bg-rose-500 p-2 rounded-xl text-white group-hover:scale-105 transition-all">
-            <Heart size={20} fill="currentColor" />
-          </div>
-          <div>
-            <span className="font-black text-xl tracking-tight text-slate-900">Love</span>
-            <span className="font-black text-xl tracking-tight text-rose-500">Rose</span>
-          </div>
-        </div>
-
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-8 text-xs font-bold text-slate-600">
-          {navLinks.map((link) => {
-            const isActive = normalizedPath === link.path;
-            return (
-              <button
-                key={link.path}
-                onClick={() => handleLinkClick(link.path)}
-                className={`transition-colors hover:text-rose-500 cursor-pointer py-1 ${
-                  isActive ? "text-rose-500 font-extrabold border-b-2 border-rose-500" : ""
-                }`}
-              >
-                {link.label}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Desktop Auth Controls */}
-        <div className="hidden md:flex items-center space-x-4">
+      {/* ============ EN-TÊTE ============ */}
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
+        <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between gap-6">
           <button
-            onClick={() => onShowAuth(false)}
-            className="text-xs font-bold text-slate-600 hover:text-rose-500 transition cursor-pointer"
+            onClick={() => handleLinkClick("/")}
+            className="flex items-baseline gap-px cursor-pointer group flex-shrink-0"
+            aria-label="Retour à l'accueil"
           >
-            Se connecter
+            <span className="u-display text-[26px] leading-none text-slate-950">Love</span>
+            <span className="u-display text-[26px] leading-none text-rose-500">Rose</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 ml-1 mb-0.5 group-hover:scale-125 transition-transform" />
           </button>
-          <button
-            onClick={() => onShowAuth(true)}
-            className="px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-xs rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
-          >
-            <span>S'inscrire</span>
-            <ArrowRight size={12} />
-          </button>
-        </div>
 
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-1.5 hover:bg-slate-100 rounded-xl text-slate-600 hover:text-slate-900 transition cursor-pointer"
-        >
-          {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      </header>
-
-      {/* Mobile Menu Overlay */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 top-[65px] bg-white z-40 flex flex-col p-6 space-y-6 animate-fade-in border-t border-slate-100">
-          <div className="flex flex-col space-y-4">
+          <nav className="hidden md:flex items-center gap-1" aria-label="Navigation du site">
             {navLinks.map((link) => {
               const isActive = normalizedPath === link.path;
               return (
                 <button
                   key={link.path}
                   onClick={() => handleLinkClick(link.path)}
-                  className={`text-left text-sm font-bold py-2.5 px-4 rounded-xl transition ${
-                    isActive ? "bg-rose-50 text-rose-500 font-black" : "text-slate-600 hover:bg-slate-50"
+                  aria-current={isActive ? "page" : undefined}
+                  className={`h-9 px-3.5 rounded-lg text-[13px] font-bold cursor-pointer transition-colors ${
+                    isActive
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
                 >
                   {link.label}
                 </button>
               );
             })}
+          </nav>
+
+          <div className="hidden md:flex items-center gap-2">
+            <button
+              onClick={() => onShowAuth(false)}
+              className="h-9 px-3 text-[13px] font-bold text-slate-700 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              Connexion
+            </button>
+            <button
+              onClick={() => onShowAuth(true)}
+              className="h-9 px-4 bg-rose-500 hover:bg-rose-600 text-white text-[13px] font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              S'inscrire
+              <ArrowRight size={14} />
+            </button>
           </div>
 
-          <div className="border-t border-slate-100 pt-6 flex flex-col gap-3">
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+            aria-expanded={mobileMenuOpen}
+            className="md:hidden w-10 h-10 flex items-center justify-center rounded-lg border border-slate-300 text-slate-700 hover:border-slate-900 transition cursor-pointer"
+          >
+            {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
+      </header>
+
+      {/* Menu mobile */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 top-16 bg-white z-40 flex flex-col p-5 gap-6 animate-fade-in border-t border-slate-200">
+          <nav className="flex flex-col gap-1">
+            {navLinks.map((link) => {
+              const isActive = normalizedPath === link.path;
+              return (
+                <button
+                  key={link.path}
+                  onClick={() => handleLinkClick(link.path)}
+                  className={`text-left text-base font-bold py-3 px-4 rounded-lg transition ${
+                    isActive ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  {link.label}
+                </button>
+              );
+            })}
+          </nav>
+          <div className="border-t border-slate-200 pt-5 flex flex-col gap-2.5">
             <button
               onClick={() => { setMobileMenuOpen(false); onShowAuth(false); }}
-              className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer text-xs"
+              className="w-full h-12 border border-slate-300 hover:border-slate-900 text-slate-800 font-bold rounded-lg transition cursor-pointer text-sm"
             >
-              Se connecter
+              Connexion
             </button>
             <button
               onClick={() => { setMobileMenuOpen(false); onShowAuth(true); }}
-              className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-extrabold rounded-xl transition shadow-md cursor-pointer text-xs flex items-center justify-center gap-1.5"
+              className="w-full h-12 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-lg transition cursor-pointer text-sm flex items-center justify-center gap-2"
             >
-              <span>Créer un compte</span>
-              <ArrowRight size={14} />
+              Créer un compte gratuit
+              <ArrowRight size={16} />
             </button>
           </div>
         </div>
       )}
 
-      {/* Main Content */}
-      <main className="flex-grow min-h-0 bg-slate-50">
-        {renderContent()}
-      </main>
+      <main className="flex-grow min-h-0 bg-slate-50">{renderContent()}</main>
 
-      {/* Footer */}
-      <footer className="bg-slate-900 text-white border-t border-slate-850">
-        <div className="max-w-6xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-4 gap-10 text-left">
-          {/* Brand Info */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <div className="bg-rose-500 p-2 rounded-xl text-white">
-                <Heart size={16} fill="currentColor" />
-              </div>
-              <span className="font-black text-lg tracking-tight text-white">LoveRose</span>
+      {/* ============ PIED DE PAGE ============ */}
+      <footer className="bg-slate-950 text-slate-300">
+        <div className="max-w-6xl mx-auto px-5 py-14 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-10">
+          <div className="col-span-2 md:col-span-1 space-y-4">
+            <div className="flex items-baseline gap-px">
+              <span className="u-display text-2xl text-white">Love</span>
+              <span className="u-display text-2xl text-rose-400">Rose</span>
             </div>
-            <p className="text-slate-400 text-xs leading-relaxed">
-              La plateforme de rencontres sérieuses et de monétisation pour créateurs en Afrique et à l'international. Un espace chaleureux, sincère et certifié.
+            <p className="text-slate-400 text-[13px] leading-relaxed max-w-xs">
+              Annonces, services et rencontres de confiance en Afrique francophone.
+              Un espace vérifié, chaleureux et sécurisé.
             </p>
-            <div className="flex items-center gap-3 text-slate-500 text-xs font-semibold">
+            <p className="flex items-center gap-2 text-slate-500 text-xs font-semibold">
               <Globe size={14} />
-              <span>FR | EN | ES</span>
+              FR · EN · ES
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="u-kicker text-rose-400">Navigation</h4>
+            <div className="flex flex-col gap-2.5 text-[13px]">
+              {navLinks.map((l) => (
+                <button
+                  key={l.path}
+                  onClick={() => handleLinkClick(l.path)}
+                  className="text-left text-slate-400 hover:text-white transition cursor-pointer w-max"
+                >
+                  {l.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Quick Links */}
           <div className="space-y-3">
-            <h4 className="font-black text-xs uppercase tracking-wider text-rose-400">Navigation</h4>
-            <div className="flex flex-col space-y-2 text-xs">
-              <button onClick={() => handleLinkClick("/accueil")} className="text-left text-slate-400 hover:text-white transition cursor-pointer">Accueil</button>
-              <button onClick={() => handleLinkClick("/a-propos")} className="text-left text-slate-400 hover:text-white transition cursor-pointer">À Propos</button>
-              <button onClick={() => handleLinkClick("/faq")} className="text-left text-slate-400 hover:text-white transition cursor-pointer">Foire Aux Questions</button>
-              <button onClick={() => handleLinkClick("/contact")} className="text-left text-slate-400 hover:text-white transition cursor-pointer">Contactez-nous</button>
-            </div>
-          </div>
-
-          {/* Legal Links */}
-          <div className="space-y-3">
-            <h4 className="font-black text-xs uppercase tracking-wider text-rose-400">Légal</h4>
-            <div className="flex flex-col space-y-2 text-xs">
-              <button onClick={() => handleLinkClick("/conditions-d-utilisation")} className="text-left text-slate-400 hover:text-white transition cursor-pointer">Conditions d'Utilisation (CGU)</button>
-              <button onClick={() => handleLinkClick("/politique-de-confidentialite")} className="text-left text-slate-400 hover:text-white transition cursor-pointer">Politique de Confidentialité</button>
-              <span className="text-[10px] text-red-400 font-extrabold flex items-center gap-1.5 pt-1">
-                <Shield size={12} />
-                <span>Majeurs de 18 ans et plus</span>
+            <h4 className="u-kicker text-rose-400">Légal</h4>
+            <div className="flex flex-col gap-2.5 text-[13px]">
+              <button onClick={() => handleLinkClick("/conditions-d-utilisation")} className="text-left text-slate-400 hover:text-white transition cursor-pointer w-max">
+                Conditions d'utilisation
+              </button>
+              <button onClick={() => handleLinkClick("/politique-de-confidentialite")} className="text-left text-slate-400 hover:text-white transition cursor-pointer w-max">
+                Confidentialité
+              </button>
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-300 pt-1">
+                <Shield size={13} />
+                Réservé aux 18 ans et plus
               </span>
             </div>
           </div>
 
-          {/* Contact Details */}
           <div className="space-y-3">
-            <h4 className="font-black text-xs uppercase tracking-wider text-rose-400">Support Client</h4>
-            <p className="text-slate-400 text-xs leading-relaxed">
-              Pour toute question technique, d'utilisation ou de monétisation, contactez notre support officiel.
+            <h4 className="u-kicker text-rose-400">Support</h4>
+            <p className="text-slate-400 text-[13px] leading-relaxed">
+              Une question technique ou sur la monétisation ?
             </p>
-            <div className="flex items-center gap-2 pt-1 text-xs">
+            <a
+              href="mailto:techsen237@gmail.com"
+              className="inline-flex items-center gap-2 text-[13px] text-white hover:text-rose-300 transition underline underline-offset-4 decoration-slate-600"
+            >
               <Mail size={14} className="text-rose-400" />
-              <a href="mailto:techsen237@gmail.com" className="text-slate-300 hover:text-rose-300 transition underline">
-                techsen237@gmail.com
-              </a>
-            </div>
+              techsen237@gmail.com
+            </a>
           </div>
         </div>
 
-        {/* Footer Bottom Bar */}
-        <div className="bg-slate-950 py-6 px-6 text-center text-slate-500 text-[10px] font-medium border-t border-slate-900">
-          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p>© {new Date().getFullYear()} LoveRose. Tous droits réservés. Développé pour des connexions authentiques.</p>
-            <p className="text-slate-600">LoveRose International SAS - Abidjan, Côte d'Ivoire</p>
+        <div className="border-t border-slate-800">
+          <div className="max-w-6xl mx-auto px-5 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+            <p>© {new Date().getFullYear()} LoveRose. Tous droits réservés.</p>
+            <p>LoveRose International SAS — Abidjan, Côte d'Ivoire</p>
           </div>
         </div>
       </footer>

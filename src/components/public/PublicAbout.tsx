@@ -11,7 +11,7 @@ export default function PublicAbout() {
         </div>
         <div className="space-y-3">
           <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">À Propos de LoveRose</h1>
-          <p className="text-slate-500 text-sm max-w-xl mx-auto uppercase tracking-widest font-extrabold text-[10px]">
+          <p className="text-slate-500 text-sm max-w-xl mx-auto uppercase tracking-widest font-extrabold text-[12px]">
             La mission d'unir les cœurs de manière authentique et sécurisée
           </p>
         </div>

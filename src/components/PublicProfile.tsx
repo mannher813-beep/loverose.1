@@ -212,7 +212,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
                   {profile.age && <span className="text-lg font-bold text-slate-400">{profile.age} ans</span>}
                   
                   {profile.verification_status === "verified" && (
-                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full flex items-center gap-0.5">
+                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[12px] font-black uppercase px-2.5 py-0.5 rounded-full flex items-center gap-0.5">
                       <CheckCircle size={10} fill="white" className="text-emerald-500" />
                       <span>Vérifié</span>
                     </span>
@@ -253,7 +253,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
                 {profile.relationship_intents.map((intent, idx) => (
                   <span
                     key={idx}
-                    className="bg-rose-50 text-rose-600 border border-rose-100 px-3 py-1.5 rounded-2xl text-[10px] md:text-xs font-bold uppercase tracking-wide"
+                    className="bg-rose-50 text-rose-600 border border-rose-100 px-3 py-1.5 rounded-2xl text-[12px] md:text-xs font-bold uppercase tracking-wide"
                   >
                     ❤️ {intent}
                   </span>
@@ -278,7 +278,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
                     decoding="async"
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute bottom-3 right-3 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded-full">
+                  <div className="absolute bottom-3 right-3 bg-black/60 text-white text-[12px] font-bold px-2 py-1 rounded-full">
                     {activePhotoIndex + 1} / {photos.length}
                   </div>
                 </div>
@@ -327,7 +327,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
           <div className="bg-white border border-slate-150 rounded-3xl p-6 shadow-sm text-center space-y-4 sticky top-24">
             <div className="space-y-1">
               <h3 className="font-extrabold text-slate-900 text-sm">Carte d'Invitation LoveRose</h3>
-              <p className="text-slate-400 text-[10px] leading-relaxed">
+              <p className="text-slate-400 text-[12px] leading-relaxed">
                 Voici la carte officielle de {profile.full_name}. Téléchargez-la pour la partager sur WhatsApp, Instagram ou Facebook !
               </p>
             </div>
@@ -357,7 +357,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
                       <span className="font-black text-xs uppercase tracking-widest">LoveRose</span>
                     </div>
                     <div className="bg-white/10 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10">
-                      <span className="text-[8px] font-black tracking-wider uppercase text-rose-300">Intentions Claires</span>
+                      <span className="text-[11px] font-black tracking-wider uppercase text-rose-300">Intentions Claires</span>
                     </div>
                   </div>
 
@@ -386,7 +386,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
                         {profile.age && <span className="text-sm font-bold text-slate-400">, {profile.age}</span>}
                       </h2>
                       {profile.location && (
-                        <p className="text-[10px] text-slate-400 flex items-center justify-center font-bold">
+                        <p className="text-[12px] text-slate-400 flex items-center justify-center font-bold">
                           <MapPin size={10} className="text-rose-500 mr-0.5" />
                           <span>{profile.location}</span>
                         </p>
@@ -397,11 +397,11 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
                   {/* Bio & Intentions content panel */}
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3 relative z-10 backdrop-blur-sm">
                     {profile.bio ? (
-                      <p className="text-[10px] text-slate-300 line-clamp-3 leading-relaxed text-center italic font-semibold">
+                      <p className="text-[12px] text-slate-300 line-clamp-3 leading-relaxed text-center italic font-semibold">
                         "{profile.bio}"
                       </p>
                     ) : (
-                      <p className="text-[10px] text-slate-400 text-center italic font-semibold">
+                      <p className="text-[12px] text-slate-400 text-center italic font-semibold">
                         "Rejoignez-moi sur LoveRose pour discuter !"
                       </p>
                     )}
@@ -411,7 +411,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
                         {profile.relationship_intents.slice(0, 2).map((intent, idx) => (
                           <span
                             key={idx}
-                            className="bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wide"
+                            className="bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wide"
                           >
                             ❤️ {intent}
                           </span>
@@ -423,8 +423,8 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
                   {/* Footer Actionable QR details & invite CTA */}
                   <div className="flex items-center justify-between relative z-10 pt-4 border-t border-white/10 text-left">
                     <div className="space-y-1">
-                      <h4 className="text-[9px] font-black uppercase tracking-wider text-rose-400">Scannez pour me rejoindre</h4>
-                      <p className="text-[8px] text-slate-400 font-bold">loverose.pages.dev/profil/{username}</p>
+                      <h4 className="text-[11px] font-black uppercase tracking-wider text-rose-400">Scannez pour me rejoindre</h4>
+                      <p className="text-[11px] text-slate-400 font-bold">loverose.pages.dev/profil/{username}</p>
                     </div>
 
                     {/* Faux QR Code Vector representation for perfect high fidelity aesthetics */}
@@ -469,7 +469,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={handleCopyLink}
-                  className="py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] uppercase tracking-wide rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                  className="py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[12px] uppercase tracking-wide rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
                 >
                   {copied ? (
                     <>
@@ -486,7 +486,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
 
                 <button
                   onClick={handleShare}
-                  className="py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] uppercase tracking-wide rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                  className="py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[12px] uppercase tracking-wide rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
                 >
                   <Share2 size={12} />
                   <span>Partager</span>

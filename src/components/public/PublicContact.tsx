@@ -132,7 +132,7 @@ export default function PublicContact() {
             </div>
           </div>
 
-          <div className="bg-slate-800 rounded-2xl p-4 text-[10px] text-slate-300 border border-slate-700/50 flex gap-2">
+          <div className="bg-slate-800 rounded-2xl p-4 text-[12px] text-slate-300 border border-slate-700/50 flex gap-2">
             <AlertCircle size={14} className="text-amber-400 flex-shrink-0" />
             <span>Pour un traitement plus rapide, veuillez préciser votre nom complet et l'adresse email associée à votre compte LoveRose si vous en possédez un.</span>
           </div>
@@ -175,48 +175,48 @@ export default function PublicContact() {
               <div className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Votre Nom (Optionnel)</label>
+                    <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Votre Nom (Optionnel)</label>
                     <input
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Ex: Jean Paul"
-                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl font-bold transition text-xs"
+                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl font-bold transition text-xs"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Adresse Email <span className="text-rose-500">*</span></label>
+                    <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Adresse Email <span className="text-rose-500">*</span></label>
                     <input
                       type="email"
                       required
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       placeholder="nom@exemple.com"
-                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl font-bold transition text-xs"
+                      className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl font-bold transition text-xs"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Sujet de votre demande</label>
+                  <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Sujet de votre demande</label>
                   <input
                     type="text"
                     value={formData.subject}
                     onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                     placeholder="Ex: Problème technique, demande de certification créateur, partenariat"
-                    className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl font-bold transition text-xs"
+                    className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl font-bold transition text-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Votre Message <span className="text-rose-500">*</span></label>
+                  <label className="text-[12px] font-extrabold text-slate-500 uppercase tracking-wider block">Votre Message <span className="text-rose-500">*</span></label>
                   <textarea
                     required
                     rows={5}
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                     placeholder="Saisissez en détail votre demande..."
-                    className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white focus:ring-1 focus:ring-rose-200 outline-none rounded-xl font-bold transition text-xs"
+                    className="w-full mt-1.5 p-3 bg-slate-50 border border-slate-200 focus:border-rose-450 focus:bg-white  outline-none rounded-xl font-bold transition text-xs"
                   />
                 </div>
               </div>

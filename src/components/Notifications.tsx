@@ -389,7 +389,7 @@ export default function Notifications({ currentUser, onNavigateToTab, onLikeBack
                     <p className="text-xs font-extrabold text-slate-800 tracking-tight">
                       {senderName}
                     </p>
-                    <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">
+                    <span className="text-[12px] text-slate-400 font-semibold whitespace-nowrap">
                       {new Date(notif.created_at).toLocaleDateString()} à {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
@@ -399,7 +399,7 @@ export default function Notifications({ currentUser, onNavigateToTab, onLikeBack
                   </p>
 
                   {!notif.lu && (
-                    <span className="inline-block text-[9px] bg-rose-500 text-white font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md mt-1 scale-90 origin-left">
+                    <span className="inline-block text-[11px] bg-rose-500 text-white font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md mt-1 scale-90 origin-left">
                       Nouveau
                     </span>
                   )}

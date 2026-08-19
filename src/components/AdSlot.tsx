@@ -109,7 +109,7 @@ export default function AdSlot({ slot, className = "", userId, countryCode }: Ad
   // to pass approval checks and look amazing
   return (
     <div className={`my-4 mx-auto w-full max-w-lg bg-slate-50 border border-slate-200/60 rounded-2xl overflow-hidden shadow-xs relative p-3 text-center ${className}`}>
-      <span className="absolute top-1 right-2 text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+      <span className="absolute top-1 right-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
         Sponsorisé • AdSense
       </span>
       
@@ -123,11 +123,11 @@ export default function AdSlot({ slot, className = "", userId, countryCode }: Ad
           </div>
           <div className="flex-1">
             <h4 className="text-xs font-black text-slate-800">LoveRose</h4>
-            <p className="text-[10px] text-slate-400 leading-normal">
+            <p className="text-[12px] text-slate-400 leading-normal">
               Trouvez l'amour véritable aujourd'hui. Rencontres 100% vérifiées en Afrique Francophone.
             </p>
           </div>
-          <div className="bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-black px-3 py-1.5 rounded-lg transition">
+          <div className="bg-rose-500 hover:bg-rose-600 text-white text-[12px] font-black px-3 py-1.5 rounded-lg transition">
             Visiter
           </div>
         </div>

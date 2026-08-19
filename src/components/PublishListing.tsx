@@ -268,7 +268,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Décrivez votre publication ou votre annonce... ✨"
-                className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:bg-white focus:outline-none rounded-2xl p-3.5 text-xs font-medium transition resize-none leading-relaxed"
+                className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none rounded-2xl p-3.5 text-xs font-medium transition resize-none leading-relaxed"
               />
               {/* Sélecteur de fichier caché pour les photos, plusieurs autorisées */}
               <input
@@ -320,7 +320,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                         badge de catégorie dans le fil (Feed.tsx). Les options ci-dessous
                         s'adaptent ensuite à ce choix (voir LISTING_FIELD_CONFIG). */}
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                      <label className="text-[12px] font-bold text-slate-500 uppercase flex items-center gap-1">
                         <Tag size={11} /> Type d'annonce
                       </label>
                       <div className="grid grid-cols-2 gap-1.5 mt-1">
@@ -329,7 +329,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                             key={cat.value}
                             type="button"
                             onClick={() => handleSelectCategory(cat.value)}
-                            className={`py-2 px-2 rounded-lg text-[10px] font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                            className={`py-2 px-2 rounded-lg text-[12px] font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                               listingCategory === cat.value
                                 ? "bg-emerald-500 border-emerald-500 text-white"
                                 : "bg-white border-slate-200 text-slate-600 hover:border-emerald-300"
@@ -343,7 +343,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                     </div>
 
                     {!listingCategory && (
-                      <p className="text-[10px] text-slate-400 italic">
+                      <p className="text-[12px] text-slate-400 italic">
                         Choisissez d'abord un type d'annonce pour voir les options adaptées.
                       </p>
                     )}
@@ -352,7 +352,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                       <div className={`grid gap-2 ${activeFieldConfig.location && activeFieldConfig.condition ? "grid-cols-2" : "grid-cols-1"}`}>
                         {activeFieldConfig.location && (
                           <div>
-                            <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                            <label className="text-[12px] font-bold text-slate-500 uppercase flex items-center gap-1">
                               <MapPin size={11} /> {activeFieldConfig.locationLabel}
                             </label>
                             <input
@@ -366,7 +366,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                         )}
                         {activeFieldConfig.condition && (
                           <div>
-                            <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                            <label className="text-[12px] font-bold text-slate-500 uppercase flex items-center gap-1">
                               <Boxes size={11} /> État
                             </label>
                             <div className="flex gap-1.5 mt-1">
@@ -375,7 +375,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                                   key={c}
                                   type="button"
                                   onClick={() => setListingCondition((prev) => (prev === c ? null : c))}
-                                  className={`flex-1 py-2.5 rounded-xl text-[10px] font-bold capitalize transition cursor-pointer border ${
+                                  className={`flex-1 py-2.5 rounded-xl text-[12px] font-bold capitalize transition cursor-pointer border ${
                                     listingCondition === c
                                       ? "bg-emerald-500 border-emerald-500 text-white"
                                       : "bg-white border-slate-200 text-slate-600 hover:border-emerald-300"
@@ -393,7 +393,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                     {listingCategory && (
                       <div className={`grid gap-2 ${activeFieldConfig?.quantity ? "grid-cols-2" : "grid-cols-1"}`}>
                         <div>
-                          <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                          <label className="text-[12px] font-bold text-slate-500 uppercase flex items-center gap-1">
                             <Clock size={11} /> Durée
                           </label>
                           <select
@@ -410,7 +410,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                         </div>
                         {activeFieldConfig?.quantity && (
                           <div>
-                            <label className="text-[10px] font-bold text-slate-500 uppercase">{activeFieldConfig.quantityLabel}</label>
+                            <label className="text-[12px] font-bold text-slate-500 uppercase">{activeFieldConfig.quantityLabel}</label>
                             <input
                               type="number"
                               min={0}
@@ -425,7 +425,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                     )}
 
                     <label className="flex items-center justify-between gap-2 py-1 cursor-pointer select-none">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">Contact WhatsApp gratuit</span>
+                      <span className="text-[12px] font-bold text-slate-500 uppercase">Contact WhatsApp gratuit</span>
                       <button
                         type="button"
                         onClick={() => setIsFreeListing((v) => !v)}
@@ -438,9 +438,9 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                     {!isFreeListing && (
                       <div>
                         <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Prix (FCFA)</label>
+                          <label className="text-[12px] font-bold text-slate-500 uppercase">Prix (FCFA)</label>
                           <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                            <span className="text-[10px] font-bold text-slate-500">Négociable</span>
+                            <span className="text-[12px] font-bold text-slate-500">Négociable</span>
                             <button
                               type="button"
                               onClick={() => setListingNegotiable((v) => !v)}
@@ -461,7 +461,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                       </div>
                     )}
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Votre numéro WhatsApp</label>
+                      <label className="text-[12px] font-bold text-slate-500 uppercase">Votre numéro WhatsApp</label>
                       <div className="flex gap-2 mt-1">
                         <div className="w-2/5">
                           <CountryDialSelect value={whatsappCountryIso} onChange={setWhatsappCountryIso} locale="fr" />
@@ -481,18 +481,18 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                         const parsed = parsePhoneNumberFromString(whatsappPhoneLocal.trim(), whatsappCountryIso);
                         if (parsed?.isValid()) {
                           return (
-                            <p className="text-[10px] font-bold text-emerald-600 mt-1.5">
+                            <p className="text-[12px] font-bold text-emerald-600 mt-1.5">
                               ✓ Lien généré : wa.me/{parsed.number.replace("+", "")}
                             </p>
                           );
                         }
                         return (
-                          <p className="text-[10px] font-bold text-slate-400 mt-1.5">
+                          <p className="text-[12px] font-bold text-slate-400 mt-1.5">
                             Numéro incomplet ou invalide
                           </p>
                         );
                       })()}
-                      <p className="text-[10px] text-slate-400 mt-1">
+                      <p className="text-[12px] text-slate-400 mt-1">
                         {isFreeListing
                           ? "Le bouton WhatsApp sera visible immédiatement, sans paiement. Comme aucun achat n'est enregistré, ces contacts ne donnent pas lieu à un avis noté."
                           : "L'acheteur sera redirigé ici automatiquement dès que son paiement est confirmé."}

@@ -596,15 +596,15 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
 
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="bg-slate-50 rounded-2xl p-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Disponible</p>
+              <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wide">Disponible</p>
               <p className="text-sm font-black text-emerald-600 mt-1">{formatFcfa(withdrawableNow)}</p>
             </div>
             <div className="bg-slate-50 rounded-2xl p-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">En cours</p>
+              <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wide">En cours</p>
               <p className="text-sm font-black text-orange-500 mt-1">{formatFcfa(amountRequestPending)}</p>
             </div>
             <div className="bg-slate-50 rounded-2xl p-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Retiré</p>
+              <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wide">Retiré</p>
               <p className="text-sm font-black text-slate-700 mt-1">{formatFcfa(amountWithdrawn)}</p>
             </div>
           </div>
@@ -628,13 +628,13 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                       </td>
                       <td className="py-2.5">
                         {r.status === "completed" ? (
-                          <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full font-bold text-[10px]">Complété</span>
+                          <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full font-bold text-[12px]">Complété</span>
                         ) : r.status === "rejected" ? (
-                          <span className="bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full font-bold text-[10px]">Rejeté</span>
+                          <span className="bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full font-bold text-[12px]">Rejeté</span>
                         ) : r.status === "processing" ? (
-                          <span className="bg-sky-50 text-sky-700 px-2.5 py-0.5 rounded-full font-bold text-[10px]">En traitement</span>
+                          <span className="bg-sky-50 text-sky-700 px-2.5 py-0.5 rounded-full font-bold text-[12px]">En traitement</span>
                         ) : (
-                          <span className="bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-full font-bold text-[10px] animate-pulse">En attente</span>
+                          <span className="bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-full font-bold text-[12px] animate-pulse">En attente</span>
                         )}
                       </td>
                     </tr>
@@ -658,7 +658,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
         
         <div className="space-y-3 z-10 text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start space-x-2">
-            <span className="bg-rose-500/20 text-rose-300 border border-rose-500/20 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">LoveRose Boutique</span>
+            <span className="bg-rose-500/20 text-rose-300 border border-rose-500/20 text-[12px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">LoveRose Boutique</span>
           </div>
           <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">Boostez votre profil</h2>
           <p className="text-slate-300 text-xs md:text-sm max-w-md leading-relaxed">
@@ -676,7 +676,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
             </span>
           </div>
           {activeBoostEnd && (
-            <div className="flex justify-between items-center border-t border-white/5 pt-2 text-[10px] text-amber-300">
+            <div className="flex justify-between items-center border-t border-white/5 pt-2 text-[12px] text-amber-300">
               <span className="flex items-center gap-1">
                 <Zap size={10} className="fill-amber-300 text-amber-400 animate-pulse" /> Boost actif :
               </span>
@@ -709,11 +709,11 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
 
           <div className="flex flex-col items-center justify-center p-4 bg-amber-50/50 border border-amber-100 rounded-2xl md:min-w-56 text-center space-y-3">
             <div>
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Activer avec vos crédits</p>
+              <p className="text-slate-400 text-[12px] font-bold uppercase tracking-wider">Activer avec vos crédits</p>
               <p className="text-2xl font-black text-amber-600 flex items-center justify-center gap-1">
                 <Coins size={20} className="fill-amber-400 text-amber-500" /> 10 Crédits
               </p>
-              <p className="text-[10px] text-slate-400">Boost actif instantanément pendant 1 heure</p>
+              <p className="text-[12px] text-slate-400">Boost actif instantanément pendant 1 heure</p>
             </div>
             
             <button
@@ -744,7 +744,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                 <h4 className="font-extrabold text-slate-800 text-sm">
                   Suivi & vérification de vos paiements
                 </h4>
-                <p className="text-[10px] text-slate-400 font-medium">
+                <p className="text-[12px] text-slate-400 font-medium">
                   Si un paiement mobile n'a pas crédité votre compte automatiquement, vérifiez-le ici.
                 </p>
               </div>
@@ -771,15 +771,15 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                       </td>
                       <td className="py-3">
                         {pay.statut === "success" ? (
-                          <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full font-bold text-[10px]">
+                          <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full font-bold text-[12px]">
                             Complété
                           </span>
                         ) : pay.statut === "failed" ? (
-                          <span className="bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full font-bold text-[10px]">
+                          <span className="bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full font-bold text-[12px]">
                             Échoué
                           </span>
                         ) : (
-                          <span className="bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-full font-bold text-[10px] animate-pulse">
+                          <span className="bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-full font-bold text-[12px] animate-pulse">
                             En attente
                           </span>
                         )}
@@ -789,12 +789,12 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                           <button
                             onClick={() => handleVerifyPayment(pay.reference)}
                             disabled={isVerifyingRef === pay.reference}
-                            className="bg-rose-500 hover:bg-rose-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg transition disabled:opacity-50 cursor-pointer shadow-sm"
+                            className="bg-rose-500 hover:bg-rose-600 text-white font-bold text-[12px] px-3 py-1.5 rounded-lg transition disabled:opacity-50 cursor-pointer shadow-sm"
                           >
                             {isVerifyingRef === pay.reference ? "Vérification..." : "Vérifier le statut"}
                           </button>
                         ) : (
-                          <span className="text-[10px] text-slate-400 font-semibold">Aucune action requise</span>
+                          <span className="text-[12px] text-slate-400 font-semibold">Aucune action requise</span>
                         )}
                       </td>
                     </tr>
@@ -833,14 +833,14 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
             </div>
 
             <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 space-y-2 text-center">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Achat sélectionné</p>
+              <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">Achat sélectionné</p>
               <h4 className="text-md font-extrabold text-slate-900">{paymentForm.planName}</h4>
               <p className="text-3xl font-black text-rose-500">{paymentForm.amount} FCFA</p>
             </div>
 
             <form onSubmit={handleConfirmPaymentSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">
                   Nom Complet du Client
                 </label>
                 <input
@@ -849,12 +849,12 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                   placeholder="Ex: Jean Dupont"
                   value={paymentForm.fullName}
                   onChange={(e) => setPaymentForm(p => ({ ...p, fullName: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">
                   Numéro de Téléphone Mobile Money
                 </label>
                 <input
@@ -863,9 +863,9 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                   placeholder="Ex: 677123456"
                   value={paymentForm.phoneNumber}
                   onChange={(e) => setPaymentForm(p => ({ ...p, phoneNumber: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition font-medium"
                 />
-                <span className="text-[10px] text-slate-400 block font-medium">
+                <span className="text-[12px] text-slate-400 block font-medium">
                   Entrez le numéro associé à votre compte de paiement (Orange, MTN, Moov, Wave, etc.)
                 </span>
               </div>
@@ -888,7 +888,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
               </div>
             </form>
 
-            <p className="text-[9px] text-slate-400 text-center font-medium leading-relaxed">
+            <p className="text-[11px] text-slate-400 text-center font-medium leading-relaxed">
               En cliquant sur "Payer", vous serez redirigé vers l'interface officielle de Money Fusion pour effectuer votre transaction en toute sécurité.
             </p>
           </div>
@@ -913,13 +913,13 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
             </div>
 
             <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 text-center">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Solde disponible au retrait</p>
+              <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">Solde disponible au retrait</p>
               <p className="text-2xl font-black text-emerald-600">{formatFcfa(withdrawableNow)}</p>
             </div>
 
             <form onSubmit={handleRequestWithdrawSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Montant à retirer (FCFA)</label>
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Montant à retirer (FCFA)</label>
                 <input
                   type="number"
                   required
@@ -932,7 +932,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Nom complet</label>
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Nom complet</label>
                 <input
                   type="text"
                   required
@@ -945,7 +945,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Pays</label>
+                  <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Pays</label>
                   <select
                     value={withdrawForm.countryCode}
                     onChange={(e) => setWithdrawForm(p => ({ ...p, countryCode: e.target.value }))}
@@ -957,7 +957,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Opérateur</label>
+                  <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Opérateur</label>
                   <select
                     value={withdrawForm.operatorId}
                     onChange={(e) => setWithdrawForm(p => ({ ...p, operatorId: e.target.value }))}
@@ -971,7 +971,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Numéro Mobile Money</label>
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Numéro Mobile Money</label>
                 <input
                   type="tel"
                   required
@@ -1000,7 +1000,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
               </div>
             </form>
 
-            <p className="text-[9px] text-slate-400 text-center font-medium leading-relaxed">
+            <p className="text-[11px] text-slate-400 text-center font-medium leading-relaxed">
               Les retraits sont traités manuellement par notre équipe sous quelques jours ouvrés.
             </p>
           </div>
@@ -1022,8 +1022,8 @@ function StatCard({ icon, label, value, subtitle, accent }: { icon: React.ReactN
       </div>
       <div className="min-w-0">
         <p className="text-base font-black text-slate-900 truncate">{value}</p>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide truncate">{label}</p>
-        {subtitle && <p className="text-[10px] text-slate-400 truncate">{subtitle}</p>}
+        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wide truncate">{label}</p>
+        {subtitle && <p className="text-[12px] text-slate-400 truncate">{subtitle}</p>}
       </div>
     </div>
   );

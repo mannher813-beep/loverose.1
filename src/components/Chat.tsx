@@ -513,7 +513,7 @@ export default function Chat({
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-0.5">
                       <span className="font-bold text-slate-800 truncate text-sm">{other?.full_name || "LoveRose"}</span>
-                      <span className="text-[10px] text-slate-400">{m.last_message_time}</span>
+                      <span className="text-[12px] text-slate-400">{m.last_message_time}</span>
                     </div>
                     <p className="text-xs text-slate-500 truncate">{m.last_message}</p>
                   </div>
@@ -569,12 +569,12 @@ export default function Chat({
                     {isActuallyOnline(selectedMatch.other_profile) ? (
                       <>
                         <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-                        <span className="text-[10px] text-emerald-600 font-bold">En ligne</span>
+                        <span className="text-[12px] text-emerald-600 font-bold">En ligne</span>
                       </>
                     ) : (
                       <>
                         <div className="w-1.5 h-1.5 bg-slate-300 rounded-full"></div>
-                        <span className="text-[10px] text-slate-450 font-medium">
+                        <span className="text-[12px] text-slate-450 font-medium">
                           {selectedMatch.other_profile?.last_seen ? (
                             (() => {
                               const lastSeenDate = new Date(selectedMatch.other_profile.last_seen);
@@ -609,12 +609,12 @@ export default function Chat({
                 </button>
                 <div className="text-right flex flex-col items-end gap-1">
                   {freeMessagesLeft > 0 ? (
-                    <span className="bg-emerald-50 text-emerald-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-100 flex items-center gap-1 shadow-sm">
+                    <span className="bg-emerald-50 text-emerald-700 text-[12px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-100 flex items-center gap-1 shadow-sm">
                       <Sparkles size={11} className="fill-emerald-400 text-emerald-500" />
                       <span>{freeMessagesLeft} messages gratuits restants</span>
                     </span>
                   ) : (
-                    <span className="bg-amber-50 text-amber-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-amber-150 flex items-center gap-1">
+                    <span className="bg-amber-50 text-amber-700 text-[12px] font-extrabold px-2.5 py-1 rounded-full border border-amber-150 flex items-center gap-1">
                       <Coins size={11} className="fill-amber-500 text-amber-600" />
                       <span>{credits} crédits disponibles</span>
                     </span>
@@ -630,7 +630,7 @@ export default function Chat({
                   <Sparkles size={14} className="fill-white" />
                   <span>Messagerie gratuite active (10 mots max, pas de chiffres)</span>
                 </p>
-                <div className="flex items-center gap-1 text-[10px] bg-white/20 px-2 py-0.5 rounded-full">
+                <div className="flex items-center gap-1 text-[12px] bg-white/20 px-2 py-0.5 rounded-full">
                   <span>One-shot</span>
                 </div>
               </div>
@@ -659,7 +659,7 @@ export default function Chat({
                         }`}
                       >
                         <p>{m.contenu}</p>
-                        <p className={`text-[9px] mt-1 text-right ${isMine ? 'text-rose-100' : 'text-slate-400'}`}>
+                        <p className={`text-[11px] mt-1 text-right ${isMine ? 'text-rose-100' : 'text-slate-400'}`}>
                           {m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Envoi..."}
                         </p>
                       </div>
@@ -700,7 +700,7 @@ export default function Chat({
                       ? "Message gratuit (max 10 mots, sans chiffres)..."
                       : "Message payant (1 crédit)..."
                   }
-                  className="flex-1 bg-slate-50 border border-slate-200 focus:border-rose-500 focus:bg-white focus:outline-none rounded-xl p-3 px-4 text-xs font-medium transition"
+                  className="flex-1 bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none rounded-xl p-3 px-4 text-xs font-medium transition"
                 />
                 <button
                   id="chat-send-btn"
@@ -712,7 +712,7 @@ export default function Chat({
               </form>
 
               {/* Mini Helper details */}
-              <div className="mt-1.5 flex justify-between text-[10px] text-slate-400 font-medium px-1">
+              <div className="mt-1.5 flex justify-between text-[12px] text-slate-400 font-medium px-1">
                 {freeMessagesLeft > 0 ? (
                   <span>Contraintes : Lettres uniquement. Mots : {inputText.trim() ? inputText.trim().split(/\s+/).length : 0}/10</span>
                 ) : (

@@ -716,206 +716,225 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col h-screen h-[100dvh] overflow-hidden font-sans text-slate-800 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       
-      {/* Desktop Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30 flex-shrink-0">
-        <div 
-          onClick={() => setActiveTab('discover')}
-          className="flex items-center space-x-2 cursor-pointer"
-        >
-          <div className="bg-rose-500 p-2 rounded-xl text-white">
-            <Heart size={20} fill="currentColor" />
-          </div>
-          <div>
-            <span className="font-black text-xl tracking-tight text-slate-900">Love</span>
-            <span className="font-black text-xl tracking-tight text-rose-500">Rose</span>
-          </div>
-        </div>
-
-        {/* Desktop Quick Nav Controls */}
-        <div className="hidden md:flex items-center space-x-6 text-xs font-bold text-slate-600">
+      {/* ============ EN-TÊTE ============ */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 flex-shrink-0">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+          {/* Logotype éditorial */}
           <button
             onClick={() => setActiveTab('discover')}
-            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'discover' ? 'text-rose-500 font-extrabold' : ''}`}
+            className="flex items-baseline gap-px cursor-pointer flex-shrink-0 group"
+            aria-label="Aller au fil d'annonces"
           >
-            <Newspaper size={16} />
-            <span>Annonces</span>
+            <span className="u-display text-[26px] leading-none text-slate-950">Love</span>
+            <span className="u-display text-[26px] leading-none text-rose-500">Rose</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 ml-1 mb-0.5 group-hover:scale-125 transition-transform" />
           </button>
-          <button
-            onClick={() => setActiveTab('publier')}
-            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'publier' ? 'text-rose-500 font-extrabold' : ''}`}
-          >
-            <PlusCircle size={16} />
-            <span>Publier</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'dashboard' ? 'text-rose-500 font-extrabold' : ''}`}
-          >
-            <LayoutDashboard size={16} />
-            <span>Dashboard</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('notifications')}
-            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 relative ${activeTab === 'notifications' ? 'text-rose-500 font-extrabold' : ''}`}
-          >
-            <Bell size={16} />
-            <span>Notifications</span>
-            {unreadNotificationsCount > 0 && (
-              <span className="absolute -top-2.5 -right-3 bg-rose-500 text-white text-[8px] font-black h-4.5 w-4.5 rounded-full flex items-center justify-center animate-pulse border border-white">
-                {unreadNotificationsCount}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'profile' ? 'text-rose-500 font-extrabold' : ''}`}
-          >
-            <User size={16} />
-            <span>Mon Profil</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`flex items-center gap-1.5 transition cursor-pointer hover:text-rose-500 ${activeTab === 'settings' ? 'text-rose-500 font-extrabold' : ''}`}
-          >
-            <Settings size={16} />
-            <span>Paramètres</span>
-          </button>
-        </div>
 
-        {/* Quick User details or Auth Buttons for Guest */}
-        <div className="flex items-center space-x-3">
-          {/* Guide : utiliser LoveRose depuis ChatGPT / Claude (connecteur MCP) */}
-          <a
-            href="/mcp"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Utiliser LoveRose depuis ChatGPT ou Claude (guide)"
-            aria-label="Utiliser LoveRose depuis ChatGPT ou Claude"
-            className="flex items-center gap-1.5 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white border border-rose-100 transition-all px-3 h-9 rounded-xl text-xs font-bold cursor-pointer flex-shrink-0"
-          >
-            <Bot size={16} />
-            <span className="hidden sm:inline">Chatbot IA</span>
-          </a>
-          {currentUser ? (
-            <>
-              {isAdmin && (
+          {/* Navigation bureau */}
+          <nav className="hidden md:flex items-center gap-1" aria-label="Navigation principale">
+            {[
+              { id: 'discover', label: 'Annonces', Icon: Newspaper },
+              { id: 'publier', label: 'Publier', Icon: PlusCircle },
+              { id: 'dashboard', label: 'Tableau de bord', Icon: LayoutDashboard },
+              { id: 'notifications', label: 'Notifications', Icon: Bell, badge: unreadNotificationsCount },
+            ].map(({ id, label, Icon, badge }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id as any)}
+                aria-current={activeTab === id ? 'page' : undefined}
+                className={`relative flex items-center gap-2 h-10 px-3.5 rounded-lg text-[13px] font-bold cursor-pointer transition-colors ${
+                  activeTab === id
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <Icon size={16} />
+                <span>{label}</span>
+                {!!badge && badge > 0 && (
+                  <span className="ml-0.5 bg-rose-500 text-white text-[12px] font-black min-w-4.5 h-4.5 px-1 rounded-full flex items-center justify-center">
+                    {badge}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          {/* Actions compte */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <a
+              href="/mcp"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Utiliser LoveRose depuis ChatGPT ou Claude (guide)"
+              aria-label="Utiliser LoveRose depuis ChatGPT ou Claude"
+              className="hidden sm:flex items-center gap-1.5 h-9 px-3 rounded-lg border border-slate-300 text-slate-700 hover:border-slate-900 hover:text-slate-950 text-[13px] font-bold transition-colors cursor-pointer"
+            >
+              <Bot size={15} />
+              <span className="hidden lg:inline">Chatbot IA</span>
+            </a>
+
+            {currentUser ? (
+              <>
+                {isAdmin && (
+                  <button
+                    onClick={() => setActiveTab('admin')}
+                    title="Panel Admin"
+                    aria-label="Ouvrir le panel admin"
+                    className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors cursor-pointer ${
+                      activeTab === 'admin'
+                        ? 'bg-slate-900 text-white'
+                        : 'border border-slate-300 text-slate-600 hover:border-slate-900 hover:text-slate-900'
+                    }`}
+                  >
+                    <ShieldAlert size={16} />
+                  </button>
+                )}
                 <button
-                  onClick={() => setActiveTab('admin')}
-                  title="Panel Admin"
-                  aria-label="Ouvrir le panel admin"
-                  className={`relative flex items-center justify-center w-9 h-9 rounded-xl transition-all cursor-pointer ${
-                    activeTab === 'admin'
-                      ? 'bg-slate-900 text-indigo-300 ring-2 ring-indigo-400/40'
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-900 hover:text-indigo-300'
+                  onClick={() => setActiveTab('settings')}
+                  title="Paramètres"
+                  aria-label="Ouvrir les paramètres"
+                  className={`hidden md:flex items-center justify-center w-9 h-9 rounded-lg transition-colors cursor-pointer ${
+                    activeTab === 'settings'
+                      ? 'bg-slate-900 text-white'
+                      : 'border border-slate-300 text-slate-600 hover:border-slate-900 hover:text-slate-900'
                   }`}
                 >
-                  <ShieldAlert size={16} strokeWidth={2} />
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-white" />
+                  <Settings size={16} />
                 </button>
-              )}
-              <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold text-slate-800">{profile?.full_name || currentUser.email?.split("@")[0] || "Membre"}</p>
-                <p className="text-[10px] text-slate-400 font-medium">Membre LoveRose</p>
+                <button
+                  onClick={() => setActiveTab('profile')}
+                  className="flex items-center gap-2.5 pl-1 cursor-pointer group"
+                  aria-label="Ouvrir mon profil"
+                >
+                  <span className="text-right hidden lg:block">
+                    <span className="block text-[13px] font-bold text-slate-900 leading-tight group-hover:underline underline-offset-2">
+                      {profile?.full_name || currentUser.email?.split("@")[0] || "Membre"}
+                    </span>
+                    <span className="block text-[11px] text-slate-500">Voir mon profil</span>
+                  </span>
+                  <img
+                    src={profile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${profile?.full_name || currentUser.id}`}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    className="w-9 h-9 rounded-full object-cover bg-slate-100 border border-slate-200 group-hover:border-slate-900 transition-colors"
+                  />
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="hidden sm:flex items-center justify-center w-9 h-9 rounded-lg border border-slate-300 text-slate-500 hover:border-red-500 hover:text-red-600 transition-colors cursor-pointer"
+                  title="Se déconnecter"
+                  aria-label="Se déconnecter"
+                >
+                  <LogOut size={15} />
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => triggerAuthRequired(false)}
+                  className="h-9 px-3 text-[13px] font-bold text-slate-700 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Connexion
+                </button>
+                <button
+                  onClick={() => triggerAuthRequired(true)}
+                  className="h-9 px-4 bg-rose-500 hover:bg-rose-600 text-white text-[13px] font-bold rounded-lg transition-colors cursor-pointer"
+                >
+                  S'inscrire
+                </button>
               </div>
-              <img
-                onClick={() => setActiveTab('profile')}
-                src={profile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${profile?.full_name || currentUser.id}`}
-                alt="Moi"
-                referrerPolicy="no-referrer"
-                className="w-10 h-10 rounded-full object-cover bg-slate-50 border border-slate-200 cursor-pointer hover:border-rose-500 transition"
-              />
-              <button
-                onClick={handleLogout}
-                className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition cursor-pointer"
-                title="Se déconnecter"
-              >
-                <LogOut size={16} />
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => triggerAuthRequired(false)}
-                className="text-xs font-bold text-slate-700 hover:text-rose-500 transition px-3 py-1.5 cursor-pointer"
-              >
-                Se connecter
-              </button>
-              <button
-                onClick={() => triggerAuthRequired(true)}
-                className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-black px-4 py-2 rounded-xl shadow-md transition cursor-pointer"
-              >
-                S'inscrire
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </header>
 
       {/* Main Content Workspace viewport */}
       <main className="flex-1 overflow-hidden flex flex-col bg-slate-50 relative min-h-0">
         
-        {/* Guest Banner if not logged in */}
-        {!currentUser && (
-          <div className="bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold shadow-inner relative flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <Heart size={14} className="fill-white animate-pulse" />
-              <span>👀 Mode aperçu : Vous découvrez LoveRose sans être inscrit. Inscrivez-vous gratuitement pour liker et publier des annonces !</span>
-            </div>
-            <button
-              onClick={() => triggerAuthRequired(true)}
-              className="bg-white text-rose-600 px-3.5 py-1.5 rounded-full font-black text-[10px] tracking-wide uppercase transition hover:bg-rose-50 cursor-pointer shadow-sm ml-2 flex-shrink-0"
-            >
-              S'inscrire gratuitement
-            </button>
-          </div>
-        )}
-
-        {showInstallBanner && (
-          <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold shadow-inner relative flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <Heart size={14} className="fill-white animate-pulse" />
-              <span>Installez LoveRose sur votre écran d'accueil pour une expérience 100% immersive !</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleInstallApp}
-                className="bg-white text-rose-600 px-3 py-1 rounded-full font-black text-[10px] tracking-wide uppercase transition hover:bg-rose-50 cursor-pointer shadow-sm"
-              >
-                Installer
-              </button>
-              <button
-                onClick={() => setShowInstallBanner(false)}
-                className="text-white/80 hover:text-white cursor-pointer"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {showPushBanner && (
-          <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold shadow-inner relative flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <Heart size={14} className="text-rose-400" />
-              <span>Activez les notifications pour ne rater aucune interaction ni aucun match, même app fermée !</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleEnablePush}
-                disabled={isEnablingPush}
-                className="bg-rose-500 text-white px-3 py-1 rounded-full font-black text-[10px] tracking-wide uppercase transition hover:bg-rose-600 cursor-pointer shadow-sm disabled:opacity-60"
-              >
-                {isEnablingPush ? "..." : "Activer"}
-              </button>
-              <button
-                onClick={dismissPushBanner}
-                className="text-white/80 hover:text-white cursor-pointer"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          </div>
-        )}
+        {/* ============ BANDEAU CONTEXTUEL UNIQUE ============
+            Auparavant trois bandeaux dégradés pouvaient s'empiler et
+            repousser le contenu vers le bas. On n'en affiche plus qu'un
+            seul à la fois, par ordre de priorité, en style sobre. */}
+        {(() => {
+          if (!currentUser) {
+            return (
+              <div className="bg-slate-900 text-white flex-shrink-0">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
+                  <p className="text-[13px] font-medium text-slate-200 min-w-0 truncate">
+                    <span className="font-bold text-white">Mode aperçu.</span>{" "}
+                    <span className="hidden sm:inline">
+                      Créez un compte gratuit pour liker, commenter et publier.
+                    </span>
+                  </p>
+                  <button
+                    onClick={() => triggerAuthRequired(true)}
+                    className="flex-shrink-0 h-8 px-3.5 bg-white text-slate-900 hover:bg-rose-50 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                  >
+                    S'inscrire
+                  </button>
+                </div>
+              </div>
+            );
+          }
+          if (showInstallBanner) {
+            return (
+              <div className="bg-rose-50 border-b border-rose-200 flex-shrink-0">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
+                  <p className="text-[13px] font-medium text-rose-900 min-w-0 truncate">
+                    <span className="font-bold">Installez LoveRose</span>{" "}
+                    <span className="hidden sm:inline">sur votre écran d'accueil.</span>
+                  </p>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={handleInstallApp}
+                      className="h-8 px-3.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    >
+                      Installer
+                    </button>
+                    <button
+                      onClick={() => setShowInstallBanner(false)}
+                      className="p-1.5 text-rose-400 hover:text-rose-700 rounded cursor-pointer transition"
+                      aria-label="Masquer"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          if (showPushBanner) {
+            return (
+              <div className="bg-slate-100 border-b border-slate-200 flex-shrink-0">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
+                  <p className="text-[13px] font-medium text-slate-700 min-w-0 truncate">
+                    <span className="font-bold text-slate-900">Notifications</span>{" "}
+                    <span className="hidden sm:inline">
+                      — soyez prévenu même app fermée.
+                    </span>
+                  </p>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={handleEnablePush}
+                      disabled={isEnablingPush}
+                      className="h-8 px-3.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-60"
+                    >
+                      {isEnablingPush ? "…" : "Activer"}
+                    </button>
+                    <button
+                      onClick={dismissPushBanner}
+                      className="p-1.5 text-slate-400 hover:text-slate-900 rounded cursor-pointer transition"
+                      aria-label="Masquer"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         {/* Core Application Tabs switcher */}
         <>
@@ -986,49 +1005,65 @@ export default function App() {
         </>
       </main>
 
-      {/* Mobile Tab Navbar */}
-      <footer className="bg-white/95 backdrop-blur-md border-t border-slate-100 px-2 pt-2 flex justify-around items-center sticky bottom-0 z-30 md:hidden flex-shrink-0" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
-        <button
-          onClick={() => setActiveTab('discover')}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'discover' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
-        >
-          <Newspaper size={19} strokeWidth={activeTab === 'discover' ? 2.2 : 1.8} />
-          <span className={`text-[9px] ${activeTab === 'discover' ? 'font-extrabold' : 'font-semibold'}`}>Annonces</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('publier')}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'publier' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
-        >
-          <PlusCircle size={19} strokeWidth={activeTab === 'publier' ? 2.2 : 1.8} />
-          <span className={`text-[9px] ${activeTab === 'publier' ? 'font-extrabold' : 'font-semibold'}`}>Publier</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('dashboard')}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'dashboard' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
-        >
-          <LayoutDashboard size={19} strokeWidth={activeTab === 'dashboard' ? 2.2 : 1.8} />
-          <span className={`text-[9px] ${activeTab === 'dashboard' ? 'font-extrabold' : 'font-semibold'}`}>Dashboard</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('notifications')}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer relative transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'notifications' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
-        >
-          <Bell size={19} fill={activeTab === 'notifications' ? 'currentColor' : 'none'} strokeWidth={activeTab === 'notifications' ? 1.5 : 1.8} />
-          <span className={`text-[9px] ${activeTab === 'notifications' ? 'font-extrabold' : 'font-semibold'}`}>Notifs</span>
-          {unreadNotificationsCount > 0 && (
-            <span className="absolute top-0.5 right-1.5 bg-rose-500 text-white text-[8px] font-black h-4.5 w-4.5 rounded-full flex items-center justify-center animate-pulse border-2 border-white">
-              {unreadNotificationsCount}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('profile')}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer transition-all duration-200 px-3.5 py-1.5 rounded-2xl ${activeTab === 'profile' ? 'bg-rose-50 text-rose-500 scale-105' : 'text-slate-400 hover:text-slate-600'}`}
-        >
-          <User size={19} strokeWidth={activeTab === 'profile' ? 2.2 : 1.8} />
-          <span className={`text-[9px] ${activeTab === 'profile' ? 'font-extrabold' : 'font-semibold'}`}>Profil</span>
-        </button>
-      </footer>
+      {/* ============ NAVIGATION MOBILE ============
+          "Publier" est sorti de la rangée pour devenir une action centrale
+          proéminente : c'est le geste qui fait vivre le fil d'annonces. */}
+      <nav
+        aria-label="Navigation principale"
+        className="bg-white border-t border-slate-200 sticky bottom-0 z-30 md:hidden flex-shrink-0"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="grid grid-cols-5 items-end px-1 pt-1.5 pb-1">
+          {[
+            { id: 'discover', label: 'Annonces', Icon: Newspaper },
+            { id: 'dashboard', label: 'Activité', Icon: LayoutDashboard },
+            null, // emplacement du bouton central
+            { id: 'notifications', label: 'Notifs', Icon: Bell, badge: unreadNotificationsCount },
+            { id: 'profile', label: 'Profil', Icon: User },
+          ].map((item, i) => {
+            if (!item) {
+              return (
+                <div key="publish" className="flex justify-center">
+                  <button
+                    onClick={() => setActiveTab('publier')}
+                    aria-label="Publier une annonce"
+                    aria-current={activeTab === 'publier' ? 'page' : undefined}
+                    className={`-mt-5 w-14 h-14 rounded-full flex items-center justify-center border-4 border-white cursor-pointer transition-colors ${
+                      activeTab === 'publier'
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-rose-500 text-white hover:bg-rose-600'
+                    }`}
+                  >
+                    <PlusCircle size={24} strokeWidth={2.2} />
+                  </button>
+                </div>
+              );
+            }
+            const { id, label, Icon, badge } = item as any;
+            const isActive = activeTab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                aria-current={isActive ? 'page' : undefined}
+                className={`relative flex flex-col items-center justify-center gap-1 min-h-11 py-1.5 rounded-lg cursor-pointer transition-colors ${
+                  isActive ? 'text-rose-600' : 'text-slate-400 hover:text-slate-700'
+                }`}
+              >
+                <Icon size={21} strokeWidth={isActive ? 2.3 : 1.9} />
+                <span className={`text-[11px] leading-none ${isActive ? 'font-extrabold' : 'font-semibold'}`}>
+                  {label}
+                </span>
+                {!!badge && badge > 0 && (
+                  <span className="absolute top-0 right-1/2 translate-x-4 bg-rose-500 text-white text-[11px] font-black min-w-4 h-4 px-1 rounded-full flex items-center justify-center border-2 border-white">
+                    {badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
       {/* Floating Push Toast Banner Overlay */}
       {toastNotification && (
@@ -1043,7 +1078,7 @@ export default function App() {
           </div>
           <div className="flex-1 min-w-0">
             <h4 className="text-xs font-black text-rose-400 tracking-wide truncate">{toastNotification.title}</h4>
-            <p className="text-[10px] text-slate-200 mt-0.5 font-medium leading-normal line-clamp-2">{toastNotification.body}</p>
+            <p className="text-[12px] text-slate-200 mt-0.5 font-medium leading-normal line-clamp-2">{toastNotification.body}</p>
           </div>
           <button
             onClick={() => setToastNotification(null)}

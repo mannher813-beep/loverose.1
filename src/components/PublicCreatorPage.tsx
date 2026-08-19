@@ -474,7 +474,7 @@ export default function PublicCreatorPage({
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
             />
-            <div className="absolute top-4 right-4 bg-slate-900/70 backdrop-blur-sm px-3.5 py-1.5 rounded-full text-[10px] font-black text-amber-300 border border-white/10 uppercase tracking-wider">
+            <div className="absolute top-4 right-4 bg-slate-900/70 backdrop-blur-sm px-3.5 py-1.5 rounded-full text-[12px] font-black text-amber-300 border border-white/10 uppercase tracking-wider">
               Créateur Vérifié
             </div>
           </div>
@@ -551,7 +551,7 @@ export default function PublicCreatorPage({
                     <Sparkles className="text-amber-500 fill-amber-400" size={16} />
                     <span>💝 Envoyer un pourboire</span>
                   </h4>
-                  <p className="text-[10px] text-slate-400 font-medium">Soutenez directement ce créateur avec un don sécurisé par Mobile Money.</p>
+                  <p className="text-[12px] text-slate-400 font-medium">Soutenez directement ce créateur avec un don sécurisé par Mobile Money.</p>
                 </div>
 
                 {/* Amount presets */}
@@ -561,7 +561,7 @@ export default function PublicCreatorPage({
                       key={amt}
                       type="button"
                       onClick={() => setTipAmount(amt)}
-                      className={`py-2 text-[10px] font-black rounded-lg border transition cursor-pointer text-center ${
+                      className={`py-2 text-[12px] font-black rounded-lg border transition cursor-pointer text-center ${
                         tipAmount === amt 
                           ? "bg-amber-50 text-amber-700 border-amber-300" 
                           : "bg-slate-50 text-slate-600 border-slate-150 hover:bg-slate-100"
@@ -583,13 +583,13 @@ export default function PublicCreatorPage({
                       min="100"
                       className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-400"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-extrabold text-slate-400">FCFA</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] font-extrabold text-slate-400">FCFA</span>
                   </div>
                   
                   <button
                     type="submit"
                     disabled={isActionLoading === "tip"}
-                    className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] uppercase tracking-wider font-black rounded-xl shadow-xs transition flex items-center justify-center gap-1 cursor-pointer"
+                    className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-[12px] uppercase tracking-wider font-black rounded-xl shadow-xs transition flex items-center justify-center gap-1 cursor-pointer"
                   >
                     {isActionLoading === "tip" ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -611,11 +611,11 @@ export default function PublicCreatorPage({
                   <Share2 className="text-rose-500" size={16} />
                   <span>📢 Partager & Parrainer</span>
                 </h4>
-                <p className="text-[10px] text-slate-400 font-medium">Invitez des amis via ce lien de parrainage et touchez <strong>10% de commission</strong> sur tous leurs futurs achats.</p>
+                <p className="text-[12px] text-slate-400 font-medium">Invitez des amis via ce lien de parrainage et touchez <strong>10% de commission</strong> sur tous leurs futurs achats.</p>
               </div>
 
               <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex items-center justify-between gap-2">
-                <span className="text-[9px] font-mono text-slate-500 truncate select-all">
+                <span className="text-[11px] font-mono text-slate-500 truncate select-all">
                   {`${window.location.origin}/page/${page.slug}?ref=${page.referral_code}`}
                 </span>
                 <button
@@ -632,12 +632,12 @@ export default function PublicCreatorPage({
             {!currentUser && (
               <div className="bg-rose-50 border border-rose-100 rounded-3xl p-5 space-y-3">
                 <h5 className="font-black text-rose-950 text-xs">Abonnement exclusif</h5>
-                <p className="text-[10px] text-rose-700 leading-relaxed font-medium">
+                <p className="text-[12px] text-rose-700 leading-relaxed font-medium">
                   Connectez-vous ou créez un compte gratuit pour vous abonner à la page de {page.page_name}, débloquer ses publications privées et discuter en direct !
                 </p>
                 <button
                   onClick={() => onShowAuth(true)}
-                  className="w-full py-2 bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-black rounded-xl uppercase tracking-wider cursor-pointer transition shadow-sm"
+                  className="w-full py-2 bg-rose-500 hover:bg-rose-600 text-white text-[12px] font-black rounded-xl uppercase tracking-wider cursor-pointer transition shadow-sm"
                 >
                   Rejoindre LoveRose
                 </button>
@@ -649,7 +649,7 @@ export default function PublicCreatorPage({
           <div className="md:col-span-2 space-y-6 text-left">
             <h3 className="text-md font-black text-slate-950 tracking-tight border-b border-slate-100 pb-3 flex items-center gap-2">
               <span>Publications</span>
-              <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+              <span className="bg-slate-100 text-slate-600 text-[12px] font-bold px-2.5 py-0.5 rounded-full">
                 {posts.length}
               </span>
             </h3>
@@ -682,7 +682,7 @@ export default function PublicCreatorPage({
                         />
                         <div>
                           <p className="font-extrabold text-slate-900">{page.page_name}</p>
-                          <p className="text-[10px] text-slate-400 font-bold">{new Date(post.created_at).toLocaleDateString()}</p>
+                          <p className="text-[12px] text-slate-400 font-bold">{new Date(post.created_at).toLocaleDateString()}</p>
                         </div>
                       </div>
 
@@ -690,7 +690,7 @@ export default function PublicCreatorPage({
                       <div className="px-5 pb-5 space-y-4 pt-3">
                         {/* Premium indicator badge */}
                         {post.is_premium && (
-                          <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                          <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                             <Lock size={9} />
                             <span>Publication Premium</span>
                           </span>
@@ -722,14 +722,14 @@ export default function PublicCreatorPage({
                               </div>
                               <div className="space-y-1">
                                 <h5 className="font-black text-slate-900 text-xs">Cette publication est verrouillée</h5>
-                                <p className="text-[10px] text-slate-400 font-medium leading-normal">Abonnez-vous à la page pour débloquer tout le contenu, ou déverrouillez ce post unique.</p>
+                                <p className="text-[12px] text-slate-400 font-medium leading-normal">Abonnez-vous à la page pour débloquer tout le contenu, ou déverrouillez ce post unique.</p>
                               </div>
                               
                               <div className="flex gap-2 justify-center">
                                 <button
                                   onClick={() => handleUnlockPost(post)}
                                   disabled={isActionLoading === `unlock_${post.id}`}
-                                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[10px] rounded-lg transition shadow-xs cursor-pointer flex items-center gap-1"
+                                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[12px] rounded-lg transition shadow-xs cursor-pointer flex items-center gap-1"
                                 >
                                   {isActionLoading === `unlock_${post.id}` ? (
                                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -743,7 +743,7 @@ export default function PublicCreatorPage({
                                 
                                 <button
                                   onClick={handlePageSubscribe}
-                                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] rounded-lg transition cursor-pointer"
+                                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[12px] rounded-lg transition cursor-pointer"
                                 >
                                   S'abonner ({page.subscription_price} F)
                                 </button>

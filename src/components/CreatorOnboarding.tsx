@@ -156,7 +156,7 @@ export default function CreatorOnboarding({ currentUser, currentUserProfile, onP
             <Sparkles className="text-rose-500 fill-rose-500 animate-pulse" size={18} />
             <span>Devenir Créateur LoveRose</span>
           </h3>
-          <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider">
+          <p className="text-[12px] font-bold text-rose-500 uppercase tracking-wider">
             Étape {step} sur 5
           </p>
         </div>
@@ -191,22 +191,22 @@ export default function CreatorOnboarding({ currentUser, currentUserProfile, onP
 
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Nom de votre Page Créateur</label>
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Nom de votre Page Créateur</label>
                 <input
                   type="text"
                   placeholder="Ex: Rose Secrets, DJ Max Mixes..."
                   value={pageName}
                   onChange={(e) => setPageName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Catégorie principale</label>
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Catégorie principale</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
                 >
                   <option value="Dating & Séduction">Dating & Séduction</option>
                   <option value="Art & Divertissement">Art & Divertissement</option>
@@ -237,7 +237,7 @@ export default function CreatorOnboarding({ currentUser, currentUserProfile, onP
 
             {/* Banner Cover Upload */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Photo de Couverture (Bannière)</label>
+              <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Photo de Couverture (Bannière)</label>
               <div className="relative h-32 rounded-2xl overflow-hidden border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 group">
                 <img src={coverUrl} alt="Bannière" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-70 transition" />
                 <div className="relative z-10 flex flex-col items-center space-y-1 bg-black/40 p-3 rounded-xl backdrop-blur-xs text-white">
@@ -246,7 +246,7 @@ export default function CreatorOnboarding({ currentUser, currentUserProfile, onP
                   ) : (
                     <Camera size={18} />
                   )}
-                  <span className="text-[10px] font-black uppercase">Changer la couverture</span>
+                  <span className="text-[12px] font-black uppercase">Changer la couverture</span>
                 </div>
                 <input
                   type="file"
@@ -259,7 +259,7 @@ export default function CreatorOnboarding({ currentUser, currentUserProfile, onP
 
             {/* Avatar Upload */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Photo de Profil de la Page</label>
+              <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Photo de Profil de la Page</label>
               <div className="flex items-center space-x-4">
                 <div className="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-md bg-slate-100 flex items-center justify-center">
                   {avatarUrl ? (
@@ -300,47 +300,47 @@ export default function CreatorOnboarding({ currentUser, currentUserProfile, onP
 
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Courte Biographie (max 150 car.)</label>
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Courte Biographie (max 150 car.)</label>
                 <input
                   type="text"
                   maxLength={150}
                   placeholder="Ex: Conseils quotidiens pour une vie de couple épanouie et passionnée."
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Description longue (max 1000 car.)</label>
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Description longue (max 1000 car.)</label>
                 <textarea
                   rows={4}
                   maxLength={1000}
                   placeholder="Expliquez en détail votre concept, les bénéfices d'un abonnement et le contenu que vous proposez..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition resize-none leading-relaxed"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition resize-none leading-relaxed"
                 />
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Localisation</label>
+                  <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Localisation</label>
                   <input
                     type="text"
                     placeholder="Ex: Douala, Cameroun"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Langue de partage</label>
+                  <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Langue de partage</label>
                   <select
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
                   >
                     <option value="fr">Français (Défaut)</option>
                     <option value="en">English</option>
@@ -349,13 +349,13 @@ export default function CreatorOnboarding({ currentUser, currentUserProfile, onP
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Centres d'intérêt (séparés par des virgules)</label>
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Centres d'intérêt (séparés par des virgules)</label>
                 <input
                   type="text"
                   placeholder="Ex: Amour, Romance, Musique, Conseil"
                   value={interestsText}
                   onChange={(e) => setInterestsText(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
                 />
               </div>
             </div>
@@ -372,21 +372,21 @@ export default function CreatorOnboarding({ currentUser, currentUserProfile, onP
 
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Prix d'Abonnement Mensuel (FCFA)</label>
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider block">Prix d'Abonnement Mensuel (FCFA)</label>
                 <input
                   type="number"
                   placeholder="Défaut: 2500 FCFA"
                   value={subscriptionPrice}
                   onChange={(e) => setSubscriptionPrice(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none rounded-xl p-3 text-xs font-semibold transition"
                 />
-                <p className="text-[10px] text-slate-400">Fixez 0 pour proposer un abonnement gratuit.</p>
+                <p className="text-[12px] text-slate-400">Fixez 0 pour proposer un abonnement gratuit.</p>
               </div>
 
               <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-150/50">
                 <div className="space-y-0.5">
                   <span className="text-xs font-bold text-slate-800">Activer les pourboires (Tips)</span>
-                  <p className="text-[10px] text-slate-400">Permet à vos abonnés de vous faire des dons libres.</p>
+                  <p className="text-[12px] text-slate-400">Permet à vos abonnés de vous faire des dons libres.</p>
                 </div>
                 <input
                   type="checkbox"

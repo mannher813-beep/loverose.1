@@ -1,243 +1,276 @@
 import React from "react";
-import { Heart, Sparkles, Shield, Compass, ArrowRight, Star, Users, CheckCircle } from "lucide-react";
+import {
+  Heart, Shield, Compass, ArrowRight, Star, CheckCircle, Store,
+  BadgeCheck, Smartphone, Quote,
+} from "lucide-react";
 
 interface PublicHomeProps {
   onNavigate: (path: string) => void;
 }
 
+const FEATURES = [
+  {
+    Icon: Store,
+    title: "Publiez une annonce",
+    body: "Vendez un produit, proposez un service, un cours ou une prestation. Contact gratuit ou payant — vous choisissez, et vous encaissez directement.",
+  },
+  {
+    Icon: Compass,
+    title: "Trouvez près de chez vous",
+    body: "Recherchez par catégorie, ville et budget. Le fil met en avant les annonces récentes et les profils vérifiés de votre région.",
+  },
+  {
+    Icon: Heart,
+    title: "Rencontrez des personnes",
+    body: "Au-delà des annonces, likez les profils qui vous plaisent et découvrez vos matchs réciproques dans un espace bienveillant.",
+  },
+];
+
+const TESTIMONIALS = [
+  {
+    quote:
+      "J'ai rencontré Marc sur LoveRose il y a un an. Le sérieux de la plateforme m'a rassurée. Aujourd'hui nous vivons ensemble et planifions notre mariage.",
+    name: "Sandrine & Marc",
+    place: "Douala, Cameroun",
+    initials: "S&M",
+  },
+  {
+    quote:
+      "Je vends mes créations via les annonces. Le paiement Mobile Money est direct, sans commission cachée. En trois mois j'ai doublé ma clientèle.",
+    name: "Aminata D.",
+    place: "Dakar, Sénégal",
+    initials: "AD",
+  },
+];
+
 export default function PublicHome({ onNavigate }: PublicHomeProps) {
   return (
-    <div className="space-y-20 pb-16">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-rose-50/50 to-white pt-20 pb-16 text-center px-4">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-rose-100/30 via-transparent to-transparent -z-10" />
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 border border-rose-100 rounded-full text-rose-600 text-xs font-semibold uppercase tracking-wider animate-pulse">
-            <Heart size={12} fill="currentColor" />
-            <span>La référence des rencontres authentiques</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-none">
-            Trouvez l'amour sincère sur <span className="text-rose-500">LoveRose</span>
-          </h1>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-            Connectez-vous avec des célibataires sérieux en Afrique et à l'international. Notre algorithme intelligent vous propose des profils de qualité et respectueux, certifiés pour votre sécurité.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-            <button
-              onClick={() => onNavigate("/inscription")}
-              className="w-full sm:w-auto px-8 py-4 bg-rose-500 hover:bg-rose-600 text-white font-extrabold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer text-base"
-            >
-              <span>Créer un compte gratuit</span>
-              <ArrowRight size={18} />
-            </button>
-            <button
-              onClick={() => onNavigate("/connexion")}
-              className="w-full sm:w-auto px-8 py-4 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-950 font-extrabold rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer text-base"
-            >
-              Se connecter
-            </button>
-          </div>
-          <div className="flex justify-center items-center gap-6 text-slate-500 text-xs font-semibold pt-6">
-            <span className="flex items-center gap-1.5">
-              <Shield size={14} className="text-emerald-500" />
-              Profils 100% vérifiés
+    <div className="pb-0">
+      {/* ================= HERO ================= */}
+      <section className="bg-white border-b border-slate-200">
+        <div className="max-w-6xl mx-auto px-5 pt-16 pb-14 sm:pt-24 sm:pb-20">
+          <div className="max-w-3xl">
+            <span className="u-kicker text-rose-600">
+              Afrique francophone · 100 % gratuit à l'inscription
             </span>
-            <span className="flex items-center gap-1.5">
-              <Users size={14} className="text-indigo-500" />
-              Afrique & International
-            </span>
-          </div>
-        </div>
-      </section>
 
-      {/* Core Features Grid */}
-      <section className="max-w-6xl mx-auto px-4 space-y-12">
-        <div className="text-center space-y-3">
-          <h2 className="text-3xl font-black text-slate-950 tracking-tight">Une expérience de rencontre complète</h2>
-          <p className="text-slate-500 text-sm max-w-xl mx-auto">
-            Découvrez nos fonctionnalités conçues pour faciliter des échanges chaleureux, bienveillants et sécurisés.
-          </p>
-        </div>
+            <h1 className="u-display text-[2.75rem] leading-[0.98] sm:text-6xl lg:text-7xl text-slate-950 mt-5">
+              Vendez, proposez,
+              <br />
+              <span className="u-underline">rencontrez</span>.
+            </h1>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          {/* Card 1 */}
-          <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:shadow-md transition-all space-y-4 text-left">
-            <div className="bg-rose-50 text-rose-500 w-12 h-12 rounded-2xl flex items-center justify-center">
-              <Compass size={24} />
-            </div>
-            <h3 className="text-lg font-extrabold text-slate-900">Découverte intelligente</h3>
-            <p className="text-slate-600 text-xs leading-relaxed">
-              Faites défiler des profils proches de vous ou à l'échelle internationale. Filtrez par affinités et par intentions de relation (mariage, sérieux, amitié) pour trouver la perle rare.
+            <p className="mt-7 text-lg sm:text-xl text-slate-600 leading-relaxed max-w-2xl">
+              LoveRose réunit les annonces, les services et les rencontres dans une
+              seule application. Publiez en deux minutes, encaissez par Mobile Money,
+              échangez en toute confiance.
             </p>
-          </div>
 
-          {/* Card 2 */}
-          <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:shadow-md transition-all space-y-4 text-left">
-            <div className="bg-indigo-50 text-indigo-500 w-12 h-12 rounded-2xl flex items-center justify-center">
-              <Heart size={24} />
-            </div>
-            <h3 className="text-lg font-extrabold text-slate-900">Matchs mutuels</h3>
-            <p className="text-slate-600 text-xs leading-relaxed">
-              Likez les profils qui vous plaisent et découvrez qui vous a aimé en retour. Un vrai match se voit immédiatement dans votre espace "Qui m'a aimé".
-            </p>
-          </div>
-
-          {/* Card 3 */}
-          <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm hover:shadow-md transition-all space-y-4 text-left">
-            <div className="bg-amber-50 text-amber-500 w-12 h-12 rounded-2xl flex items-center justify-center">
-              <Sparkles size={24} />
-            </div>
-            <h3 className="text-lg font-extrabold text-slate-900">Espace Créateurs & Actualités</h3>
-            <p className="text-slate-600 text-xs leading-relaxed">
-              Suivez l'actualité de vos créateurs préférés et découvrez leurs publications exclusives. Un environnement de divertissement chaleureux et interactif au cœur de LoveRose.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="max-w-5xl mx-auto px-4 space-y-10">
-        <div className="text-center space-y-3">
-          <h2 className="text-3xl font-black text-slate-950 tracking-tight">Tarifs</h2>
-          <p className="text-slate-500 text-sm max-w-xl mx-auto">
-            L'inscription, la création de profil et la découverte d'annonces sont entièrement gratuites.
-          </p>
-        </div>
-
-        <div className="grid sm:grid-cols-1 gap-8 max-w-lg mx-auto">
-          {/* Free plan */}
-          <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-4 text-left">
-            <h3 className="text-lg font-extrabold text-slate-900">Compte Gratuit</h3>
-            <p className="text-2xl font-black text-slate-900">0 FCFA</p>
-            <div className="space-y-2 text-xs font-semibold text-slate-600 pt-2">
-              <div className="flex items-center gap-2">
-                <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
-                <span>Création de profil et découverte illimitée</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
-                <span>Matchs illimités et consultation de "Qui m'a aimé"</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
-                <span>Jusqu'à 20 photos de profil</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <p className="text-center text-[11px] text-slate-400 max-w-xl mx-auto">
-          LoveRose ne vend aucun abonnement ni aucune option de mise en avant. Seuls les membres proposent des
-          services payants via leurs annonces, avec paiement direct et sécurisé via Money Fusion (Mobile Money).
-        </p>
-      </section>
-
-      {/* Safety & Commitment Banner */}
-      <section className="bg-slate-900 text-white py-16 px-4">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-12 text-left">
-          <div className="space-y-6 md:w-1/2">
-            <div className="inline-flex items-center gap-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-              <Shield size={10} fill="currentColor" />
-              <span>Sécurité et Protection</span>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight leading-none">
-              Votre sécurité est notre priorité absolue
-            </h2>
-            <p className="text-slate-300 text-sm leading-relaxed">
-              Chez LoveRose, nous luttons activement contre les faux profils et les comportements malveillants. Tous nos profils créateurs sont certifiés d'identité et notre système de signalement réactif garantit un environnement respectueux pour tous.
-            </p>
-            <div className="flex flex-col gap-3 text-xs text-slate-300">
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0">✓</div>
-                <span>Algorithmes de détection automatique des spams</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0">✓</div>
-                <span>Validation stricte des photos et profils</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0">✓</div>
-                <span>Contrôle de l'âge minimum requis (18 ans)</span>
-              </div>
-            </div>
-          </div>
-          <div className="bg-slate-800 rounded-3xl p-8 border border-slate-700 space-y-6 md:w-1/2 shadow-2xl relative overflow-hidden">
-            <div className="absolute -top-10 -right-10 bg-rose-500/10 w-40 h-40 rounded-full blur-3xl" />
-            <h3 className="text-xl font-bold text-white">Prêt à faire de belles rencontres ?</h3>
-            <p className="text-slate-400 text-xs">
-              Inscrivez-vous dès aujourd'hui et commencez à découvrir des profils de qualité près de chez vous ou à l'international.
-            </p>
-            <div className="space-y-3 pt-2">
+            <div className="mt-9 flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => onNavigate("/inscription")}
-                className="w-full py-3.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold rounded-xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer text-sm"
+                className="h-13 px-7 bg-rose-500 hover:bg-rose-600 text-white font-bold text-base rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-2"
               >
-                Commencer gratuitement
+                Créer un compte gratuit
+                <ArrowRight size={18} />
               </button>
               <button
                 onClick={() => onNavigate("/connexion")}
-                className="w-full py-3.5 bg-slate-700 hover:bg-slate-650 text-slate-200 hover:text-white font-bold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer text-sm"
+                className="h-13 px-7 bg-white border border-slate-300 hover:border-slate-900 text-slate-800 hover:text-slate-950 font-bold text-base rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
               >
-                Déjà membre ? Se connecter
+                J'ai déjà un compte
+              </button>
+            </div>
+
+            <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-[13px] font-semibold text-slate-600">
+              <span className="inline-flex items-center gap-2">
+                <BadgeCheck size={16} className="text-rose-500" />
+                Profils vérifiés
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Shield size={16} className="text-rose-500" />
+                Paiement sécurisé
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Smartphone size={16} className="text-rose-500" />
+                Installable sur mobile
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ================= FONCTIONNALITÉS ================= */}
+      <section className="max-w-6xl mx-auto px-5 py-16 sm:py-24">
+        <div className="max-w-2xl">
+          <span className="u-kicker text-rose-600">Ce que vous pouvez faire</span>
+          <h2 className="u-display text-3xl sm:text-5xl text-slate-950 mt-3">
+            Une seule app, trois usages
+          </h2>
+        </div>
+
+        <div className="mt-12 grid md:grid-cols-3 border-t border-slate-200">
+          {FEATURES.map(({ Icon, title, body }, i) => (
+            <div
+              key={title}
+              className={`py-9 md:px-8 md:py-10 border-b md:border-b-0 border-slate-200 ${
+                i > 0 ? "md:border-l" : "md:pl-0"
+              } ${i === FEATURES.length - 1 ? "md:pr-0" : ""}`}
+            >
+              <span className="u-display text-5xl text-slate-200 leading-none">
+                0{i + 1}
+              </span>
+              <Icon size={24} className="text-rose-500 mt-5" />
+              <h3 className="u-display text-2xl text-slate-950 mt-4">{title}</h3>
+              <p className="mt-3 text-[15px] text-slate-600 leading-relaxed">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ================= SÉCURITÉ (bloc encre) ================= */}
+      <section className="bg-slate-950 text-white">
+        <div className="max-w-6xl mx-auto px-5 py-16 sm:py-24 grid lg:grid-cols-2 gap-14 items-center">
+          <div>
+            <span className="u-kicker text-rose-400">Confiance & sécurité</span>
+            <h2 className="u-display text-3xl sm:text-5xl text-white mt-3 leading-[1.05]">
+              Un environnement que nous surveillons de près
+            </h2>
+            <p className="mt-6 text-slate-300 text-base leading-relaxed">
+              Nous luttons activement contre les faux profils et les arnaques.
+              Vérification d'identité, modération des photos et signalement réactif :
+              chaque échange se fait sur des bases saines.
+            </p>
+            <ul className="mt-8 space-y-3.5">
+              {[
+                "Vérification d'identité des vendeurs et créateurs",
+                "Détection automatique des spams et contenus interdits",
+                "Signalement traité par une équipe humaine",
+                "Plateforme strictement réservée aux 18 ans et plus",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3 text-[15px] text-slate-200">
+                  <CheckCircle size={18} className="text-rose-400 flex-shrink-0 mt-0.5" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 sm:p-10">
+            <h3 className="u-display text-3xl text-white">Prêt à commencer ?</h3>
+            <p className="mt-3 text-slate-400 text-[15px] leading-relaxed">
+              L'inscription est gratuite et prend moins de deux minutes. Aucune carte
+              bancaire n'est demandée.
+            </p>
+            <div className="mt-8 space-y-3">
+              <button
+                onClick={() => onNavigate("/inscription")}
+                className="w-full h-12 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-2"
+              >
+                Commencer gratuitement
+                <ArrowRight size={17} />
+              </button>
+              <button
+                onClick={() => onNavigate("/connexion")}
+                className="w-full h-12 border border-slate-700 hover:border-slate-500 text-slate-200 font-bold rounded-lg transition-colors cursor-pointer"
+              >
+                Se connecter
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Trust & Testimonials */}
-      <section className="max-w-5xl mx-auto px-4 space-y-12">
-        <div className="text-center space-y-3">
-          <h2 className="text-3xl font-black text-slate-950 tracking-tight">Ils ont trouvé l'amour sur LoveRose</h2>
-          <p className="text-slate-500 text-sm">
-            Découvrez les témoignages de couples formés sur notre plateforme.
-          </p>
+      {/* ================= TARIFS ================= */}
+      <section className="max-w-6xl mx-auto px-5 py-16 sm:py-24">
+        <div className="grid lg:grid-cols-2 gap-12 items-start">
+          <div>
+            <span className="u-kicker text-rose-600">Tarifs</span>
+            <h2 className="u-display text-3xl sm:text-5xl text-slate-950 mt-3 leading-[1.05]">
+              Gratuit. Vraiment.
+            </h2>
+            <p className="mt-6 text-slate-600 text-base leading-relaxed">
+              LoveRose ne vend ni abonnement, ni option de mise en avant. Seuls les
+              membres fixent le prix de leurs propres annonces, encaissé directement
+              par Mobile Money via Money&nbsp;Fusion.
+            </p>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-8">
+            <div className="flex items-baseline justify-between gap-4 pb-6 border-b border-slate-200">
+              <h3 className="u-display text-2xl text-slate-950">Compte membre</h3>
+              <p className="u-display text-4xl text-rose-500">0 F</p>
+            </div>
+            <ul className="mt-6 space-y-3.5">
+              {[
+                "Publication d'annonces illimitée",
+                "Recherche et navigation sans restriction",
+                "Matchs et messagerie inclus",
+                "Jusqu'à 20 photos de profil",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3 text-[15px] text-slate-700">
+                  <CheckCircle size={18} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
+      </section>
 
-        <div className="grid sm:grid-cols-2 gap-8 text-left">
-          <div className="bg-rose-50/30 rounded-3xl p-8 border border-rose-100/50 space-y-4">
-            <div className="flex items-center gap-1 text-amber-500">
-              <Star size={16} fill="currentColor" />
-              <Star size={16} fill="currentColor" />
-              <Star size={16} fill="currentColor" />
-              <Star size={16} fill="currentColor" />
-              <Star size={16} fill="currentColor" />
-            </div>
-            <p className="text-slate-700 text-xs italic leading-relaxed">
-              "J'ai rencontré Marc sur LoveRose il y a un an. Au début, j'étais sceptique quant aux applications de rencontre, mais le sérieux de la plateforme m'a rassurée. Aujourd'hui nous vivons ensemble et planifions notre mariage. Merci LoveRose !"
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-rose-200 font-bold text-rose-700 flex items-center justify-center text-xs">
-                S&M
-              </div>
-              <div>
-                <p className="text-xs font-black text-slate-800">Sandrine & Marc</p>
-                <p className="text-[10px] text-slate-400 font-semibold">Douala, Cameroun</p>
-              </div>
-            </div>
+      {/* ================= TÉMOIGNAGES ================= */}
+      <section className="bg-white border-t border-slate-200">
+        <div className="max-w-6xl mx-auto px-5 py-16 sm:py-24">
+          <div className="max-w-2xl">
+            <span className="u-kicker text-rose-600">Témoignages</span>
+            <h2 className="u-display text-3xl sm:text-5xl text-slate-950 mt-3">
+              Ils utilisent LoveRose
+            </h2>
           </div>
 
-          <div className="bg-rose-50/30 rounded-3xl p-8 border border-rose-100/50 space-y-4">
-            <div className="flex items-center gap-1 text-amber-500">
-              <Star size={16} fill="currentColor" />
-              <Star size={16} fill="currentColor" />
-              <Star size={16} fill="currentColor" />
-              <Star size={16} fill="currentColor" />
-              <Star size={16} fill="currentColor" />
-            </div>
-            <p className="text-slate-700 text-xs italic leading-relaxed">
-              "La plateforme est vraiment sécurisée et les profils sont respectueux. On sent que ce ne sont pas de faux comptes. J'y ai rencontré Amadou et nous partageons une magnifique relation."
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-rose-200 font-bold text-rose-700 flex items-center justify-center text-xs">
-                A&F
-              </div>
-              <div>
-                <p className="text-xs font-black text-slate-800">Aminata & Fatou</p>
-                <p className="text-[10px] text-slate-400 font-semibold">Dakar, Sénégal</p>
-              </div>
-            </div>
+          <div className="mt-12 grid md:grid-cols-2 gap-6">
+            {TESTIMONIALS.map((t) => (
+              <figure
+                key={t.name}
+                className="bg-slate-50 border border-slate-200 rounded-xl p-8 flex flex-col"
+              >
+                <Quote size={26} className="text-rose-300" />
+                <blockquote className="mt-4 flex-1 font-display text-xl leading-snug text-slate-900">
+                  « {t.quote} »
+                </blockquote>
+                <div className="flex items-center gap-1 text-amber-500 mt-6">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} size={14} fill="currentColor" />
+                  ))}
+                </div>
+                <figcaption className="flex items-center gap-3 mt-4 pt-5 border-t border-slate-200">
+                  <span className="w-10 h-10 rounded-full bg-rose-100 text-rose-700 font-bold text-xs flex items-center justify-center flex-shrink-0">
+                    {t.initials}
+                  </span>
+                  <span>
+                    <span className="block text-sm font-bold text-slate-900">{t.name}</span>
+                    <span className="block text-xs text-slate-500">{t.place}</span>
+                  </span>
+                </figcaption>
+              </figure>
+            ))}
           </div>
+        </div>
+      </section>
+
+      {/* ================= APPEL À L'ACTION FINAL ================= */}
+      <section className="bg-rose-500">
+        <div className="max-w-6xl mx-auto px-5 py-16 sm:py-20 flex flex-col md:flex-row items-center justify-between gap-8">
+          <h2 className="u-display text-3xl sm:text-4xl text-white text-center md:text-left max-w-xl">
+            Votre prochaine vente — ou votre prochaine rencontre — commence ici.
+          </h2>
+          <button
+            onClick={() => onNavigate("/inscription")}
+            className="h-13 px-8 bg-white text-rose-600 hover:bg-rose-50 font-bold text-base rounded-lg transition-colors cursor-pointer inline-flex items-center gap-2 flex-shrink-0"
+          >
+            Rejoindre LoveRose
+            <ArrowRight size={18} />
+          </button>
         </div>
       </section>
     </div>

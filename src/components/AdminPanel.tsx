@@ -802,7 +802,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     }`;
 
   const countBadgeClass = (isActive: boolean) =>
-    `font-mono text-[10px] px-1.5 py-0.5 rounded-md ${
+    `font-mono text-[12px] px-1.5 py-0.5 rounded-md ${
       isActive ? "bg-indigo-400/20 text-indigo-200" : "bg-white/5 text-slate-500"
     }`;
 
@@ -817,7 +817,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
               <ShieldAlert size={14} className="text-indigo-300" />
             </div>
             <h1 className="font-extrabold text-base text-white tracking-tight">Panel Admin</h1>
-            <span className="flex items-center gap-1.5 ml-auto font-mono text-[10px] text-slate-500">
+            <span className="flex items-center gap-1.5 ml-auto font-mono text-[12px] text-slate-500">
               <Circle size={6} className="text-emerald-400 fill-emerald-400 animate-pulse" />
               {users.filter((u) => isActuallyOnline(u)).length} en ligne
             </span>
@@ -841,7 +841,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
             >
               <Mail size={14} /> Messages
               {contactMessages.filter((m) => m.status === "new").length > 0 && (
-                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300">
+                <span className="font-mono text-[12px] px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300">
                   {contactMessages.filter((m) => m.status === "new").length}
                 </span>
               )}
@@ -952,7 +952,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Rechercher un utilisateur..."
-                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm outline-none focus:border-rose-400"
+                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm outline-none focus:border-slate-900"
               />
             </div>
             {filteredUsers.map((u) => (
@@ -974,12 +974,12 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                       <BadgeCheck size={13} className="text-sky-500 flex-shrink-0" />
                     )}
                     {u.is_suspended && (
-                      <span className="text-[9px] font-bold uppercase bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">
+                      <span className="text-[11px] font-bold uppercase bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">
                         Suspendu
                       </span>
                     )}
                     {u.is_hidden_from_feed && (
-                      <span className="text-[9px] font-bold uppercase bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full">
+                      <span className="text-[11px] font-bold uppercase bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full">
                         Masqué du fil
                       </span>
                     )}
@@ -1104,7 +1104,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                         </span>
                       </p>
                       <p className="text-xs text-slate-500 mt-0.5">{r.motif}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">
+                      <p className="text-[12px] text-slate-400 mt-1">
                         {new Date(r.created_at).toLocaleString("fr-FR")}
                         {r.status && r.status !== "pending" && (
                           <span
@@ -1211,7 +1211,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                       {m.subject && <p className="text-xs text-rose-500 font-semibold mt-0.5">{m.subject}</p>}
                     </div>
                     <span
-                      className={`flex-shrink-0 text-[9px] font-bold uppercase px-2 py-1 rounded-full ${
+                      className={`flex-shrink-0 text-[11px] font-bold uppercase px-2 py-1 rounded-full ${
                         m.status === "new"
                           ? "bg-red-100 text-red-600"
                           : m.status === "read"
@@ -1224,7 +1224,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                   </div>
                   <p className="text-xs text-slate-600 whitespace-pre-wrap">{m.message}</p>
                   <div className="flex items-center justify-between pt-1">
-                    <p className="text-[10px] text-slate-400">{new Date(m.created_at).toLocaleString("fr-FR")}</p>
+                    <p className="text-[12px] text-slate-400">{new Date(m.created_at).toLocaleString("fr-FR")}</p>
                     <div className="flex gap-1.5">
                       <a
                         href={`mailto:${m.email}`}
@@ -1318,7 +1318,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                   value={campaignTestEmail}
                   onChange={(e) => setCampaignTestEmail(e.target.value)}
                   placeholder="votre@email.com"
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-medium outline-none focus:border-rose-400"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-medium outline-none focus:border-slate-900"
                 />
                 <button
                   onClick={() => invokeCampaign({ testEmail: campaignTestEmail, dryRun: false })}
@@ -1342,7 +1342,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                 value={campaignConfirmText}
                 onChange={(e) => setCampaignConfirmText(e.target.value)}
                 placeholder="ENVOYER"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-rose-400"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-slate-900"
               />
               <button
                 onClick={() => {
@@ -1373,7 +1373,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                       .filter((r: any) => r.status === "failed")
                       .slice(0, 5)
                       .map((r: any, i: number) => (
-                        <p key={i} className="text-[10px] text-red-400">{r.email}: {r.error}</p>
+                        <p key={i} className="text-[12px] text-red-400">{r.email}: {r.error}</p>
                       ))}
                   </>
                 )}
@@ -1411,9 +1411,9 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                           <div className="flex items-center justify-between gap-2">
                             <div>
                               <p className="text-xs font-bold text-slate-800">{r.full_name} <span className="text-slate-400 font-normal">— {profile?.username || "?"}</span></p>
-                              <p className="text-[10px] text-slate-400">Pièce n° {r.id_number} · {r.city}</p>
+                              <p className="text-[12px] text-slate-400">Pièce n° {r.id_number} · {r.city}</p>
                             </div>
-                            <span className="text-[9px] font-bold uppercase bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex-shrink-0">En attente</span>
+                            <span className="text-[11px] font-bold uppercase bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex-shrink-0">En attente</span>
                           </div>
 
                           {!docs ? (
@@ -1432,7 +1432,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                                   {docs[d.key] ? (
                                     <img src={docs[d.key]!} alt={d.label} className="w-full aspect-[3/4] object-cover rounded-lg border border-slate-200" />
                                   ) : (
-                                    <div className="w-full aspect-[3/4] rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center text-[8px] text-slate-400 text-center p-1">
+                                    <div className="w-full aspect-[3/4] rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center text-[11px] text-slate-400 text-center p-1">
                                       Indisponible
                                     </div>
                                   )}
@@ -1480,7 +1480,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                             <p className="text-xs font-bold text-slate-800 flex items-center gap-1">
                               <DollarSign size={12} className="text-emerald-500" /> {p.requested_amount} FCFA
                             </p>
-                            <p className="text-[10px] text-slate-400">{profile?.full_name || "?"} · {profile?.username || p.user_id?.slice(0, 8)}</p>
+                            <p className="text-[12px] text-slate-400">{profile?.full_name || "?"} · {profile?.username || p.user_id?.slice(0, 8)}</p>
                           </div>
                           <div className="flex gap-2">
                             <button
@@ -1537,7 +1537,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                             {seller?.full_name || "Vendeur inconnu"}
                           </span>
                           {r.is_hidden && (
-                            <span className="text-[9px] font-bold uppercase bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full">
+                            <span className="text-[11px] font-bold uppercase bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full">
                               Masqué
                             </span>
                           )}
@@ -1549,9 +1549,9 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                         </div>
                         {r.comment && <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">{r.comment}</p>}
                         {r.is_hidden && r.hidden_reason && (
-                          <p className="text-[10px] text-slate-400 mt-1 italic">Motif : {r.hidden_reason}</p>
+                          <p className="text-[12px] text-slate-400 mt-1 italic">Motif : {r.hidden_reason}</p>
                         )}
-                        <p className="text-[10px] text-slate-400 mt-1">{new Date(r.created_at).toLocaleString("fr-FR")}</p>
+                        <p className="text-[12px] text-slate-400 mt-1">{new Date(r.created_at).toLocaleString("fr-FR")}</p>
                       </div>
                       <button
                         onClick={() => toggleReviewHidden(r)}
@@ -1645,7 +1645,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => setAnnCtaType("route")}
-                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl text-[10px] font-bold border transition cursor-pointer ${
+                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl text-[12px] font-bold border transition cursor-pointer ${
                         annCtaType === "route" ? "bg-indigo-50 border-indigo-300 text-indigo-600" : "bg-slate-50 border-slate-200 text-slate-500"
                       }`}
                     >
@@ -1653,7 +1653,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                     </button>
                     <button
                       onClick={() => setAnnCtaType("url")}
-                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl text-[10px] font-bold border transition cursor-pointer ${
+                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl text-[12px] font-bold border transition cursor-pointer ${
                         annCtaType === "url" ? "bg-indigo-50 border-indigo-300 text-indigo-600" : "bg-slate-50 border-slate-200 text-slate-500"
                       }`}
                     >
@@ -1661,7 +1661,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                     </button>
                     <button
                       onClick={() => setAnnCtaType("paid")}
-                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl text-[10px] font-bold border transition cursor-pointer ${
+                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl text-[12px] font-bold border transition cursor-pointer ${
                         annCtaType === "paid" ? "bg-emerald-50 border-emerald-300 text-emerald-600" : "bg-slate-50 border-slate-200 text-slate-500"
                       }`}
                     >
@@ -1697,7 +1697,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                   {annCtaType === "paid" && (
                     <div className="space-y-2.5 bg-emerald-50/40 border border-emerald-100 rounded-xl p-3">
                       <div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Prix (FCFA)</label>
+                        <label className="text-[12px] font-bold text-slate-500 uppercase">Prix (FCFA)</label>
                         <input
                           type="number"
                           min={1}
@@ -1708,7 +1708,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Nom du produit (écran de paiement)</label>
+                        <label className="text-[12px] font-bold text-slate-500 uppercase">Nom du produit (écran de paiement)</label>
                         <input
                           type="text"
                           value={annPaidPlanName}
@@ -1718,7 +1718,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Lien après paiement confirmé</label>
+                        <label className="text-[12px] font-bold text-slate-500 uppercase">Lien après paiement confirmé</label>
                         <input
                           type="url"
                           value={annSuccessRedirectUrl}
@@ -1726,7 +1726,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                           placeholder="Ex: https://chat.whatsapp.com/..."
                           className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
                         />
-                        <p className="text-[10px] text-slate-400 mt-1">
+                        <p className="text-[12px] text-slate-400 mt-1">
                           L'utilisateur y sera envoyé automatiquement juste après confirmation du paiement Money Fusion.
                         </p>
                       </div>
@@ -1768,7 +1768,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                 value={annConfirmText}
                 onChange={(e) => setAnnConfirmText(e.target.value)}
                 placeholder="ENVOYER"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-rose-400"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-slate-900"
               />
               <button
                 onClick={sendAnnouncement}
@@ -1806,7 +1806,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
               onChange={(e) => setWarningMessage(e.target.value)}
               placeholder="Ex: Merci de respecter les règles de la communauté..."
               rows={4}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-rose-400 resize-none"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-900 resize-none"
             />
             <button
               onClick={sendWarning}
@@ -1828,7 +1828,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                 <X size={18} className="text-slate-400" />
               </button>
             </div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Durée</p>
+            <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Durée</p>
             <div className="grid grid-cols-4 gap-1.5 mb-3">
               {([
                 { key: "24h", label: "24h" },
@@ -1875,7 +1875,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nom complet</label>
+                <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Nom complet</label>
                 <input
                   value={editForm.full_name || ""}
                   onChange={(e) => setEditForm((f) => ({ ...f, full_name: e.target.value }))}
@@ -1883,7 +1883,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bio</label>
+                <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Bio</label>
                 <textarea
                   value={editForm.bio || ""}
                   onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
@@ -1893,7 +1893,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Âge</label>
+                  <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Âge</label>
                   <input
                     type="number"
                     value={editForm.age ?? ""}
@@ -1902,7 +1902,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Genre</label>
+                  <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Genre</label>
                   <select
                     value={editForm.gender || ""}
                     onChange={(e) => setEditForm((f) => ({ ...f, gender: e.target.value as any }))}
@@ -1916,7 +1916,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ville</label>
+                <label className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Ville</label>
                 <input
                   value={editForm.location || ""}
                   onChange={(e) => setEditForm((f) => ({ ...f, location: e.target.value }))}

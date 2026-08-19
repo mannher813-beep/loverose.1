@@ -9,7 +9,7 @@ export default function PublicPrivacy() {
           <Lock size={32} />
         </div>
         <h1 className="text-3xl font-black text-slate-950 tracking-tight">Politique de Confidentialité</h1>
-        <p className="text-slate-500 text-sm max-w-xl mx-auto uppercase tracking-widest font-extrabold text-[10px]">
+        <p className="text-slate-500 text-sm max-w-xl mx-auto uppercase tracking-widest font-extrabold text-[12px]">
           Dernière mise à jour : 28 Juin 2026
         </p>
       </div>

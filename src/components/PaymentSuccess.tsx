@@ -225,7 +225,7 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
                 Nous interrogeons la passerelle de paiement <strong>Money Fusion</strong> pour confirmer votre transaction.
               </p>
             </div>
-            <div className="text-[10px] font-mono text-slate-400 bg-slate-50 py-1.5 rounded-xl mx-6">
+            <div className="text-[12px] font-mono text-slate-400 bg-slate-50 py-1.5 rounded-xl mx-6">
               Réf : {reference || "..."}
             </div>
             <div className="pt-2">
@@ -274,7 +274,7 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
                   <span className="font-bold text-emerald-600">{amount} FCFA</span>
                 </div>
                 {reference && (
-                  <div className="flex justify-between items-center text-[10px] font-mono pt-1 border-t border-emerald-100/40 text-slate-400">
+                  <div className="flex justify-between items-center text-[12px] font-mono pt-1 border-t border-emerald-100/40 text-slate-400">
                     <span>Référence</span>
                     <span className="truncate max-w-[200px]">{reference}</span>
                   </div>
@@ -332,7 +332,7 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
               <p className="text-[11px] text-amber-700 font-medium">
                 Qu'est-ce que cela signifie ?
               </p>
-              <p className="text-[10px] text-slate-500 leading-relaxed">
+              <p className="text-[12px] text-slate-500 leading-relaxed">
                 Certains modes de paiement mobile money prennent un peu plus de temps à notifier notre serveur. Vous pouvez fermer cette page et retourner à l'application sans crainte.
               </p>
             </div>

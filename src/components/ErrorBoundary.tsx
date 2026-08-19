@@ -48,7 +48,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               LoveRose a rencontré un problème inattendu. L'équipe technique a été informée via les journaux.
             </p>
             {this.state.error && (
-              <p className="text-[10px] font-mono text-slate-400 bg-slate-50 rounded-xl p-2 break-words">
+              <p className="text-[12px] font-mono text-slate-400 bg-slate-50 rounded-xl p-2 break-words">
                 {this.state.error.message}
               </p>
             )}
