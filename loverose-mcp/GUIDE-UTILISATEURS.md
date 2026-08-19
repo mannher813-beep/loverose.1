@@ -6,7 +6,7 @@
 ## C'est quoi ?
 
 LoveRose est connecté à votre chatbot via **MCP** (Model Context Protocol) :
-92 outils (profils, découverte, chat, photos, paiements, créateurs…) que
+82 outils (profils, découverte, chat, photos, paiements, créateurs…) que
 l'IA utilise **à votre place**. Vous n'ouvrez plus le site — vous parlez.
 
 ## Étape 1 — Ajouter le connecteur (une seule fois)

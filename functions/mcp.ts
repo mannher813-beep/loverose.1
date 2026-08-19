@@ -64,7 +64,7 @@ function page(mcpUrl: string | null): string {
   <header>
     <h1>🌹 LoveRose <span>×</span> votre chatbot</h1>
     <p class="sub">Utilisez LoveRose directement dans ChatGPT ou Claude : profils, matchs, messages, photos, paiements — sans ouvrir le site.</p>
-    <span class="badge">Connecteur MCP officiel — 92 outils</span>
+    <span class="badge">Connecteur MCP officiel — 82 outils</span>
   </header>
 
   <section>

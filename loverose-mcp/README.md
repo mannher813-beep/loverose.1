@@ -1,9 +1,15 @@
-# LoveRose MCP Server — 92 outils (v0.3 — stdio + HTTP)
+# LoveRose MCP Server — 82 outils (v0.3 — stdio + HTTP)
 
 Serveur MCP (Model Context Protocol) pour LoveRose : **couche d'accès complète**
-à l'application, indépendante de l'interface React. Objectif : un membre (ou un
-admin) peut utiliser LoveRose **sans ouvrir le site** — inscription, découverte,
-chat, feed avec photos, paiements MoneyFusion, création de contenu, modération.
+à l'application, indépendante de l'interface React. Objectif : un membre peut
+utiliser LoveRose **sans ouvrir le site** — inscription, découverte, chat, feed
+avec photos, paiements MoneyFusion, création de contenu.
+
+> **Surface d'outils.** Le connecteur expose **82 outils** (parcours membre).
+> Les 10 outils de back-office `admin_*` sont **masqués par défaut** : ils
+> exigent `profiles.role = "admin"` et n'auraient fait qu'alourdir la liste
+> d'outils envoyée au modèle à chaque conversation. Activez-les sur une
+> instance interne avec `MCP_ENABLE_ADMIN_TOOLS=true` (→ 92 outils).
 
 Le serveur ne réimplémente AUCUNE règle métier : il interroge les mêmes tables
 Supabase, appelle les mêmes RPC Postgres et proxifie les mêmes APIs que le
@@ -92,10 +98,10 @@ puis connexion avec email/mot de passe LoveRose **dans la conversation**.
 ### Vérifier le déploiement
 
 ```bash
-curl https://<votre-hôte>/health          # {"ok":true,...,"tools":92}
+curl https://<votre-hôte>/health          # {"ok":true,...,"tools":82}
 curl -X POST https://<votre-hôte>/mcp \
   -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'   # liste des 92 outils
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'   # liste des 82 outils
 ```
 
 ## Démarrage
@@ -107,7 +113,7 @@ cp .env.example .env   # SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_
 npm run build
 npm start              # stdio — à brancher dans Claude Desktop / client MCP
 
-# test : node scripts/smoke-test.mjs  (liste les 92 outils via le protocole)
+# test : node scripts/smoke-test.mjs  (vérifie la surface d'outils exposée)
 ```
 
 Deux transports (`MCP_TRANSPORT` dans .env) :
@@ -151,7 +157,7 @@ curl -X POST http://localhost:8787/mcp \
 }
 ```
 
-3. Relancer Claude Desktop → l'icône outils 🛠️ affiche les 92 outils LoveRose.
+3. Relancer Claude Desktop → l'icône outils 🛠️ affiche les 82 outils LoveRose.
 4. Dans la conversation : *« Connecte-toi à LoveRose : mon email est X, mon mot de passe Y »* → l'agent appelle `login`, garde le token, puis tout le reste.
 
 ### 💻 Claude Code (CLI)
@@ -221,9 +227,10 @@ Tout client supportant stdio ou Streamable HTTP : LibreChat, Warp, Cline (VS Cod
 2. Ce `accessToken` est passé à chaque outil utilisateur.
 3. Le serveur valide le JWT (`admin.auth.getUser`) puis exécute les requêtes
    avec un client porteur de CE JWT → **RLS de production appliquée**.
-4. Les outils `admin_*` exigent en plus `profiles.role = "admin"`.
+4. Les outils `admin_*` — masqués par défaut, voir `MCP_ENABLE_ADMIN_TOOLS` —
+   exigent en plus `profiles.role = "admin"`.
 
-## Inventaire des 92 outils
+## Inventaire des 82 outils exposés
 
 ### AUTH (8) — Supabase Auth via client anon
 `register` · `login` · `logout` · `refreshSession` · `verifyPhoneOTP` ·
@@ -278,7 +285,9 @@ webhook existant (`moneyfusion-webhook`) crédite/valide comme pour le site.
 `list_blocked_users` · `change_password` · `delete_my_account` (double
 confirmation : « SUPPRIMER » + mot de passe)
 
-### ADMIN (10) — garde profiles.role = "admin" (AdminPanel.tsx)
+### ADMIN (10) — NON exposés par défaut (`MCP_ENABLE_ADMIN_TOOLS=true`)
+Garde `profiles.role = "admin"` (AdminPanel.tsx). Hors du décompte des 82.
+
 `admin_list_reports` · `admin_update_report_status` ·
 `admin_set_profile_verification` · `admin_hide_profile` ·
 `admin_list_verifications` (avec URLs signées des documents KYC) ·
@@ -306,7 +315,8 @@ functions/api/contact.ts, Turnstile inchangé) · `suggest_bio` ·
 ```
 loverose-mcp/
 ├── src/
-│   ├── index.ts               # entrée : McpServer + enregistrement des 11 domaines
+│   ├── index.ts               # entrée : transports stdio / HTTP
+│   ├── registry.ts            # SÉLECTION des domaines exposés (admin_* opt-in)
 │   ├── config/env.ts          # variables d'environnement
 │   ├── core/
 │   │   ├── supabaseClient.ts  # clients admin / anon / par-utilisateur (JWT → RLS)
@@ -318,7 +328,7 @@ loverose-mcp/
 │       ├── auth/ profile/ discover/ chat/ feed/ payments/
 │       ├── creator/ notifications/ settings/ admin/ extras/
 │       └── types.ts · shared/tables.ts (cartographie tables/RPC/Edge Functions)
-├── scripts/smoke-test.mjs     # vérifie les 92 outils via le protocole MCP
+├── scripts/smoke-test.mjs     # vérifie la surface exposée via le protocole MCP
 └── dist/                      # build tsc
 ```
 

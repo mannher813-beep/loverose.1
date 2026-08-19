@@ -7,17 +7,7 @@ import { loadConfig } from "./config/env.js";
 import { createSupabaseAdminClient, createSupabaseAnonClient } from "./core/supabaseClient.js";
 import { createLogger } from "./core/logger.js";
 
-import { registerAuthTools } from "./domains/auth/index.js";
-import { registerProfileTools } from "./domains/profile/index.js";
-import { registerDiscoverTools } from "./domains/discover/index.js";
-import { registerChatTools } from "./domains/chat/index.js";
-import { registerFeedTools } from "./domains/feed/index.js";
-import { registerPaymentsTools } from "./domains/payments/index.js";
-import { registerCreatorTools } from "./domains/creator/index.js";
-import { registerNotificationsTools } from "./domains/notifications/index.js";
-import { registerSettingsTools } from "./domains/settings/index.js";
-import { registerAdminTools } from "./domains/admin/index.js";
-import { registerExtrasTools } from "./domains/extras/index.js";
+import { registerAllTools } from "./registry.js";
 
 import type { DomainDeps } from "./domains/types.js";
 import type { AppConfig } from "./config/env.js";
@@ -36,8 +26,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * Mode HTTP « stateless » : chaque requête POST /mcp instancie un serveur +
  * transport frais (pattern recommandé par le SDK MCP pour le sans-session).
  *
- * Domaines enregistrés (92 outils) : auth, profile, discover, chat, feed,
- * payments, creator, notifications, settings, admin, extras.
+ * Domaines exposés : auth, profile, discover, chat, feed, payments, creator,
+ * notifications, settings, extras. Les outils de back-office `admin_*` sont
+ * masqués par défaut (MCP_ENABLE_ADMIN_TOOLS=true pour les activer) — voir
+ * `src/registry.ts`.
  */
 
 const VERSION = "0.3.0";
@@ -48,32 +40,34 @@ interface SharedClients {
   anon: SupabaseClient;
 }
 
-/** Fabrique un McpServer complet (92 outils) — appelée par les 2 transports. */
+/** Fabrique un McpServer complet — appelée par les 2 transports. */
 function buildServer(config: AppConfig, clients: SharedClients): McpServer {
   const server = new McpServer({ name: "loverose-mcp", version: VERSION });
   const deps: DomainDeps = { server, admin: clients.admin, anon: clients.anon, config };
-  registerAuthTools(deps);
-  registerProfileTools(deps);
-  registerDiscoverTools(deps);
-  registerChatTools(deps);
-  registerFeedTools(deps);
-  registerPaymentsTools(deps);
-  registerCreatorTools(deps);
-  registerNotificationsTools(deps);
-  registerSettingsTools(deps);
-  registerAdminTools(deps);
-  registerExtrasTools(deps);
+  registerAllTools(deps, { includeAdmin: config.enableAdminTools });
   return server;
 }
 
-async function runStdio(config: AppConfig, clients: SharedClients) {
+/**
+ * Nombre d'outils réellement exposés — calculé une fois au démarrage sur un
+ * serveur jetable, pour les logs et l'endpoint /health.
+ */
+function countTools(config: AppConfig, clients: SharedClients): number {
+  const probe = new McpServer({ name: "loverose-mcp-probe", version: VERSION });
+  return registerAllTools(
+    { server: probe, admin: clients.admin, anon: clients.anon, config },
+    { includeAdmin: config.enableAdminTools }
+  );
+}
+
+async function runStdio(config: AppConfig, clients: SharedClients, toolCount: number) {
   const server = buildServer(config, clients);
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  logger.info("Serveur MCP LoveRose démarré (stdio) — 92 outils");
+  logger.info(`Serveur MCP LoveRose démarré (stdio) — ${toolCount} outils`);
 }
 
-async function runHttp(config: AppConfig, clients: SharedClients) {
+async function runHttp(config: AppConfig, clients: SharedClients, toolCount: number) {
   const app = express();
   // NB : PAS de express.json() global — StreamableHTTPServerTransport lit
   // lui-même le corps de la requête (un middleware JSON consommerait le
@@ -109,7 +103,7 @@ async function runHttp(config: AppConfig, clients: SharedClients) {
   });
 
   app.get("/health", (_req, res) => {
-    res.json({ ok: true, server: "loverose-mcp", version: VERSION, tools: 92 });
+    res.json({ ok: true, server: "loverose-mcp", version: VERSION, tools: toolCount });
   });
 
   // Page d'information (racine)
@@ -124,7 +118,7 @@ async function runHttp(config: AppConfig, clients: SharedClients) {
         `code{background:#0f172a;padding:2px 8px;border-radius:6px;color:#f472b6}` +
         `</style></head><body><div class="card">` +
         `<h1>🌹 LoveRose MCP Server</h1>` +
-        `<p>Serveur MCP (Model Context Protocol) — <b>92 outils</b> pour utiliser LoveRose sans ouvrir le site : profils, découverte, chat, feed avec photos, paiements, créateurs, admin.</p>` +
+        `<p>Serveur MCP (Model Context Protocol) — <b>${toolCount} outils</b> pour utiliser LoveRose sans ouvrir le site : profils, découverte, chat, feed avec photos, paiements, créateurs.</p>` +
         `<p>Endpoint MCP&nbsp;: <code>POST /mcp</code><br>Santé&nbsp;: <code>GET /health</code></p>` +
         `<p style="font-size:13px">À connecter dans Claude Desktop, Claude Code, Cursor, VS Code (stdio local) ou en connecteur distant (claude.ai, ChatGPT) via cette URL HTTPS.</p>` +
         `</div></body></html>`
@@ -132,7 +126,7 @@ async function runHttp(config: AppConfig, clients: SharedClients) {
   });
 
   app.listen(config.httpPort, "0.0.0.0", () => {
-    logger.info(`Serveur MCP LoveRose démarré (HTTP) — http://0.0.0.0:${config.httpPort}/mcp — 92 outils`, { port: config.httpPort });
+    logger.info(`Serveur MCP LoveRose démarré (HTTP) — http://0.0.0.0:${config.httpPort}/mcp — ${toolCount} outils`, { port: config.httpPort });
   });
 }
 
@@ -143,10 +137,15 @@ async function main() {
     anon: createSupabaseAnonClient(config),
   };
 
+  const toolCount = countTools(config, clients);
+  if (config.enableAdminTools) {
+    logger.info("Outils de back-office admin_* activés (MCP_ENABLE_ADMIN_TOOLS)");
+  }
+
   if (config.transport === "stdio") {
-    await runStdio(config, clients);
+    await runStdio(config, clients, toolCount);
   } else {
-    await runHttp(config, clients);
+    await runHttp(config, clients, toolCount);
   }
 }
 

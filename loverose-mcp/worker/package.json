@@ -2,7 +2,7 @@
   "name": "loverose-mcp-worker",
   "private": true,
   "version": "0.3.0",
-  "description": "Serveur MCP LoveRose déployé sur Cloudflare Workers (92 outils) — même base de code que la version Node (../src).",
+  "description": "Serveur MCP LoveRose déployé sur Cloudflare Workers — même base de code que la version Node (../src).",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",

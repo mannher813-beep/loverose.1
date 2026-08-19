@@ -15,7 +15,11 @@
   },
   "vars": {
     "SUPABASE_URL": "https://iqoceeaqwfdqiucrsicm.supabase.co",
-    "APP_URL": "https://loverose.pages.dev"
+    "APP_URL": "https://loverose.pages.dev",
+    // Les 10 outils de back-office admin_* sont masqués par défaut : ils
+    // exigent profiles.role = "admin" et alourdiraient inutilement la liste
+    // d'outils envoyée au modèle. Passez à "true" sur une instance interne.
+    "MCP_ENABLE_ADMIN_TOOLS": "false"
   }
   // Secrets à définir avant le premier déploiement :
   //   npx wrangler secret put SUPABASE_ANON_KEY

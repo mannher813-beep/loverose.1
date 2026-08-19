@@ -1,10 +1,19 @@
 /**
- * Test de fumée : démarre le serveur MCP (stdio) et vérifie que tous les
- * outils s'enregistrent correctement via le protocole MCP.
+ * Test de fumée : démarre le serveur MCP (stdio) et vérifie que la surface
+ * d'outils exposée est bien celle attendue.
+ *
+ * Vérifie en particulier que les outils de back-office `admin_*` ne sont PAS
+ * exposés par défaut (ils exigent MCP_ENABLE_ADMIN_TOOLS=true).
+ *
  * Usage : node scripts/smoke-test.mjs
+ *         MCP_ENABLE_ADMIN_TOOLS=true node scripts/smoke-test.mjs
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+const adminEnabled = ["1", "true", "yes", "on"].includes(
+  String(process.env.MCP_ENABLE_ADMIN_TOOLS ?? "").toLowerCase()
+);
 
 const transport = new StdioClientTransport({
   command: process.execPath,
@@ -22,17 +31,37 @@ const client = new Client({ name: "smoke-test", version: "0.0.1" });
 await client.connect(transport);
 
 const { tools } = await client.listTools();
-console.log(`Outils enregistrés : ${tools.length}\n`);
+const names = tools.map((t) => t.name).sort();
+const adminTools = names.filter((n) => n.startsWith("admin_"));
 
-const byDomain = {};
-for (const t of tools) {
-  const domain = t.name.startsWith("admin_") ? "admin" : t.name;
-  const group = t.name.split("_")[0] === "admin" ? "admin" : null;
-  const key = group ?? (["get", "buy", "subscribe", "tip", "send", "list", "mark", "register", "complete", "update", "upload", "delete", "request", "boost", "like", "superlike", "pass", "undo", "unmatch", "block", "unblock", "report", "follow", "unfollow", "review", "share", "add", "create", "unlock", "suggest", "moderate", "refresh", "verify", "resend", "reset", "change", "start"].includes(t.name.split("_")[0]) ? t.name.split("_").slice(0, 2).join("_") : t.name);
-  byDomain[key] = (byDomain[key] ?? 0) + 1;
+console.log(names.join("\n"));
+console.log(`\nOutils exposés : ${tools.length}`);
+console.log(`Outils admin_* : ${adminTools.length} (attendu : ${adminEnabled ? "10" : "0"})`);
+
+let failed = false;
+
+if (!adminEnabled && adminTools.length > 0) {
+  console.error(`\n❌ ${adminTools.length} outils admin_* exposés alors que MCP_ENABLE_ADMIN_TOOLS est désactivé :`);
+  console.error(adminTools.map((n) => `   - ${n}`).join("\n"));
+  failed = true;
 }
-console.log(tools.map((t) => t.name).sort().join("\n"));
-console.log(`\nTotal : ${tools.length} outils`);
 
+if (adminEnabled && adminTools.length === 0) {
+  console.error("\n❌ MCP_ENABLE_ADMIN_TOOLS est actif mais aucun outil admin_* n'est exposé.");
+  failed = true;
+}
+
+const duplicates = names.filter((n, i) => names[i - 1] === n);
+if (duplicates.length > 0) {
+  console.error(`\n❌ Noms d'outils dupliqués : ${[...new Set(duplicates)].join(", ")}`);
+  failed = true;
+}
+
+if (failed) {
+  await client.close();
+  process.exit(1);
+}
+
+console.log("\n✅ Surface d'outils conforme.");
 await client.close();
 process.exit(0);

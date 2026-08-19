@@ -19,9 +19,23 @@ export interface AppConfig {
   transport: McpTransportMode;
   httpPort: number;
   trustedServiceToken?: string;
+  /**
+   * Expose les outils de back-office `admin_*` (défaut : false).
+   * Ils exigent `profiles.role = "admin"` et n'ont aucune utilité pour un
+   * connecteur grand public — les masquer allège la liste d'outils envoyée
+   * au modèle à chaque conversation.
+   */
+  enableAdminTools: boolean;
   /** Optionnel : active les outils IA du domaine extras (suggest_bio, etc.) */
   geminiApiKey?: string;
   geminiModel?: string;
+}
+
+/** Lit un booléen d'environnement ("1", "true", "yes" — insensible à la casse). */
+function boolean(name: string, fallback = false): boolean {
+  const value = process.env[name];
+  if (value === undefined || value.length === 0) return fallback;
+  return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
 }
 
 function required(name: string): string {
@@ -54,6 +68,7 @@ export function loadConfig(): AppConfig {
     transport,
     httpPort: Number(process.env.MCP_HTTP_PORT || 8787),
     trustedServiceToken: optional("MCP_TRUSTED_SERVICE_TOKEN"),
+    enableAdminTools: boolean("MCP_ENABLE_ADMIN_TOOLS", false),
     geminiApiKey: optional("GEMINI_API_KEY"),
     geminiModel: process.env.GEMINI_MODEL || "gemini-2.0-flash",
   };

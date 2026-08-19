@@ -48,7 +48,7 @@ MCP_HTTP_PORT=8787
 npm run build
 termux-wake-lock             # empêche Android d'endormir le processus
 node dist/index.js
-# → Serveur MCP LoveRose démarré (HTTP) — http://0.0.0.0:8787/mcp — 92 outils
+# → Serveur MCP LoveRose démarré (HTTP) — http://0.0.0.0:8787/mcp — 82 outils
 ```
 
 Test dans un autre onglet Termux (swipe gauche ou `termux-new-session`) :
