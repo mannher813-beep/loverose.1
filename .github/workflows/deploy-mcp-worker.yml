@@ -11,9 +11,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: loverose-mcp/worker
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,18 +20,26 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: Install parent dependencies (code partagé)
+        working-directory: loverose-mcp
+        run: npm install --legacy-peer-deps
+
+      - name: Install worker dependencies
+        working-directory: loverose-mcp/worker
         run: npm install --legacy-peer-deps
 
       - name: Type check
+        working-directory: loverose-mcp/worker
         run: npm run check
 
       - name: Deploy to Cloudflare Workers
+        working-directory: loverose-mcp/worker
         run: npx wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
       - name: Set Supabase secrets
+        working-directory: loverose-mcp/worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
