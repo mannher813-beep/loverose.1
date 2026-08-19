@@ -527,17 +527,6 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
     }
   };
 
-  const packages = [
-    {
-      id: "pack_bronze",
-      name: "Pack 10 Crédits",
-      credits: 10,
-      amount: 500,
-      badge: "Pack Standard",
-      description: "Permet d'envoyer 10 messages supplémentaires ou d'activer un boost de profil d'une heure."
-    }
-  ];
-
   // Taux d'engagement réel = interactions reçues / vues reçues sur les annonces.
   // C'est une donnée dérivée honnête (pas de note inventée) : 0 tant qu'il n'y a pas de vues.
   const engagementRate = totalViews > 0 ? Math.min(100, Math.round((totalInteractions / totalViews) * 100)) : 0;
@@ -671,32 +660,21 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
           <div className="flex items-center justify-center md:justify-start space-x-2">
             <span className="bg-rose-500/20 text-rose-300 border border-rose-500/20 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">LoveRose Boutique</span>
           </div>
-          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">Acheter des Crédits & Premium</h2>
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">Boostez votre profil</h2>
           <p className="text-slate-300 text-xs md:text-sm max-w-md leading-relaxed">
-            Profitez d'une expérience de rencontre de premier choix. Discutez en illimité et boostez la visibilité de votre profil pour attirer de nouveaux matchs.
+            Utilisez vos crédits pour mettre votre profil en avant et attirer de nouveaux matchs.
           </p>
         </div>
 
         {/* Current status display card */}
         <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-5 w-full md:w-auto md:min-w-64 space-y-4 z-10 text-xs font-semibold text-slate-300">
-          <div className="flex justify-between items-center border-b border-white/5 pb-2">
+          <div className="flex justify-between items-center">
             <span>Solde actuel :</span>
             <span className="font-extrabold text-amber-400 text-sm flex items-center gap-1">
               <Coins size={14} className="fill-amber-400" />
               <span>{credits} crédits</span>
             </span>
           </div>
-          <div className="flex justify-between items-center">
-            <span>Abonnement Premium :</span>
-            {isSubscribed ? (
-              <span className="text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full text-[10px]">ACTIF</span>
-            ) : (
-              <span className="text-slate-400">Aucun</span>
-            )}
-          </div>
-          {isSubscribed && expiryDate && (
-            <p className="text-[10px] text-slate-400 text-right">Renouvellement le : {expiryDate}</p>
-          )}
           {activeBoostEnd && (
             <div className="flex justify-between items-center border-t border-white/5 pt-2 text-[10px] text-amber-300">
               <span className="flex items-center gap-1">
@@ -713,68 +691,6 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
       {/* Grid containing plans & packages */}
       <div className="max-w-4xl mx-auto space-y-6">
         
-        {/* Section 1: Premium Sub */}
-        <div className="bg-white border border-rose-500/20 rounded-3xl p-6 md:p-8 shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-extrabold px-3 py-1 rounded-bl-xl uppercase tracking-wider flex items-center gap-1">
-            <Sparkles size={10} className="fill-white" />
-            <span>Meilleur Choix</span>
-          </div>
-
-          <div className="space-y-4 max-w-xl">
-            <div className="space-y-1">
-              <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-1.5">
-                <Sparkles className="text-rose-500 fill-rose-500" size={18} />
-                <span>Abonnement LoveRose Premium</span>
-              </h3>
-              <p className="text-xs text-slate-500">Exprimez-vous librement, sans aucune limite ni blocage de messagerie.</p>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-3 pt-2 text-xs font-semibold text-slate-600">
-              <div className="flex items-center space-x-2">
-                <CheckCircle size={14} className="text-rose-500" />
-                <span>Messages illimités (plus besoin de crédits)</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <CheckCircle size={14} className="text-rose-500" />
-                <span>Badge de profil Premium exclusif</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <CheckCircle size={14} className="text-rose-500" />
-                <span>Mise en vedette de votre profil</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <CheckCircle size={14} className="text-rose-500" />
-                <span>Déblocage de tous vos likes reçus</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center justify-center p-4 bg-rose-50/50 border border-rose-100 rounded-2xl md:min-w-56 text-center space-y-3">
-            <div>
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Pass Premium LoveRose</p>
-              <p className="text-2xl font-black text-rose-500">500 FCFA</p>
-              <p className="text-[10px] text-slate-400">Accès illimité / Sans engagement</p>
-            </div>
-            
-            <button
-              onClick={() => handlePurchase("premium_sub", "Pass Premium LoveRose", 500)}
-              disabled={isLoading !== null || isSubscribed}
-              className="w-full py-3.5 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-rose-500/10 flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-            >
-              {isLoading === "premium_sub" ? (
-                <Loader2 className="animate-spin" size={12} />
-              ) : isSubscribed ? (
-                <span>Déjà Abonné</span>
-              ) : (
-                <>
-                  <span>S'abonner (500 FCFA)</span>
-                  <ArrowRight size={12} />
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
         {/* Section 1.5: Profile Boost */}
         <div className="bg-white border border-slate-150 rounded-3xl p-6 md:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-4 max-w-xl text-left">
@@ -816,57 +732,6 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                 </>
               )}
             </button>
-          </div>
-        </div>
-
-        {/* Section 2: Credit packages */}
-        <div className="space-y-4">
-          <h3 className="font-extrabold text-slate-800 text-lg flex items-center space-x-1.5 px-1">
-            <Coins size={18} className="fill-amber-400 text-amber-500" />
-            <span>Packs de crédits d'échange</span>
-          </h3>
-
-          <div className="grid grid-cols-1 max-w-xl gap-6">
-            {packages.map(p => (
-              <div key={p.id} className="bg-white border border-slate-150 rounded-3xl p-5 flex flex-col justify-between space-y-5 hover:shadow-md transition">
-                <div className="space-y-3">
-                  {p.badge && (
-                    <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider">
-                      {p.badge}
-                    </span>
-                  )}
-                  <div className="space-y-1">
-                    <h4 className="font-extrabold text-slate-900 text-base">{p.name}</h4>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">{p.description}</p>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center space-x-1 text-amber-500">
-                    <Coins size={16} className="fill-amber-400" />
-                    <span className="text-lg font-black text-slate-800">+{p.credits} cr.</span>
-                  </div>
-                  <div>
-                    <p className="text-right text-xs font-bold text-rose-500">{p.amount} FCFA</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handlePurchase(p.id, p.name, p.amount)}
-                  disabled={isLoading !== null || isSubscribed}
-                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 active:bg-black text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40"
-                >
-                  {isLoading === p.id ? (
-                    <Loader2 className="animate-spin" size={12} />
-                  ) : (
-                    <>
-                      <ShoppingBag size={12} />
-                      <span>Acheter ({p.amount} FCFA)</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            ))}
           </div>
         </div>
 
