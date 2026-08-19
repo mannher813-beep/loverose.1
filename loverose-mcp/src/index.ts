@@ -36,11 +36,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * Mode HTTP « stateless » : chaque requête POST /mcp instancie un serveur +
  * transport frais (pattern recommandé par le SDK MCP pour le sans-session).
  *
- * Domaines enregistrés (92 outils) : auth, profile, discover, chat, feed,
+ * Domaines enregistrés (93 outils) : auth, profile, discover, chat, feed,
  * payments, creator, notifications, settings, admin, extras.
  */
 
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 const logger = createLogger("bootstrap");
 
 interface SharedClients {
@@ -48,7 +48,7 @@ interface SharedClients {
   anon: SupabaseClient;
 }
 
-/** Fabrique un McpServer complet (92 outils) — appelée par les 2 transports. */
+/** Fabrique un McpServer complet (93 outils) — appelée par les 2 transports. */
 function buildServer(config: AppConfig, clients: SharedClients): McpServer {
   const server = new McpServer({ name: "loverose-mcp", version: VERSION });
   const deps: DomainDeps = { server, admin: clients.admin, anon: clients.anon, config };
@@ -70,7 +70,7 @@ async function runStdio(config: AppConfig, clients: SharedClients) {
   const server = buildServer(config, clients);
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  logger.info("Serveur MCP LoveRose démarré (stdio) — 92 outils");
+  logger.info("Serveur MCP LoveRose démarré (stdio) — 93 outils");
 }
 
 async function runHttp(config: AppConfig, clients: SharedClients) {
@@ -109,7 +109,7 @@ async function runHttp(config: AppConfig, clients: SharedClients) {
   });
 
   app.get("/health", (_req, res) => {
-    res.json({ ok: true, server: "loverose-mcp", version: VERSION, tools: 92 });
+    res.json({ ok: true, server: "loverose-mcp", version: VERSION, tools: 93 });
   });
 
   // Page d'information (racine)
@@ -124,7 +124,7 @@ async function runHttp(config: AppConfig, clients: SharedClients) {
         `code{background:#0f172a;padding:2px 8px;border-radius:6px;color:#f472b6}` +
         `</style></head><body><div class="card">` +
         `<h1>🌹 LoveRose MCP Server</h1>` +
-        `<p>Serveur MCP (Model Context Protocol) — <b>92 outils</b> pour utiliser LoveRose sans ouvrir le site : profils, découverte, chat, feed avec photos, paiements, créateurs, admin.</p>` +
+        `<p>Serveur MCP (Model Context Protocol) — <b>93 outils</b> pour utiliser LoveRose sans ouvrir le site : profils, découverte, chat, feed avec photos, paiements, créateurs, admin.</p>` +
         `<p>Endpoint MCP&nbsp;: <code>POST /mcp</code><br>Santé&nbsp;: <code>GET /health</code></p>` +
         `<p style="font-size:13px">À connecter dans Claude Desktop, Claude Code, Cursor, VS Code (stdio local) ou en connecteur distant (claude.ai, ChatGPT) via cette URL HTTPS.</p>` +
         `</div></body></html>`
@@ -132,7 +132,7 @@ async function runHttp(config: AppConfig, clients: SharedClients) {
   });
 
   app.listen(config.httpPort, "0.0.0.0", () => {
-    logger.info(`Serveur MCP LoveRose démarré (HTTP) — http://0.0.0.0:${config.httpPort}/mcp — 92 outils`, { port: config.httpPort });
+    logger.info(`Serveur MCP LoveRose démarré (HTTP) — http://0.0.0.0:${config.httpPort}/mcp — 93 outils`, { port: config.httpPort });
   });
 }
 

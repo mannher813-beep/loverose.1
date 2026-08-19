@@ -16,6 +16,8 @@ export interface Env {
   TURNSTILE_SECRET?: string;
   /** URL publique du serveur MCP (affichée sur la page /mcp). Ex: https://loverose-mcp.xxx.workers.dev/mcp */
   MCP_URL?: string;
+  /** Secret partagé pour le chiffrement AES-256-GCM des tokens pré-authentifiés (authenticateWithLink) */
+  MCP_TOKEN_SECRET?: string;
 }
 
 export function getSupabaseAdmin(env: Env) {

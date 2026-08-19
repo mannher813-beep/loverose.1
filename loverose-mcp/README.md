@@ -1,4 +1,4 @@
-# LoveRose MCP Server — 92 outils (v0.3 — stdio + HTTP)
+# LoveRose MCP Server — 93 outils (v0.4 — stdio + HTTP)
 
 Serveur MCP (Model Context Protocol) pour LoveRose : **couche d'accès complète**
 à l'application, indépendante de l'interface React. Objectif : un membre (ou un
@@ -36,6 +36,7 @@ Utilisateur ChatGPT/Claude ──► https://<votre-hôte-mcp>/mcp ──► Sup
    APP_URL=https://loverose.pages.dev
    MCP_TRANSPORT=http
    MCP_HTTP_PORT=8787
+   MCP_TOKEN_SECRET=...         # même valeur que côté Pages Functions (pour authenticateWithLink)
    ```
 3. Vous obtenez une URL publique, ex. `https://loverose-mcp.up.railway.app`
    → **le lien MCP à donner aux utilisateurs est `https://…/mcp`**.
@@ -61,6 +62,7 @@ npx wrangler login                      # compte Cloudflare du site
 npx wrangler secret put SUPABASE_ANON_KEY          # valeur VITE_SUPABASE_ANON_KEY
 npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY  # ⚠️ secret serveur
 npx wrangler secret put GEMINI_API_KEY              # optionnel (outils IA)
+npx wrangler secret put MCP_TOKEN_SECRET             # secret de chiffrement des liens pré-auth
 
 npx wrangler deploy
 # → https://loverose-mcp.<votre-sous-domaine>.workers.dev/mcp
@@ -95,7 +97,7 @@ puis connexion avec email/mot de passe LoveRose **dans la conversation**.
 curl https://<votre-hôte>/health          # {"ok":true,...,"tools":92}
 curl -X POST https://<votre-hôte>/mcp \
   -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'   # liste des 92 outils
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'   # liste des 93 outils
 ```
 
 ## Démarrage
@@ -107,7 +109,7 @@ cp .env.example .env   # SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_
 npm run build
 npm start              # stdio — à brancher dans Claude Desktop / client MCP
 
-# test : node scripts/smoke-test.mjs  (liste les 92 outils via le protocole)
+# test : node scripts/smoke-test.mjs  (liste les 93 outils via le protocole)
 ```
 
 Deux transports (`MCP_TRANSPORT` dans .env) :
@@ -151,7 +153,7 @@ curl -X POST http://localhost:8787/mcp \
 }
 ```
 
-3. Relancer Claude Desktop → l'icône outils 🛠️ affiche les 92 outils LoveRose.
+3. Relancer Claude Desktop → l'icône outils 🛠️ affiche les 93 outils LoveRose.
 4. Dans la conversation : *« Connecte-toi à LoveRose : mon email est X, mon mot de passe Y »* → l'agent appelle `login`, garde le token, puis tout le reste.
 
 ### 💻 Claude Code (CLI)
@@ -223,10 +225,31 @@ Tout client supportant stdio ou Streamable HTTP : LibreChat, Warp, Cline (VS Cod
    avec un client porteur de CE JWT → **RLS de production appliquée**.
 4. Les outils `admin_*` exigent en plus `profiles.role = "admin"`.
 
-## Inventaire des 92 outils
+### Connexion sécurisée par lien (recommandé)
 
-### AUTH (8) — Supabase Auth via client anon
-`register` · `login` · `logout` · `refreshSession` · `verifyPhoneOTP` ·
+Pour éviter de transmettre le mot de passe en clair dans le chat, un flux
+**pré-authentifié** est disponible :
+
+1. L'utilisateur se connecte sur **https://loverose.pages.dev/mcp** → le
+   formulaire vérifie ses identifiants via Supabase Auth et chiffre les
+   tokens (AES-256-GCM) avec `MCP_TOKEN_SECRET`.
+2. Un **lien chiffré** est affiché (valable 10 minutes) — l'utilisateur le
+   copie dans ChatGPT/Claude.
+3. L'IA appelle l'outil **`authenticateWithLink`** avec ce lien → le serveur
+   MCP déchiffre, valide, et renvoie la session.
+
+Configuration requise (variable d'environnement **identique** sur Pages
+Functions et serveur MCP) :
+```bash
+MCP_TOKEN_SECRET=<générer avec: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))">
+```
+
+L'outil `login` (email/mot de passe) reste disponible en secours.
+
+## Inventaire des 93 outils
+
+### AUTH (9) — Supabase Auth via client anon
+`register` · `login` · `authenticateWithLink` · `logout` · `refreshSession` · `verifyPhoneOTP` ·
 `verifyEmail` · `resendOTP` · `resetPassword`
 
 ### PROFILE (10) — Onboarding.tsx, ProfileSettings.tsx, Settings.tsx
@@ -318,7 +341,7 @@ loverose-mcp/
 │       ├── auth/ profile/ discover/ chat/ feed/ payments/
 │       ├── creator/ notifications/ settings/ admin/ extras/
 │       └── types.ts · shared/tables.ts (cartographie tables/RPC/Edge Functions)
-├── scripts/smoke-test.mjs     # vérifie les 92 outils via le protocole MCP
+├── scripts/smoke-test.mjs     # vérifie les 93 outils via le protocole MCP
 └── dist/                      # build tsc
 ```
 

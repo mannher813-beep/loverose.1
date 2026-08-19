@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { RegisterDomainTools } from "../types.js";
 import { mcpOk, mcpFail, mcpFailFromSupabaseError, withMcpErrorHandling } from "../../core/mcpResult.js";
 import { createLogger } from "../../core/logger.js";
+import { decryptToken } from "../../core/mcpToken.js";
 
 /**
  * Domaine AUTH
@@ -91,6 +92,80 @@ export const registerAuthTools: RegisterDomainTools = ({ server, admin, anon, co
         return mcpFailFromSupabaseError(error);
       }
       return mcpOk({ user: data.user, session: data.session });
+    })
+  );
+
+  // ---------------------------------------------------------------------
+  // authenticateWithLink — connexion pré-authentifiée via lien chiffré
+  // ---------------------------------------------------------------------
+  //
+  // Flux sécurisé (le mot de passe ne transite JAMAIS dans le chat) :
+  //   1. L'utilisateur se connecte sur https://loverose.pages.dev/mcp
+  //      → le formulaire appelle Supabase Auth côté navigateur/Pages Function
+  //      → les tokens sont chiffrés (AES-256-GCM) et intégrés dans un lien
+  //   2. L'utilisateur colle le lien dans ChatGPT/Claude
+  //   3. L'IA appelle cet outil avec le lien complet
+  //   4. Le serveur MCP déchiffre le token avec MCP_TOKEN_SECRET,
+  //      vérifie l'expiration (10 min), et renvoie la session
+  //
+  server.tool(
+    "authenticateWithLink",
+    "Connecte un membre LoveRose via un lien de connexion pré-authentifié généré sur loverose.pages.dev/mcp. " +
+      "Le lien contient une session chiffrée (AES-256-GCM) — le mot de passe n'est jamais transmis dans le chat. " +
+      "Le lien est valable 10 minutes.",
+    {
+      link: z
+        .string()
+        .min(1, "Lien de connexion requis")
+        .describe(
+          "Lien complet copié depuis https://loverose.pages.dev/mcp (contient le token chiffré). " +
+            "Format : https://…/mcp/auth?token=v1.… ou le token brut v1.…"
+        ),
+    },
+    withMcpErrorHandling(async ({ link }: { link: string }) => {
+      const tokenSecret = config.mcpTokenSecret;
+      if (!tokenSecret) {
+        return mcpFail(
+          "Le mode de connexion par lien n'est pas activé sur ce serveur (MCP_TOKEN_SECRET manquant). " +
+            "Utilisez l'outil `login` avec email/mot de passe à la place."
+        );
+      }
+
+      // Extraire le token du lien (supporte lien complet ou token brut)
+      let rawToken = link.trim();
+      try {
+        const url = new URL(rawToken);
+        const fromQuery = url.searchParams.get("token");
+        if (fromQuery) rawToken = fromQuery;
+      } catch {
+        // pas une URL — on utilise tel quel (token brut v1.…)
+      }
+
+      // Déchiffrer et valider
+      let payload: { at: string; rt: string; exp: number };
+      try {
+        payload = await decryptToken(rawToken, tokenSecret);
+      } catch (err: any) {
+        logger.warn("authenticateWithLink: token invalide", { message: err.message });
+        return mcpFail(`Lien invalide ou expiré : ${err.message}`);
+      }
+
+      // Valider le JWT via Supabase Auth (comme un login normal)
+      const { data, error } = await admin.auth.getUser(payload.at);
+      if (error || !data?.user) {
+        logger.warn("authenticateWithLink: JWT invalide après déchiffrement", { message: error?.message });
+        return mcpFail("Session invalide — le lien a peut-être déjà été utilisé. Générez un nouveau lien.");
+      }
+
+      return mcpOk({
+        user: data.user,
+        session: {
+          access_token: payload.at,
+          refresh_token: payload.rt,
+        },
+        authenticatedVia: "pre-auth link",
+        message: "Session active. Vous pouvez maintenant utiliser tous les outils LoveRose.",
+      });
     })
   );
 

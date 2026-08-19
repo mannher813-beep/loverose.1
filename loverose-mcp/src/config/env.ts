@@ -22,6 +22,9 @@ export interface AppConfig {
   /** Optionnel : active les outils IA du domaine extras (suggest_bio, etc.) */
   geminiApiKey?: string;
   geminiModel?: string;
+  /** Secret partagé pour le chiffrement AES-256-GCM des tokens pré-authentifiés
+   *  (outil authenticateWithLink). Doit être identique côté Pages Functions. */
+  mcpTokenSecret?: string;
 }
 
 function required(name: string): string {
@@ -56,5 +59,6 @@ export function loadConfig(): AppConfig {
     trustedServiceToken: optional("MCP_TRUSTED_SERVICE_TOKEN"),
     geminiApiKey: optional("GEMINI_API_KEY"),
     geminiModel: process.env.GEMINI_MODEL || "gemini-2.0-flash",
+    mcpTokenSecret: optional("MCP_TOKEN_SECRET"),
   };
 }
