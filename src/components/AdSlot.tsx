@@ -8,38 +8,53 @@ interface AdSlotProps {
   countryCode?: string;
 }
 
+// Le réglage on/off d'un emplacement publicitaire est mis en cache par clé et
+// par onglet : le fil insère un AdSlot tous les 3 posts, ce qui déclenchait
+// auparavant une requête `platform_settings` par emplacement (une dizaine de
+// allers-retours réseau en parallèle du chargement des posts).
+const adSettingCache = new Map<string, Promise<boolean>>();
+
+function fetchAdEnabled(slot: string): Promise<boolean> {
+  const key = `ads_enabled_${slot}`;
+  const cached = adSettingCache.get(key);
+  if (cached) return cached;
+
+  // Promise.resolve(...) : le builder Supabase est un « thenable », pas une
+  // vraie Promise, il n'expose donc pas .catch().
+  const request = Promise.resolve(
+    supabase.from("platform_settings").select("value").eq("key", key).maybeSingle()
+  )
+    .then(({ data, error }) => {
+      if (error) throw error;
+      // Non configuré => désactivé (on n'affiche rien).
+      return data?.value === "1";
+    })
+    .catch((err) => {
+      console.warn("Failed to fetch platform setting for ads:", err);
+      // On ne met pas un échec en cache définitivement.
+      adSettingCache.delete(key);
+      return false;
+    });
+
+  adSettingCache.set(key, request);
+  return request;
+}
+
 export default function AdSlot({ slot, className = "", userId, countryCode }: AdSlotProps) {
   const [isEnabled, setIsEnabled] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hasRecordedImpression, setHasRecordedImpression] = useState<boolean>(false);
 
   useEffect(() => {
-    async function checkAdSettings() {
-      try {
-        const key = `ads_enabled_${slot}`;
-        const { data, error } = await supabase
-          .from("platform_settings")
-          .select("value")
-          .eq("key", key)
-          .maybeSingle();
-
-        if (error) throw error;
-        
-        if (data) {
-          setIsEnabled(data.value === "1");
-        } else {
-          // If not configured, default to disabled (render nothing)
-          setIsEnabled(false);
-        }
-      } catch (err) {
-        console.warn("Failed to fetch platform setting for ads:", err);
-        setIsEnabled(false);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    checkAdSettings();
+    let cancelled = false;
+    fetchAdEnabled(slot).then((enabled) => {
+      if (cancelled) return;
+      setIsEnabled(enabled);
+      setIsLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [slot]);
 
   useEffect(() => {

@@ -1,10 +1,16 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "../lib/supabase";
 import { Post, Profile, ListingCategory } from "../types";
 import AdSlot from "./AdSlot";
 import { Send, MessageCircle, Heart, Share2, Sparkles, Loader2, DollarSign, MessageSquare, MapPin, Tag, Boxes, Clock } from "lucide-react";
 import { LISTING_CATEGORIES } from "../types";
 import ProfileDetailModal from "./ProfileDetailModal";
+import AdaptiveImage from "./AdaptiveImage";
+
+// Nombre de publications chargées en une fois. Le fil récupérait auparavant
+// toute la table `posts`, ce qui rendait le premier affichage de plus en plus
+// lent au fur et à mesure que la plateforme grossissait.
+const POSTS_PAGE_SIZE = 30;
 
 interface FeedProps {
   currentUser: any;
@@ -21,7 +27,10 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
   // Filtre de catégorie du fil : null = toutes les annonces confondues,
   // sinon on n'affiche que les publications de ce type d'annonce précis.
   const [categoryFilter, setCategoryFilter] = useState<ListingCategory | null>(null);
-  const visiblePosts = categoryFilter ? posts.filter((p) => p.listing_category === categoryFilter) : posts;
+  const visiblePosts = useMemo(
+    () => (categoryFilter ? posts.filter((p) => p.listing_category === categoryFilter) : posts),
+    [posts, categoryFilter]
+  );
 
   // post_id -> true once the current visitor has paid for that annonce
   const [purchasedPostIds, setPurchasedPostIds] = useState<Set<string>>(new Set());
@@ -41,12 +50,6 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
   const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
   const [newCommentText, setNewCommentText] = useState("");
   const [shareToastMessage, setShareToastMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Posts are publicly readable (RLS allows anon SELECT), so the feed loads
-    // for guests too — browsing the annonces never requires an account.
-    loadPosts();
-  }, []);
 
   useEffect(() => {
     if (!highlightedPostId || isLoading || posts.length === 0) return;
@@ -74,135 +77,96 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
       });
   }, [currentUser?.id]);
 
-  const loadInteractionsForPosts = async (loadedPosts: Post[]) => {
-    const postIds = loadedPosts.map(p => p.id);
+  // Charge likes / commentaires / partages UNIQUEMENT pour les posts affichés,
+  // et en parallèle. Auparavant ces trois requêtes ramenaient l'INTÉGRALITÉ des
+  // tables post_likes / post_comments / post_shares (aucun filtre), puis
+  // filtraient en JavaScript — ce qui faisait grossir le temps de chargement
+  // proportionnellement au nombre total d'interactions de toute la plateforme,
+  // quelle que soit la vitesse de connexion.
+  const loadInteractionsForPosts = useCallback(async (loadedPosts: Post[]) => {
+    const postIds = loadedPosts.map((p) => p.id);
     if (postIds.length === 0) return;
 
-    // 1. Load Likes
-    try {
-      const { data: dbLikes, error: likesError } = await supabase
-        .from("post_likes")
-        .select("post_id, user_id");
-
-      if (likesError) throw likesError;
-
-      if (dbLikes) {
-        const newLikesState: Record<string, { count: number; userLiked: boolean }> = {};
-        loadedPosts.forEach(p => {
-          const postLikes = dbLikes.filter(l => l.post_id === p.id);
-          const userLiked = postLikes.some(l => l.user_id === currentUser?.id);
-          newLikesState[p.id] = {
-            count: postLikes.length,
-            userLiked: userLiked
-          };
-        });
-        setLikesState(newLikesState);
-      }
-    } catch (e) {
-      console.warn("Could not load likes from DB, falling back to local simulation:", e);
-      const storedLikes = localStorage.getItem(`feed_likes_${currentUser?.id || 'anon'}`);
-      if (storedLikes) {
-        try { setLikesState(JSON.parse(storedLikes)); } catch (err) {}
-      } else {
-        const initialLikes: Record<string, { count: number; userLiked: boolean }> = {};
-        loadedPosts.forEach(p => {
-          initialLikes[p.id] = { count: Math.floor(Math.random() * 8) + 2, userLiked: false };
-        });
-        setLikesState(initialLikes);
-      }
-    }
-
-    // 2. Load Comments
-    try {
-      const { data: dbComments, error: commentsError } = await supabase
+    const [likesRes, commentsRes, sharesRes] = await Promise.all([
+      supabase.from("post_likes").select("post_id, user_id").in("post_id", postIds),
+      supabase
         .from("post_comments")
-        .select(`
-          id,
-          post_id,
-          user_id,
-          text,
-          created_at
-        `);
+        .select("id, post_id, user_id, text, created_at")
+        .in("post_id", postIds)
+        .order("created_at", { ascending: true }),
+      supabase.from("post_shares").select("post_id").in("post_id", postIds),
+    ]);
 
-      if (commentsError) throw commentsError;
-
-      if (dbComments) {
-        const newCommentsState: Record<string, any[]> = {};
-        const uniqueUserIds = Array.from(new Set(dbComments.map(c => c.user_id)));
-        
-        let profileMap = new Map();
-        if (uniqueUserIds.length > 0) {
-          const { data: commentProfiles } = await supabase
-            .from("profiles")
-            .select("uid, full_name, avatar_url")
-            .in("uid", uniqueUserIds);
-          profileMap = new Map(commentProfiles?.map(p => [p.uid, p]) || []);
-        }
-
-        dbComments.forEach((c: any) => {
-          const profile = profileMap.get(c.user_id);
-          const formattedComment = {
-            id: c.id,
-            author_name: profile?.full_name || "Membre LoveRose",
-            avatar_url: profile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${c.user_id}`,
-            text: c.text,
-            created_at: c.created_at
-          };
-          if (!newCommentsState[c.post_id]) {
-            newCommentsState[c.post_id] = [];
-          }
-          newCommentsState[c.post_id].push(formattedComment);
-        });
-
-        // Initialize empty lists for posts with no comments
-        loadedPosts.forEach(p => {
-          if (!newCommentsState[p.id]) {
-            newCommentsState[p.id] = [];
-          }
-        });
-
-        setCommentsState(newCommentsState);
+    // 1. Likes
+    if (!likesRes.error && likesRes.data) {
+      const counts = new Map<string, number>();
+      const liked = new Set<string>();
+      for (const l of likesRes.data as any[]) {
+        counts.set(l.post_id, (counts.get(l.post_id) || 0) + 1);
+        if (currentUser?.id && l.user_id === currentUser.id) liked.add(l.post_id);
       }
-    } catch (e) {
-      console.warn("Could not load comments from DB, falling back to local simulation:", e);
-      const storedComments = localStorage.getItem(`feed_comments_${currentUser?.id || 'anon'}`);
-      if (storedComments) {
-        try { setCommentsState(JSON.parse(storedComments)); } catch (err) {}
-      } else {
-        const emptyComments: Record<string, any[]> = {};
-        loadedPosts.forEach(p => {
-          emptyComments[p.id] = [];
-        });
-        setCommentsState(emptyComments);
+      const newLikesState: Record<string, { count: number; userLiked: boolean }> = {};
+      for (const id of postIds) {
+        newLikesState[id] = { count: counts.get(id) || 0, userLiked: liked.has(id) };
       }
+      setLikesState((prev) => ({ ...prev, ...newLikesState }));
+    } else if (likesRes.error) {
+      console.warn("Could not load likes from DB:", likesRes.error);
+      const newLikesState: Record<string, { count: number; userLiked: boolean }> = {};
+      for (const id of postIds) newLikesState[id] = { count: 0, userLiked: false };
+      setLikesState((prev) => ({ ...prev, ...newLikesState }));
     }
 
-    // 3. Load Shares
-    try {
-      const { data: dbShares, error: sharesError } = await supabase
-        .from("post_shares")
-        .select("post_id, user_id");
-
-      if (sharesError) throw sharesError;
-
-      if (dbShares) {
-        const newSharesState: Record<string, number> = {};
-        loadedPosts.forEach(p => {
-          const postShares = dbShares.filter(s => s.post_id === p.id);
-          newSharesState[p.id] = postShares.length;
-        });
-        setSharesState(newSharesState);
+    // 3. Partages (indépendant des commentaires, on l'applique tout de suite)
+    if (!sharesRes.error && sharesRes.data) {
+      const shareCounts = new Map<string, number>();
+      for (const s of sharesRes.data as any[]) {
+        shareCounts.set(s.post_id, (shareCounts.get(s.post_id) || 0) + 1);
       }
-    } catch (e) {
-      console.warn("Could not load shares from DB, falling back to local simulation:", e);
       const newSharesState: Record<string, number> = {};
-      loadedPosts.forEach(p => {
-        const storedShareCount = localStorage.getItem(`feed_shares_${p.id}`);
-        newSharesState[p.id] = storedShareCount ? parseInt(storedShareCount) : Math.floor(Math.random() * 3);
-      });
-      setSharesState(newSharesState);
+      for (const id of postIds) newSharesState[id] = shareCounts.get(id) || 0;
+      setSharesState((prev) => ({ ...prev, ...newSharesState }));
+    } else if (sharesRes.error) {
+      console.warn("Could not load shares from DB:", sharesRes.error);
+      const newSharesState: Record<string, number> = {};
+      for (const id of postIds) newSharesState[id] = 0;
+      setSharesState((prev) => ({ ...prev, ...newSharesState }));
     }
-  };
+
+    // 2. Commentaires (+ profils des auteurs de commentaires, en une seule requête)
+    if (!commentsRes.error && commentsRes.data) {
+      const dbComments = commentsRes.data as any[];
+      const uniqueUserIds = Array.from(new Set(dbComments.map((c) => c.user_id).filter(Boolean)));
+
+      let profileMap = new Map<string, any>();
+      if (uniqueUserIds.length > 0) {
+        const { data: commentProfiles } = await supabase
+          .from("profiles")
+          .select("uid, full_name, avatar_url")
+          .in("uid", uniqueUserIds);
+        profileMap = new Map((commentProfiles || []).map((pr: any) => [pr.uid, pr]));
+      }
+
+      const newCommentsState: Record<string, any[]> = {};
+      for (const id of postIds) newCommentsState[id] = [];
+      for (const c of dbComments) {
+        const prof = profileMap.get(c.user_id);
+        (newCommentsState[c.post_id] ||= []).push({
+          id: c.id,
+          author_name: prof?.full_name || "Membre LoveRose",
+          avatar_url: prof?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${c.user_id}`,
+          text: c.text,
+          created_at: c.created_at,
+        });
+      }
+      setCommentsState((prev) => ({ ...prev, ...newCommentsState }));
+    } else if (commentsRes.error) {
+      console.warn("Could not load comments from DB:", commentsRes.error);
+      const emptyComments: Record<string, any[]> = {};
+      for (const id of postIds) emptyComments[id] = [];
+      setCommentsState((prev) => ({ ...prev, ...emptyComments }));
+    }
+  }, [currentUser?.id]);
 
   const handleLikeToggle = async (postId: string) => {
     if (!currentUser) {
@@ -375,39 +339,45 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
     }, 3000);
   };
 
-  const loadPosts = async () => {
+  const loadPosts = useCallback(async () => {
     setIsLoading(true);
     try {
+      // On ne ramène que les colonnes réellement affichées et on plafonne le
+      // nombre de publications : `select("*")` sans limite téléchargeait tout
+      // l'historique du fil (avec toutes les colonnes) à chaque ouverture.
       const { data, error } = await supabase
         .from("posts")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select(
+          "id, author_id, contenu, medias, media_types, media_dimensions, created_at, listing_price, whatsapp_link, is_free_listing, listing_category, listing_location, listing_condition, listing_negotiable, listing_expires_at, listing_quantity"
+        )
+        .order("created_at", { ascending: false })
+        .limit(POSTS_PAGE_SIZE);
 
       if (error) throw error;
 
-      // Populate author profiles in a single batch query to solve the N+1 query performance bottleneck
-      const authorIds = Array.from(new Set((data || []).map(p => p.author_id).filter(Boolean)));
+      // Profils des auteurs en une seule requête groupée (évite le N+1), et
+      // limitée aux colonnes utiles à l'en-tête du post.
+      const authorIds = Array.from(new Set((data || []).map((p) => p.author_id).filter(Boolean)));
       const profilesMap: Record<string, any> = {};
-      
+
       if (authorIds.length > 0) {
         const { data: profilesData } = await supabase
           .from("profiles")
-          .select("*")
+          .select("uid, full_name, avatar_url, verification_status, age, ville, pays, bio")
           .in("uid", authorIds);
-        
-        if (profilesData) {
-          profilesData.forEach(prof => {
-            profilesMap[prof.uid] = prof;
-          });
+
+        for (const prof of profilesData || []) {
+          profilesMap[prof.uid] = prof;
         }
       }
 
-      const populatedPosts = (data || []).map((p) => {
-        return {
-          ...p,
-          author_profile: profilesMap[p.author_id] || { full_name: "Membre LoveRose" }
-        } as Post;
-      });
+      const populatedPosts = (data || []).map(
+        (p) =>
+          ({
+            ...p,
+            author_profile: profilesMap[p.author_id] || { full_name: "Membre LoveRose" },
+          }) as Post
+      );
 
       // Fil non chronologique : mélangé aléatoirement à chaque chargement.
       const shuffle = <T,>(arr: T[]): T[] => {
@@ -421,16 +391,26 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
 
       const orderedPosts = shuffle(populatedPosts);
 
+      // Les posts s'affichent immédiatement : les compteurs de likes /
+      // commentaires / partages arrivent ensuite en arrière-plan au lieu de
+      // retarder l'affichage de tout le fil.
       setPosts(orderedPosts);
-      // Load interactions for loaded posts
-      await loadInteractionsForPosts(orderedPosts);
+      setIsLoading(false);
+      loadInteractionsForPosts(orderedPosts).catch((e) =>
+        console.warn("Could not load post interactions:", e)
+      );
     } catch (err: any) {
       console.warn("Could not query posts table (possibly offline or unmigrated):", err);
       setErrorMessage("Impossible de charger le fil d'actualité.");
-    } finally {
       setIsLoading(false);
     }
-  };
+  }, [loadInteractionsForPosts]);
+
+  useEffect(() => {
+    // Posts are publicly readable (RLS allows anon SELECT), so the feed loads
+    // for guests too — browsing the annonces never requires an account.
+    loadPosts();
+  }, [loadPosts]);
 
   const handlePayForListing = async (post: Post) => {
     if (!currentUser) {
@@ -542,10 +522,15 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
                     className="flex items-center space-x-3 cursor-pointer hover:opacity-85 transition"
                     title="Visiter le profil public"
                   >
-                    <img
-                      src={author?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${author?.full_name || p.author_id}`}
+                    <AdaptiveImage
+                      src={author?.avatar_url}
+                      fallbackSrc={`https://api.dicebear.com/7.x/adventurer/svg?seed=${author?.full_name || p.author_id}`}
                       alt={author?.full_name}
                       referrerPolicy="no-referrer"
+                      loading="lazy"
+                      decoding="async"
+                      width={40}
+                      height={40}
                       className="w-10 h-10 rounded-full object-cover bg-slate-100 border border-slate-100"
                     />
                     <div>
@@ -614,10 +599,12 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
                     {p.medias && p.medias.length > 0 && (
                       p.medias.length === 1 ? (
                         <div className="rounded-2xl overflow-hidden bg-slate-950 border border-slate-100/5 flex items-center justify-center max-h-[80vh] w-full">
-                          <img
+                          <AdaptiveImage
                             src={p.medias[0]}
                             alt="Illustration post"
                             referrerPolicy="no-referrer"
+                            loading={index === 0 ? "eager" : "lazy"}
+                            decoding="async"
                             style={{
                               width: '100%',
                               aspectRatio: p.media_dimensions && p.media_dimensions[0] ? `${p.media_dimensions[0].ratio}` : 'auto',
@@ -630,11 +617,13 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
                       ) : (
                         <div className="grid grid-cols-2 gap-1.5 rounded-2xl overflow-hidden">
                           {p.medias.map((url, i) => (
-                            <img
+                            <AdaptiveImage
                               key={url + i}
                               src={url}
                               alt={`Photo ${i + 1}`}
                               referrerPolicy="no-referrer"
+                              loading={index === 0 && i < 2 ? "eager" : "lazy"}
+                              decoding="async"
                               className="w-full aspect-square object-cover bg-slate-950"
                             />
                           ))}
@@ -728,7 +717,15 @@ export default function Feed({ currentUser, currentUserProfile, onAuthRequired }
                         {(commentsState[p.id] || []).length > 0 ? (
                           (commentsState[p.id] || []).map((c: any) => (
                             <div key={c.id} className="flex gap-2.5 items-start bg-white p-2.5 rounded-xl border border-slate-100 shadow-3xs">
-                              <img src={c.avatar_url} alt="User avatar" className="w-6 h-6 rounded-full object-cover" />
+                              <AdaptiveImage
+                                src={c.avatar_url}
+                                alt="User avatar"
+                                loading="lazy"
+                                decoding="async"
+                                width={24}
+                                height={24}
+                                className="w-6 h-6 rounded-full object-cover"
+                              />
                               <div className="flex-1 space-y-1">
                                 <div className="flex justify-between items-center">
                                   <span className="font-extrabold text-slate-800 text-[10px]">{c.author_name}</span>
