@@ -475,7 +475,7 @@ export default function CreatorOnboarding({ currentUser, currentUserProfile, onP
           <button
             onClick={handleSubmitPage}
             disabled={isLoading}
-            className="flex-1 py-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-rose-500/15 transition cursor-pointer"
+            className="flex-1 py-3 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-rose-500/15 transition cursor-pointer"
           >
             {isLoading ? (
               <Loader2 className="animate-spin" size={14} />

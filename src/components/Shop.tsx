@@ -653,7 +653,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
       </div>
 
       {/* Current Balance / Premium Status Hero Banner */}
-      <div className="max-w-4xl mx-auto bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
+      <div className="max-w-4xl mx-auto bg-slate-950 text-white rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
         <div className="absolute top-[-20%] right-[-10%] w-60 h-60 bg-rose-500/10 rounded-full blur-3xl"></div>
         
         <div className="space-y-3 z-10 text-center md:text-left">
@@ -695,7 +695,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
         <div className="bg-white border border-slate-150 rounded-3xl p-6 md:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-4 max-w-xl text-left">
             <div className="space-y-1">
-              <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-1.5">
+              <h3 className="u-display text-xl text-slate-950 flex items-center gap-1.5">
                 <Zap className="text-amber-500 fill-amber-450" size={18} />
                 <span>Boost de profil (1 Heure)</span>
               </h3>
@@ -927,7 +927,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                   max={withdrawableNow}
                   value={withdrawForm.amount}
                   onChange={(e) => setWithdrawForm(p => ({ ...p, amount: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition font-bold"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition font-bold"
                 />
               </div>
 
@@ -939,7 +939,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                   placeholder="Ex: Jean Dupont"
                   value={withdrawForm.fullName}
                   onChange={(e) => setWithdrawForm(p => ({ ...p, fullName: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition font-medium"
                 />
               </div>
 
@@ -949,7 +949,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                   <select
                     value={withdrawForm.countryCode}
                     onChange={(e) => setWithdrawForm(p => ({ ...p, countryCode: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl px-3 py-3 text-sm text-slate-900 outline-none transition font-medium"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 rounded-xl px-3 py-3 text-sm text-slate-900 outline-none transition font-medium"
                   >
                     {countries.length > 0 ? countries.map(c => (
                       <option key={c.iso_code} value={c.iso_code}>{c.flag_emoji ? `${c.flag_emoji} ` : ""}{c.name_fr}</option>
@@ -961,7 +961,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                   <select
                     value={withdrawForm.operatorId}
                     onChange={(e) => setWithdrawForm(p => ({ ...p, operatorId: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl px-3 py-3 text-sm text-slate-900 outline-none transition font-medium"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 rounded-xl px-3 py-3 text-sm text-slate-900 outline-none transition font-medium"
                   >
                     {operators.length > 0 ? operators.map(op => (
                       <option key={op.id} value={op.id}>{op.name}</option>
@@ -978,7 +978,7 @@ export default function Shop({ currentUser, currentUserProfile, onPaymentSuccess
                   placeholder="Ex: 677123456"
                   value={withdrawForm.phoneNumber}
                   onChange={(e) => setWithdrawForm(p => ({ ...p, phoneNumber: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition font-medium"
                 />
               </div>
 

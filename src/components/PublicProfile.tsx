@@ -140,7 +140,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
             <Heart size={44} className="animate-pulse" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-xl font-black text-slate-900">Profil introuvable</h1>
+            <h1 className="u-display text-xl text-slate-950">Profil introuvable</h1>
             <p className="text-slate-500 text-xs leading-relaxed">{error || "Ce membre n'existe pas."}</p>
           </div>
           <button
@@ -190,7 +190,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
           
           {/* Main card */}
           <div className="bg-white border border-slate-150 rounded-3xl overflow-hidden shadow-sm relative">
-            <div className="h-32 bg-gradient-to-r from-rose-500 to-pink-600"></div>
+            <div className="h-32 bg-rose-500"></div>
             
             <div className="px-6 pb-6 relative">
               <div className="absolute -top-12 left-6">
@@ -301,7 +301,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
           )}
 
           {/* CTA Card for Registration */}
-          <div className="bg-gradient-to-r from-rose-500 to-pink-500 rounded-3xl p-6 md:p-8 text-white text-center space-y-6 shadow-xl shadow-rose-500/10">
+          <div className="bg-rose-500 rounded-3xl p-6 md:p-8 text-white text-center space-y-6 shadow-xl shadow-rose-500/10">
             <div className="space-y-2">
               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto text-white">
                 <Heart size={24} className="fill-white" />
@@ -364,7 +364,7 @@ export default function PublicProfile({ username, onGoHome }: PublicProfileProps
                   {/* Main Avatar Section with glowing circular border */}
                   <div className="flex flex-col items-center justify-center py-6 relative z-10 space-y-3">
                     <div className="relative">
-                      <div className="absolute -inset-1 bg-gradient-to-r from-rose-500 to-pink-500 rounded-full blur-sm opacity-70 animate-pulse"></div>
+                      <div className="absolute -inset-1 bg-rose-500 rounded-full blur-sm opacity-70 animate-pulse"></div>
                       <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white relative bg-slate-800 shadow-xl">
                         <img
                           src={profile.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${profile.full_name}`}

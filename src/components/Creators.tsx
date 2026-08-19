@@ -791,7 +791,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
       {/* Main Title Banner & Selector */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-150 pb-5">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="u-display text-2xl text-slate-950 tracking-tight flex items-center gap-2">
             <Sparkles className="text-rose-500 fill-rose-500 animate-pulse" size={24} />
             <span>LoveRose Creators</span>
           </h1>
@@ -962,7 +962,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                   />
                 </div>
                 <div className="space-y-1 pt-10 md:pt-1">
-                  <h3 className="text-xl font-black text-slate-950 flex items-center gap-1.5">
+                  <h3 className="u-display text-xl text-slate-950 flex items-center gap-1.5">
                     <span>{selectedPage.page_name}</span>
                     <CheckCircle className="text-rose-500 fill-rose-500" size={18} />
                   </h3>
@@ -1080,7 +1080,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
               )}
 
               {/* Referral details */}
-              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100 rounded-3xl p-5 shadow-xs space-y-3">
+              <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5 shadow-xs space-y-3">
                 <h4 className="font-extrabold text-indigo-950 text-sm flex items-center gap-1.5">
                   <Share2 className="text-purple-600" size={16} />
                   <span>Programme d'Affiliation</span>
@@ -1803,7 +1803,7 @@ export default function Creators({ currentUser, currentUserProfile, onOpenShop, 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs text-left">
                       <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Followers</p>
-                      <h4 className="text-xl font-black text-slate-900 mt-1">{stats.followers_count || 0}</h4>
+                      <h4 className="u-display text-xl text-slate-950 mt-1">{stats.followers_count || 0}</h4>
                       <p className="text-[11px] text-slate-400 font-medium">Membres abonnés gratuitement</p>
                     </div>
 

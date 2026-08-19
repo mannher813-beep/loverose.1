@@ -402,7 +402,7 @@ export default function PublicCreatorPage({
             <AlertCircle size={44} />
           </div>
           <div className="space-y-2">
-            <h1 className="text-xl font-black text-slate-900">Page créateur introuvable</h1>
+            <h1 className="u-display text-xl text-slate-950">Page créateur introuvable</h1>
             <p className="text-slate-500 text-xs leading-relaxed">{error || "Cette page n'existe pas ou n'est plus active."}</p>
           </div>
           <button
@@ -491,7 +491,7 @@ export default function PublicCreatorPage({
                 />
               </div>
               <div className="space-y-1 pt-10 md:pt-1 text-left">
-                <h3 className="text-xl font-black text-slate-950 flex items-center gap-1.5">
+                <h3 className="u-display text-xl text-slate-950 flex items-center gap-1.5">
                   <span>{page.page_name}</span>
                   <CheckCircle className="text-rose-500 fill-rose-500" size={18} />
                 </h3>

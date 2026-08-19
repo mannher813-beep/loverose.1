@@ -152,7 +152,7 @@ export default function Notifications({ currentUser, onNavigateToTab, onLikeBack
           <Bell size={28} />
         </div>
         <div className="space-y-1">
-          <h2 className="text-xl font-black text-slate-900">Centre de Notifications</h2>
+          <h2 className="u-display text-2xl text-slate-950">Centre de notifications</h2>
           <p className="text-xs text-slate-500 leading-relaxed">
             Connectez-vous pour recevoir vos alertes de nouveaux matchs, de super likes et de messages en temps réel.
           </p>
@@ -311,17 +311,19 @@ export default function Notifications({ currentUser, onNavigateToTab, onLikeBack
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <Bell className="text-rose-500" />
-            <span>Mes Notifications</span>
-          </h2>
-          <p className="text-slate-500 text-xs mt-1">Consultez vos Matchs, likes reçus, messages importants et actualités de compte.</p>
+          <span className="u-kicker text-rose-600">Votre fil personnel</span>
+          <h1 className="u-display text-3xl sm:text-4xl text-slate-950 mt-1.5">
+            Notifications
+          </h1>
+          <p className="text-sm text-slate-500 mt-2 max-w-lg leading-relaxed">
+            Matchs, likes reçus, messages et actualités de votre compte.
+          </p>
         </div>
         
         {notifications.some(n => !n.lu) && (
           <button
             onClick={handleMarkAllRead}
-            className="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 font-extrabold px-4 py-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 self-start sm:self-center"
+            className="text-[13px] h-10 border border-slate-300 hover:border-slate-900 text-slate-700 hover:text-slate-950 font-bold px-4 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 self-start sm:self-center flex-shrink-0"
           >
             <CheckCheck size={14} />
             <span>Tout marquer comme lu</span>
@@ -331,7 +333,7 @@ export default function Notifications({ currentUser, onNavigateToTab, onLikeBack
 
       <button
         onClick={() => onNavigateToTab('likes')}
-        className="w-full flex items-center gap-3 bg-gradient-to-r from-rose-500 to-rose-400 hover:from-rose-600 hover:to-rose-500 text-white rounded-2xl p-4 shadow-md transition cursor-pointer"
+        className="w-full flex items-center gap-3 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl p-4 shadow-md transition cursor-pointer"
       >
         <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
           <Heart size={20} fill="currentColor" />

@@ -561,7 +561,7 @@ FOR EACH ROW EXECUTE FUNCTION public.validate_and_charge_message();
   };
 
   return (
-    <div id="supabase-setup" className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white min-h-screen flex flex-col justify-center items-center p-6 font-sans">
+    <div id="supabase-setup" className="bg-slate-950 text-white min-h-screen flex flex-col justify-center items-center p-6 font-sans">
       <div className="max-w-3xl w-full bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
         <div className="flex items-center space-x-4">
           <div className="bg-red-500/10 p-4 rounded-2xl text-red-400">

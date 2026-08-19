@@ -471,7 +471,7 @@ export default function ProfileDetailModal({
         {onLikeBack && (
           <button
             onClick={handleLikeBackClick}
-            className="flex-1 py-4 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-black text-xs rounded-2xl shadow-md flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-[0.98]"
+            className="flex-1 py-4 bg-rose-500 hover:bg-rose-600 text-white font-black text-xs rounded-2xl shadow-md flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-[0.98]"
           >
             {isMatch ? <Sparkles size={16} /> : <Heart size={16} fill="currentColor" />}
             <span>

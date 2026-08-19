@@ -810,7 +810,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
     <div className="flex-1 flex flex-col h-full bg-slate-50">
       {/* Console header — deliberately distinct from the app's rose consumer
           chrome, so it's unmistakable which surface you're on. */}
-      <div className="bg-gradient-to-b from-slate-900 to-slate-950 sticky top-0 z-20 shadow-lg shadow-slate-900/10">
+      <div className="bg-slate-950 sticky top-0 z-20 shadow-lg shadow-slate-900/10">
         <div className="p-4 pb-0">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-7 h-7 rounded-lg bg-indigo-500/15 border border-indigo-400/20 flex items-center justify-center">
@@ -1639,7 +1639,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                     value={annCtaLabel}
                     onChange={(e) => setAnnCtaLabel(e.target.value)}
                     placeholder="Texte du bouton (ex: Rejoindre le groupe VIP)"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-indigo-400"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-3 text-sm font-medium outline-none focus:border-indigo-400"
                   />
 
                   <div className="grid grid-cols-3 gap-2">
@@ -1673,7 +1673,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                     <select
                       value={annCtaRoute}
                       onChange={(e) => setAnnCtaRoute(e.target.value as any)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-indigo-400"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-3 text-sm font-medium outline-none focus:border-indigo-400"
                     >
                       <option value="discover">Annonces</option>
                       <option value="dashboard">Dashboard</option>
@@ -1690,7 +1690,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                       value={annCtaUrl}
                       onChange={(e) => setAnnCtaUrl(e.target.value)}
                       placeholder="https://..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-indigo-400"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-3 text-sm font-medium outline-none focus:border-indigo-400"
                     />
                   )}
 
@@ -1704,7 +1704,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                           value={annPriceAmount}
                           onChange={(e) => setAnnPriceAmount(e.target.value)}
                           placeholder="1000"
-                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                          className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3.5 py-3 text-sm font-medium outline-none focus:border-slate-900"
                         />
                       </div>
                       <div>
@@ -1714,7 +1714,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                           value={annPaidPlanName}
                           onChange={(e) => setAnnPaidPlanName(e.target.value)}
                           placeholder="Ex: Accès Groupe WhatsApp VIP"
-                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                          className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3.5 py-3 text-sm font-medium outline-none focus:border-slate-900"
                         />
                       </div>
                       <div>
@@ -1724,7 +1724,7 @@ export default function AdminPanel({ currentUser }: AdminPanelProps) {
                           value={annSuccessRedirectUrl}
                           onChange={(e) => setAnnSuccessRedirectUrl(e.target.value)}
                           placeholder="Ex: https://chat.whatsapp.com/..."
-                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                          className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3.5 py-3 text-sm font-medium outline-none focus:border-slate-900"
                         />
                         <p className="text-[12px] text-slate-400 mt-1">
                           L'utilisateur y sera envoyé automatiquement juste après confirmation du paiement Money Fusion.

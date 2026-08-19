@@ -210,7 +210,7 @@ export default function PaymentSuccess({ onBackToApp, userId, loadProfile }: Pay
       <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-xl border border-slate-100 text-center space-y-6 relative overflow-hidden">
         
         {/* Ambient Top Glow */}
-        <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-emerald-400 via-rose-500 to-pink-500" />
+        <div className="absolute top-0 inset-x-0 h-2 bg-rose-500" />
 
         {/* Polling State */}
         {status === "polling" && (

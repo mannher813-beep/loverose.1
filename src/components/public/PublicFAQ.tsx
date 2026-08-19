@@ -86,7 +86,7 @@ export default function PublicFAQ() {
         <div className="inline-flex items-center justify-center p-3 bg-rose-50 text-rose-500 rounded-3xl">
           <HelpCircle size={32} />
         </div>
-        <h1 className="text-3xl font-black text-slate-950 tracking-tight">Foire Aux Questions (FAQ)</h1>
+        <h1 className="u-display text-3xl text-slate-950 tracking-tight">Foire Aux Questions (FAQ)</h1>
         <p className="text-slate-500 text-sm max-w-xl mx-auto">
           Trouvez des réponses rapides à toutes vos questions sur l'utilisation, la sécurité, les paiements et l'Espace Créateurs de LoveRose.
         </p>

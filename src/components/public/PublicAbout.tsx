@@ -23,7 +23,7 @@ export default function PublicAbout() {
       {/* Mission & Vision */}
       <section className="grid md:grid-cols-2 gap-12 items-center">
         <div className="space-y-6">
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Notre Mission</h2>
+          <h2 className="u-display text-2xl text-slate-950 tracking-tight">Notre Mission</h2>
           <p className="text-slate-600 text-xs leading-relaxed">
             Nous pensons que tout le monde mérite de trouver un partenaire sérieux qui partage ses valeurs et ses aspirations de vie. Notre mission est de fournir la technologie la plus humaine, fluide et sécurisée possible pour connecter les célibataires qui recherchent de vraies relations, sans fioritures et en toute sérénité.
           </p>
@@ -52,7 +52,7 @@ export default function PublicAbout() {
 
       {/* Values */}
       <section className="space-y-8">
-        <h2 className="text-2xl font-black text-slate-900 text-center tracking-tight">Nos valeurs fondamentales</h2>
+        <h2 className="u-display text-2xl text-slate-950 text-center tracking-tight">Nos valeurs fondamentales</h2>
         <div className="grid sm:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-3">
             <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center">

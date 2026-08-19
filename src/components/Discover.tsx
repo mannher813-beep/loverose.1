@@ -820,7 +820,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
                     </div>
                   )}
                   {premiumUids.has(activeProfile.uid) && (
-                    <div className="bg-gradient-to-r from-amber-400 to-amber-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[11px] font-bold shadow-md uppercase tracking-wider">
+                    <div className="bg-amber-500 text-white px-2.5 py-1 rounded-full flex items-center space-x-1 text-[11px] font-bold shadow-md uppercase tracking-wider">
                       <Sparkles size={10} fill="white" className="text-amber-500" />
                       <span>Premium</span>
                     </div>
@@ -922,7 +922,7 @@ export default function Discover({ currentUser, currentUserProfile, isPremium = 
               <button
                 id="swipe-like-btn"
                 onClick={() => handleSwipe(true)}
-                className="w-16 h-16 bg-gradient-to-br from-rose-500 to-pink-600 text-white hover:scale-105 active:scale-95 rounded-full shadow-lg shadow-rose-500/20 flex items-center justify-center transition cursor-pointer"
+                className="w-16 h-16 bg-rose-500 text-white hover:scale-105 active:scale-95 rounded-full shadow-lg shadow-rose-500/20 flex items-center justify-center transition cursor-pointer"
                 title="Liker"
               >
                 <Heart size={28} fill="currentColor" />

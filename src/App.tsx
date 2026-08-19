@@ -1067,7 +1067,7 @@ export default function App() {
 
       {/* Floating Push Toast Banner Overlay */}
       {toastNotification && (
-        <div className="fixed top-4 left-4 right-4 z-[9999] bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-2xl border border-white/15 flex items-center space-x-3 md:max-w-md md:mx-auto animate-bounce">
+        <div className="fixed top-4 left-4 right-4 z-[9999] bg-slate-950 text-white p-3.5 rounded-xl shadow-xl border border-slate-800 flex items-center gap-3 md:max-w-md md:mx-auto animate-rise">
           <div className="w-10 h-10 rounded-full overflow-hidden bg-rose-500/10 flex-shrink-0 border border-white/10">
             <img
               src={toastNotification.icon || "https://api.dicebear.com/7.x/initials/svg?seed=LoveRose"}
@@ -1077,8 +1077,8 @@ export default function App() {
             />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-xs font-black text-rose-400 tracking-wide truncate">{toastNotification.title}</h4>
-            <p className="text-[12px] text-slate-200 mt-0.5 font-medium leading-normal line-clamp-2">{toastNotification.body}</p>
+            <h4 className="text-[13px] font-bold text-rose-400 truncate">{toastNotification.title}</h4>
+            <p className="text-[13px] text-slate-300 mt-0.5 font-medium leading-snug u-line-clamp-2">{toastNotification.body}</p>
           </div>
           <button
             onClick={() => setToastNotification(null)}
@@ -1101,7 +1101,7 @@ export default function App() {
 
       {/* Sparkling Romantic Mutual Match Popup Modal Overlay */}
       {matchedPartner && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex flex-col justify-center items-center p-4 z-50 animate-fade-in font-sans">
+        <div className="fixed inset-0 bg-slate-950/92 backdrop-blur-sm flex flex-col justify-center items-center p-4 z-50 animate-fade-in font-sans">
           <div className="max-w-md w-full text-center space-y-8 p-6">
             
             <div className="space-y-2">

@@ -161,7 +161,7 @@ export default function WhoLikedMe({
         <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto">
           <Heart size={28} />
         </div>
-        <h2 className="text-xl font-black text-slate-900">Qui vous a aimé</h2>
+        <h2 className="u-display text-2xl text-slate-950">Qui vous a aimé</h2>
         <p className="text-xs text-slate-500">Connectez-vous pour voir qui s'intéresse à vous.</p>
         <button
           onClick={onAuthRequired}
@@ -272,12 +272,14 @@ export default function WhoLikedMe({
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-6">
-      <div className="space-y-1">
-        <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-          <Heart size={22} className="text-rose-500" fill="currentColor" />
+      <div>
+        <span className="u-kicker text-rose-600">Vos admirateurs</span>
+        <h1 className="u-display text-3xl sm:text-4xl text-slate-950 mt-1.5">
           Qui vous a aimé
-        </h2>
-        <p className="text-xs text-slate-500">Tapez sur un profil pour le voir.</p>
+        </h1>
+        <p className="text-sm text-slate-500 mt-2">
+          Touchez un profil pour le consulter.
+        </p>
       </div>
 
       {loading ? (

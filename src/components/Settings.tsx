@@ -214,7 +214,7 @@ export default function Settings({
           <Key size={28} />
         </div>
         <div className="space-y-1">
-          <h2 className="text-xl font-black text-slate-900">Paramètres du Compte</h2>
+          <h2 className="u-display text-xl text-slate-950">Paramètres du Compte</h2>
           <p className="text-xs text-slate-500 leading-relaxed">
             Connectez-vous pour gérer votre compte, vos préférences de confidentialité et la sécurité de vos données.
           </p>
@@ -526,7 +526,7 @@ export default function Settings({
       {/* Settings Header */}
       <div className="border-b border-slate-200 pb-4 flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Paramètres & Profil</h2>
+          <h2 className="u-display text-2xl text-slate-950 tracking-tight">Paramètres & Profil</h2>
           <p className="text-slate-500 text-xs">Gérez vos informations de rencontre, la sécurité et l'authenticité de votre profil.</p>
         </div>
         {onBackToProfile && (

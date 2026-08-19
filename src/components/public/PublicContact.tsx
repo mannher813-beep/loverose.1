@@ -93,7 +93,7 @@ export default function PublicContact() {
         <div className="inline-flex items-center justify-center p-3 bg-rose-50 text-rose-500 rounded-3xl">
           <Mail size={32} />
         </div>
-        <h1 className="text-3xl font-black text-slate-950 tracking-tight">Contactez-nous</h1>
+        <h1 className="u-display text-3xl text-slate-950 tracking-tight">Contactez-nous</h1>
         <p className="text-slate-500 text-sm max-w-xl mx-auto">
           Une suggestion, une question ou besoin d'assistance ? Notre support client dévoué est à votre disposition pour vous répondre sous 24h.
         </p>

@@ -25,7 +25,7 @@ export default function Legal({ onClose, initialTab = 'terms' }: LegalProps) {
     <div className="bg-white rounded-3xl border border-slate-150 p-6 md:p-8 max-w-4xl mx-auto shadow-sm space-y-6 text-left">
       <div className="flex items-center justify-between border-b border-slate-100 pb-4">
         <div>
-          <h2 className="text-xl font-extrabold text-slate-950">Informations Légales & Contact</h2>
+          <h2 className="u-display text-xl text-slate-950">Informations Légales & Contact</h2>
           <p className="text-[12px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Vérification AdSense & Conformité Réglementaire</p>
         </div>
         {onClose && (

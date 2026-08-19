@@ -174,7 +174,7 @@ export default function ProfileSettings({
           <User size={28} />
         </div>
         <div className="space-y-1">
-          <h2 className="text-xl font-black text-slate-900">Votre Profil LoveRose</h2>
+          <h2 className="u-display text-xl text-slate-950">Votre Profil LoveRose</h2>
           <p className="text-xs text-slate-500 leading-relaxed">
             Inscrivez-vous gratuitement pour créer votre profil, ajouter vos photos et définir vos critères de rencontre.
           </p>
@@ -232,7 +232,7 @@ export default function ProfileSettings({
       
       {/* Profil Header Card */}
       <div className="bg-white border border-slate-150 rounded-3xl overflow-hidden shadow-sm relative">
-        <div className="h-44 bg-gradient-to-r from-rose-500 to-pink-600 relative">
+        <div className="h-44 bg-rose-500 relative">
           {/* Action buttons top right */}
           <div className="absolute top-4 right-4 z-10 flex flex-wrap justify-end gap-2">
             <button
@@ -270,7 +270,7 @@ export default function ProfileSettings({
           <div className="pt-14 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-2xl font-black text-slate-950 tracking-tight">
+                <h2 className="u-display text-2xl text-slate-950 tracking-tight">
                   {profile.full_name || "Membre LoveRose"}
                 </h2>
                 {profile.age && <span className="text-xl font-bold text-slate-500">{profile.age} ans</span>}
@@ -531,7 +531,7 @@ export default function ProfileSettings({
                   {/* Main user info details */}
                   <div className="flex flex-col items-center justify-center py-6 relative z-10 space-y-3">
                     <div className="relative">
-                      <div className="absolute -inset-1 bg-gradient-to-r from-rose-500 to-pink-500 rounded-full blur-sm opacity-70 animate-pulse"></div>
+                      <div className="absolute -inset-1 bg-rose-500 rounded-full blur-sm opacity-70 animate-pulse"></div>
                       <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white relative bg-slate-800 shadow-xl">
                         <img
                           src={profile.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${profile.full_name}`}

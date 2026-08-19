@@ -203,7 +203,7 @@ export default function Chat({
           <MessageSquare size={28} />
         </div>
         <div className="space-y-1">
-          <h2 className="text-xl font-black text-slate-900">Messagerie Privée</h2>
+          <h2 className="u-display text-xl text-slate-950">Messagerie Privée</h2>
           <p className="text-xs text-slate-500 leading-relaxed">
             Accès réservé aux membres inscrits. Connectez-vous ou créez votre compte gratuitement pour échanger avec vos rencontres !
           </p>
@@ -625,7 +625,7 @@ export default function Chat({
 
             {/* Free Message Explanation Notice */}
             {freeMessagesLeft > 0 && (
-              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-3 px-4 text-xs font-semibold flex items-center justify-between shadow-md">
+              <div className="bg-emerald-600 text-white p-3 px-4 text-xs font-semibold flex items-center justify-between shadow-md">
                 <p className="flex items-center gap-1.5">
                   <Sparkles size={14} className="fill-white" />
                   <span>Messagerie gratuite active (10 mots max, pas de chiffres)</span>

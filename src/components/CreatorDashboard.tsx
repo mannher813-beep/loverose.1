@@ -515,7 +515,7 @@ export default function CreatorDashboard({ currentUser, currentUserProfile, page
             <>
               {/* Certification Warning banner */}
               {!isCertified && (
-                <div className="bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-500/25 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                   <div className="space-y-1">
                     <h4 className="text-xs font-extrabold text-amber-500 flex items-center gap-1.5 uppercase tracking-wide">
                       <ShieldAlert size={14} />

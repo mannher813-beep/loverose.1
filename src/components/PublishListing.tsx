@@ -251,10 +251,24 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-50 p-4 font-sans">
+    <div className="flex-1 overflow-y-auto bg-slate-50">
+      {/* En-tête éditorial de l'écran */}
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-2xl mx-auto px-4 pt-6 pb-5">
+          <span className="u-kicker text-rose-600">Nouvelle publication</span>
+          <h1 className="u-display text-3xl sm:text-4xl text-slate-950 mt-1.5">
+            Publier une annonce
+          </h1>
+          <p className="text-sm text-slate-500 mt-2 max-w-lg leading-relaxed">
+            Décrivez votre offre, ajoutez des photos et choisissez si le contact
+            est gratuit ou payant.
+          </p>
+        </div>
+      </div>
+
+      <div className="p-4">
       {currentUser ? (
-        <div className="max-w-xl mx-auto bg-white border border-slate-150 rounded-3xl p-5 shadow-sm space-y-4">
-          <h2 className="text-sm font-black text-slate-900">Nouvelle publication</h2>
+        <div className="max-w-2xl mx-auto bg-white border border-slate-200 rounded-xl p-5 space-y-4">
           <div className="flex items-start space-x-3">
             <img
               src={currentUserProfile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${currentUserProfile?.full_name || currentUser.id}`}
@@ -267,8 +281,8 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                 rows={3}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Décrivez votre publication ou votre annonce... ✨"
-                className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white focus:outline-none rounded-2xl p-3.5 text-xs font-medium transition resize-none leading-relaxed"
+                placeholder="Que proposez-vous ? Décrivez votre annonce…"
+                className="w-full bg-white border border-slate-300 focus:border-slate-900 focus:outline-none rounded-lg p-3.5 text-[15px] font-medium transition-colors resize-none leading-relaxed placeholder:text-slate-400 placeholder:font-normal"
               />
               {/* Sélecteur de fichier caché pour les photos, plusieurs autorisées */}
               <input
@@ -331,8 +345,8 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                             onClick={() => handleSelectCategory(cat.value)}
                             className={`py-2 px-2 rounded-lg text-[12px] font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                               listingCategory === cat.value
-                                ? "bg-emerald-500 border-emerald-500 text-white"
-                                : "bg-white border-slate-200 text-slate-600 hover:border-emerald-300"
+                                ? "bg-slate-900 border-slate-900 text-white"
+                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-900"
                             }`}
                           >
                             <span className="text-sm leading-none">{cat.emoji}</span>
@@ -360,7 +374,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                               value={listingLocation}
                               onChange={(e) => setListingLocation(e.target.value)}
                               placeholder="Douala, Yaoundé..."
-                              className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                              className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3.5 py-3 text-sm font-medium outline-none focus:border-slate-900"
                             />
                           </div>
                         )}
@@ -377,8 +391,8 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                                   onClick={() => setListingCondition((prev) => (prev === c ? null : c))}
                                   className={`flex-1 py-2.5 rounded-xl text-[12px] font-bold capitalize transition cursor-pointer border ${
                                     listingCondition === c
-                                      ? "bg-emerald-500 border-emerald-500 text-white"
-                                      : "bg-white border-slate-200 text-slate-600 hover:border-emerald-300"
+                                      ? "bg-slate-900 border-slate-900 text-white"
+                                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-900"
                                   }`}
                                 >
                                   {c}
@@ -399,7 +413,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                           <select
                             value={listingDurationDays === null ? "none" : listingDurationDays}
                             onChange={(e) => setListingDurationDays(e.target.value === "none" ? null : Number(e.target.value))}
-                            className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                            className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3.5 py-3 text-sm font-medium outline-none focus:border-slate-900"
                           >
                             {LISTING_DURATIONS.map((d) => (
                               <option key={d.label} value={d.value === null ? "none" : d.value}>
@@ -417,7 +431,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                               value={listingQuantityInput}
                               onChange={(e) => setListingQuantityInput(e.target.value)}
                               placeholder="Illimité"
-                              className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                              className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3.5 py-3 text-sm font-medium outline-none focus:border-slate-900"
                             />
                           </div>
                         )}
@@ -456,7 +470,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                           value={listingPriceInput}
                           onChange={(e) => setListingPriceInput(e.target.value)}
                           placeholder="5000"
-                          className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                          className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3.5 py-3 text-sm font-medium outline-none focus:border-slate-900"
                         />
                       </div>
                     )}
@@ -472,7 +486,7 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
                             value={whatsappPhoneLocal}
                             onChange={(e) => setWhatsappPhoneLocal(e.target.value)}
                             placeholder="Votre numéro"
-                            className="w-full h-[42px] bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none focus:border-emerald-400"
+                            className="w-full h-[42px] bg-white border border-slate-200 rounded-lg px-3.5 py-3 text-sm font-medium outline-none focus:border-slate-900"
                           />
                         </div>
                       </div>
@@ -539,18 +553,20 @@ export default function PublishListing({ currentUser, currentUserProfile, onAuth
           </div>
         </div>
       ) : (
-        <div className="max-w-xl mx-auto bg-white border border-slate-150 rounded-3xl p-5 shadow-sm flex items-center justify-between gap-3">
-          <p className="text-xs text-slate-500 font-medium leading-relaxed">
-            👀 Vous parcourez LoveRose sans compte. Inscrivez-vous gratuitement pour publier votre propre annonce.
+        <div className="max-w-2xl mx-auto bg-white border border-slate-200 rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <p className="text-sm text-slate-600 font-medium leading-relaxed">
+            Vous parcourez LoveRose sans compte. Inscrivez-vous gratuitement pour
+            publier votre propre annonce.
           </p>
           <button
             onClick={() => onAuthRequired?.()}
-            className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-md transition cursor-pointer flex-shrink-0"
+            className="h-11 px-5 bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold rounded-lg transition-colors cursor-pointer flex-shrink-0"
           >
-            S'inscrire
+            S'inscrire gratuitement
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -310,17 +310,22 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
           : "À développer";
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 space-y-8 font-sans">
+    <div className="flex-1 overflow-y-auto bg-slate-50">
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 pt-6 pb-5 flex items-end justify-between gap-4">
+          <div>
+            <span className="u-kicker text-rose-600">Votre activité</span>
+            <h1 className="u-display text-3xl sm:text-4xl text-slate-950 mt-1.5">
+              Tableau de bord
+            </h1>
+          </div>
+          {isStatsLoading && <Loader2 className="animate-spin text-slate-300 mb-2" size={20} />}
+        </div>
+      </div>
 
+      <div className="p-4 md:p-8 space-y-8 font-sans">
       {/* ================= DASHBOARD : vue d'ensemble ================= */}
       <div className="max-w-5xl mx-auto space-y-4">
-        <div className="flex items-center justify-between px-1">
-          <div>
-            <h2 className="text-xl md:text-2xl font-extrabold text-slate-900">Mon Dashboard</h2>
-            <p className="text-xs text-slate-400 font-medium">Vue d'ensemble de votre activité sur LoveRose</p>
-          </div>
-          {isStatsLoading && <Loader2 className="animate-spin text-slate-300" size={18} />}
-        </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <StatCard icon={<FileText size={16} />} label="Publications" value={postsCount.toLocaleString("fr-FR")} accent="text-slate-700 bg-slate-100" />
@@ -421,7 +426,7 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
       </div>
 
       {/* Current Balance Hero Banner */}
-      <div className="max-w-4xl mx-auto bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
+      <div className="max-w-4xl mx-auto bg-slate-950 text-white rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
         <div className="absolute top-[-20%] right-[-10%] w-60 h-60 bg-rose-500/10 rounded-full blur-3xl"></div>
         
         <div className="space-y-3 z-10 text-center md:text-left">
@@ -566,7 +571,7 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
                   max={withdrawableNow}
                   value={withdrawForm.amount}
                   onChange={(e) => setWithdrawForm(p => ({ ...p, amount: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition font-bold"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition font-bold"
                 />
               </div>
 
@@ -578,7 +583,7 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
                   placeholder="Ex: Jean Dupont"
                   value={withdrawForm.fullName}
                   onChange={(e) => setWithdrawForm(p => ({ ...p, fullName: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition font-medium"
                 />
               </div>
 
@@ -588,7 +593,7 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
                   <select
                     value={withdrawForm.countryCode}
                     onChange={(e) => setWithdrawForm(p => ({ ...p, countryCode: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl px-3 py-3 text-sm text-slate-900 outline-none transition font-medium"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 rounded-xl px-3 py-3 text-sm text-slate-900 outline-none transition font-medium"
                   >
                     {countries.length > 0 ? countries.map(c => (
                       <option key={c.iso_code} value={c.iso_code}>{c.flag_emoji ? `${c.flag_emoji} ` : ""}{c.name_fr}</option>
@@ -600,7 +605,7 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
                   <select
                     value={withdrawForm.operatorId}
                     onChange={(e) => setWithdrawForm(p => ({ ...p, operatorId: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl px-3 py-3 text-sm text-slate-900 outline-none transition font-medium"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 rounded-xl px-3 py-3 text-sm text-slate-900 outline-none transition font-medium"
                   >
                     {operators.length > 0 ? operators.map(op => (
                       <option key={op.id} value={op.id}>{op.name}</option>
@@ -617,7 +622,7 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
                   placeholder="Ex: 677123456"
                   value={withdrawForm.phoneNumber}
                   onChange={(e) => setWithdrawForm(p => ({ ...p, phoneNumber: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-sm text-slate-900 outline-none transition font-medium"
                 />
               </div>
 
@@ -645,7 +650,7 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
           </div>
         </div>
       )}
-
+      </div>
     </div>
   );
 }
@@ -655,14 +660,14 @@ export default function Dashboard({ currentUser, currentUserProfile, onPaymentSu
 // ------------------------------------------------------------------
 function StatCard({ icon, label, value, subtitle, accent }: { icon: React.ReactNode; label: string; value: string; subtitle?: string; accent: string }) {
   return (
-    <div className="bg-white border border-slate-150 rounded-2xl p-3.5 shadow-sm flex flex-col gap-2 min-w-0">
-      <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${accent}`}>
+    <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-3 min-w-0">
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${accent}`}>
         {icon}
       </div>
       <div className="min-w-0">
-        <p className="text-base font-black text-slate-900 truncate">{value}</p>
-        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wide truncate">{label}</p>
-        {subtitle && <p className="text-[12px] text-slate-400 truncate">{subtitle}</p>}
+        <p className="u-display text-2xl text-slate-950 truncate leading-none">{value}</p>
+        <p className="text-[12px] font-bold text-slate-500 truncate mt-1.5">{label}</p>
+        {subtitle && <p className="text-[11px] text-slate-400 truncate mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
