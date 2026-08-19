@@ -7,7 +7,7 @@ import type { Env } from "./_shared/supabaseAdmin";
  * L'URL du serveur MCP provient de la variable d'environnement Pages
  * `MCP_URL` (Dashboard Cloudflare → Pages → Settings → Environment
  * variables). Exemple de valeur :
- *   https://loverose-mcp.votre-sous-domaine.workers.dev/mcp
+ *   https://loverose-mcp.mannher813.workers.dev/mcp
  */
 
 const PAGE_CSS = `
@@ -46,7 +46,7 @@ const PAGE_CSS = `
 
 function page(mcpUrl: string | null): string {
   const configured = !!mcpUrl;
-  const url = mcpUrl || "https://loverose-mcp.votre-sous-domaine.workers.dev/mcp";
+  const url = mcpUrl || "https://loverose-mcp.mannher813.workers.dev/mcp";
   return `<!doctype html>
 <html lang="fr">
 <head>
@@ -92,7 +92,7 @@ function page(mcpUrl: string | null): string {
         </ol>
       </div>
     </div>
-    <p class="hint" style="margin-top:12px">📱 Sur ordinateur, vous pouvez aussi brancher Claude Desktop, Cursor ou VS Code en local — <a href="https://github.com/mannher813-beep/loverose.1" target="_blank" rel="noopener">voir le guide complet</a>.</p>
+    <p class="hint" style="margin-top:12px">📱 Sur ordinateur, vous pouvez aussi brancher Claude Desktop, Cursor ou VS Code en local.</p>
   </section>
 
   <section>
