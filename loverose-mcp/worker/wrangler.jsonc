@@ -21,5 +21,6 @@
   //   npx wrangler secret put SUPABASE_ANON_KEY
   //   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
   //   npx wrangler secret put GEMINI_API_KEY        (optionnel, outils IA)
+  //   npx wrangler secret put MCP_TOKEN_SECRET       (pour authenticateWithLink)
   // URL publique après déploiement : https://loverose-mcp.<votre-sous-domaine>.workers.dev/mcp
 }

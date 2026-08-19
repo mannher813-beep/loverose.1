@@ -6,7 +6,7 @@
 ## C'est quoi ?
 
 LoveRose est connecté à votre chatbot via **MCP** (Model Context Protocol) :
-92 outils (profils, découverte, chat, photos, paiements, créateurs…) que
+93 outils (profils, découverte, chat, photos, paiements, créateurs…) que
 l'IA utilise **à votre place**. Vous n'ouvrez plus le site — vous parlez.
 
 ## Étape 1 — Ajouter le connecteur (une seule fois)
@@ -30,9 +30,24 @@ https://loverose-mcp.votre-sous-domaine.workers.dev/mcp
 ### Dans les applications locales (Claude Desktop, Cursor, VS Code…)
 Voir le README du projet (`loverose-mcp/README.md`) — configuration stdio locale.
 
-## Étape 2 — Se connecter dans la conversation
+## Étape 2 — Se connecter
 
-Écrivez simplement :
+### Option A : Connexion sécurisée (recommandé ✅)
+
+1. Ouvrez **https://loverose.pages.dev/mcp**
+2. Cliquez sur **« Connexion sécurisée »** → entrez votre email et mot de passe
+3. Un **lien chiffré** est généré (valable 10 minutes) — copiez-le
+4. Dans votre chatbot, écrivez :
+
+> Connecte-moi avec ce lien : https://loverose-mcp.workers.dev/mcp/auth?token=v1.…
+
+L'IA appelle `authenticateWithLink` et votre session est active. **Votre mot
+de passe n'a jamais transité dans le chat** — seuls les tokens chiffrés sont
+transmis.
+
+### Option B : Connexion classique
+
+Écrivez simplement dans la conversation :
 
 > Connecte-moi à LoveRose. Mon email : `mon@email.com`, mon mot de passe : `********`
 
