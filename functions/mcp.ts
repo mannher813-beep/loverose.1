@@ -30,6 +30,9 @@ const PAGE_CSS = `
   .url { flex: 1; background: #0f172a; border: 1px solid #475569; border-radius: 10px; padding: 12px; font-family: ui-monospace, monospace; font-size: 13px; color: #f9a8d4; word-break: break-all; }
   button { background: #f43f5e; color: #fff; border: 0; border-radius: 10px; padding: 0 18px; font-weight: 700; cursor: pointer; font-size: 14px; }
   button:active { transform: scale(.97); }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 6px; }
+  .btn-open { display: inline-flex; align-items: center; gap: 6px; background: #334155; color: #fff; border: 1px solid #475569; border-radius: 10px; padding: 10px 16px; font-weight: 700; font-size: 13.5px; text-decoration: none; }
+  .btn-open:active { transform: scale(.97); }
   .hint { font-size: 12.5px; color: #64748b; }
   .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
   @media (min-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } }
@@ -71,6 +74,10 @@ function page(mcpUrl: string | null): string {
       <div class="url" id="mcp-url">${url}</div>
       <button onclick="navigator.clipboard.writeText(document.getElementById('mcp-url').innerText).then(this.innerText='✓ Copié')" aria-label="Copier le lien">Copier</button>
     </div>
+    <div class="actions">
+      <a class="btn-open" href="https://claude.ai/settings/connectors" target="_blank" rel="noopener">🌸 Ouvrir Claude</a>
+      <a class="btn-open" href="https://chatgpt.com" target="_blank" rel="noopener">💬 Ouvrir ChatGPT</a>
+    </div>
     ${configured ? "" : `<p class="hint">⚠️ Lien de démonstration — l'équipe LoveRose finalise le déploiement du serveur.</p>`}
     <div class="grid" style="margin-top:16px">
       <div class="card">
@@ -111,7 +118,7 @@ function page(mcpUrl: string | null): string {
       <li>« <b>Like ce profil</b> », « <b>mes matchs ?</b> », « <b>mes messages avec Awa</b> »</li>
       <li>« <b>Le feed avec les photos</b> » → les images s'affichent dans le chat</li>
       <li>« <b>Like et commente ce post</b> », « <b>partage-le</b> »</li>
-      <li>« <b>Mon solde de crédits ?</b> », « <b>recharge 500 F</b> » → lien de paiement MoneyFusion sécurisé</li>
+      <li>« <b>Mon solde de crédits ?</b> » → vérifiez ce qu'il vous reste pour messager ou booster votre profil</li>
       <li>« <b>Déconnecte-moi</b> » → session fermée</li>
     </ul>
   </section>
